@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Feb 24, 2026 at 06:12 AM
+-- Generation Time: Feb 24, 2026 at 08:18 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -71,20 +71,22 @@ CREATE TABLE `loan_applications` (
   `total_payable` decimal(10,2) DEFAULT NULL,
   `monthly_due` decimal(10,2) DEFAULT NULL,
   `status` enum('PENDING','APPROVED','REJECTED','CANCELLED') DEFAULT 'PENDING',
+  `remarks` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `loan_applications`
 --
 
-INSERT INTO `loan_applications` (`id`, `user_id`, `principal_amount`, `term_months`, `loan_purpose`, `source_of_income`, `estimated_monthly_income`, `interest_rate`, `interest_type`, `interest_method`, `total_interest`, `total_payable`, `monthly_due`, `status`, `created_at`, `updated_at`) VALUES
-(3, 1, 10000.00, 6, 'Business Capital', 'ASAWA KO AY AFAM', 20000.00, 3.50, 'MONTHLY', 'FLAT', NULL, NULL, NULL, 'APPROVED', '2026-02-21 12:16:00', '2026-02-21 15:58:02'),
-(4, 1, 10000.00, 1, 'Business Capital', 'ASAWA KO AY AFAM', 35000.00, 3.50, 'MONTHLY', 'FLAT', NULL, NULL, NULL, 'PENDING', '2026-02-21 12:19:05', '2026-02-21 12:19:05'),
-(5, 1, 10000.00, 6, 'Business Capital', 'shabusilog', 30000.00, 3.50, 'MONTHLY', 'FLAT', NULL, NULL, NULL, 'PENDING', '2026-02-21 12:34:58', '2026-02-21 12:34:58'),
-(6, 1, 10000.00, 6, 'Business Capital', 'SHABU SELLER', 50000.00, 3.50, 'MONTHLY', 'FLAT', 2100.00, 12100.00, 2016.67, 'PENDING', '2026-02-21 14:48:55', '2026-02-21 14:48:55'),
-(7, 2, 10000.00, 6, 'Business Capital', 'ASAWA KO AY AFAM', 30000.00, 3.50, 'MONTHLY', 'FLAT', 2100.00, 12100.00, 2016.67, 'APPROVED', '2026-02-24 03:59:26', '2026-02-24 04:00:07');
+INSERT INTO `loan_applications` (`id`, `user_id`, `principal_amount`, `term_months`, `loan_purpose`, `source_of_income`, `estimated_monthly_income`, `interest_rate`, `interest_type`, `interest_method`, `total_interest`, `total_payable`, `monthly_due`, `status`, `remarks`, `created_at`, `updated_at`) VALUES
+(3, 1, 10000.00, 6, 'Business Capital', 'ASAWA KO AY AFAM', 20000.00, 3.50, 'MONTHLY', 'FLAT', NULL, NULL, NULL, 'APPROVED', NULL, '2026-02-21 12:16:00', '2026-02-21 15:58:02'),
+(4, 1, 10000.00, 1, 'Business Capital', 'ASAWA KO AY AFAM', 35000.00, 3.50, 'MONTHLY', 'FLAT', NULL, NULL, NULL, 'REJECTED', 'Expired Documents', '2026-02-21 12:19:05', '2026-02-24 18:12:19'),
+(5, 1, 10000.00, 6, 'Business Capital', 'shabusilog', 30000.00, 3.50, 'MONTHLY', 'FLAT', NULL, NULL, NULL, 'REJECTED', NULL, '2026-02-21 12:34:58', '2026-02-24 17:33:16'),
+(6, 1, 10000.00, 6, 'Business Capital', 'SHABU SELLER', 50000.00, 3.50, 'MONTHLY', 'FLAT', 2100.00, 12100.00, 2016.67, 'REJECTED', 'Blurry Id', '2026-02-21 14:48:55', '2026-02-24 17:40:51'),
+(7, 2, 10000.00, 6, 'Business Capital', 'ASAWA KO AY AFAM', 30000.00, 3.50, 'MONTHLY', 'FLAT', 2100.00, 12100.00, 2016.67, 'APPROVED', NULL, '2026-02-24 03:59:26', '2026-02-24 04:00:07'),
+(8, 4, 29000.00, 3, 'Medical Emergency', 'drag racing', 50000.00, 3.50, 'MONTHLY', 'FLAT', 3045.00, 32045.00, 10681.67, 'APPROVED', 'Blurry ID, Expired Documents', '2026-02-24 17:50:04', '2026-02-24 17:54:50');
 
 -- --------------------------------------------------------
 
@@ -119,7 +121,10 @@ INSERT INTO `loan_documents` (`id`, `loan_application_id`, `doc_type`, `file_pat
 (12, 6, 'PROOF_OF_BILLING', 'uploads/loan_docs/PROOF_OF_BILLING_6_54e205d751f6b671.jpg', '2026-02-21 14:48:55'),
 (13, 7, 'GOV_ID', 'uploads/loan_docs/GOV_ID_7_d1e60b8dd710dc41.jpg', '2026-02-24 03:59:26'),
 (14, 7, 'PROOF_OF_INCOME', 'uploads/loan_docs/PROOF_OF_INCOME_7_274f1617fd4ca505.png', '2026-02-24 03:59:26'),
-(15, 7, 'PROOF_OF_BILLING', 'uploads/loan_docs/PROOF_OF_BILLING_7_bd3b082780a0eadd.jpg', '2026-02-24 03:59:26');
+(15, 7, 'PROOF_OF_BILLING', 'uploads/loan_docs/PROOF_OF_BILLING_7_bd3b082780a0eadd.jpg', '2026-02-24 03:59:26'),
+(16, 8, 'GOV_ID', 'uploads/loan_docs/GOV_ID_8_745310883b8b348a.jpg', '2026-02-24 17:50:04'),
+(17, 8, 'PROOF_OF_INCOME', 'uploads/loan_docs/PROOF_OF_INCOME_8_bbf809f11cbb007a.png', '2026-02-24 17:50:04'),
+(18, 8, 'PROOF_OF_BILLING', 'uploads/loan_docs/PROOF_OF_BILLING_8_7ed7c25974b43baf.jpg', '2026-02-24 17:50:04');
 
 -- --------------------------------------------------------
 
@@ -174,7 +179,8 @@ CREATE TABLE `users` (
 INSERT INTO `users` (`id`, `fullname`, `phone`, `email`, `password`, `created_at`) VALUES
 (1, 'try123', '09912345678', 'try1@gmail.com', '$2y$10$wb7Q4T64e6Uis3xCxY24suIA9.ETku2kTq4Zw2vIRLEp4qiuIMy9a', '2026-02-20 05:01:41'),
 (2, 'try123', '09987654321', 'try2@gmail.com', '$2y$10$n3ljtxFhUfjG1zpkeUNmHOi.dpUT.3X9hqNnbSK3txWJZuC8.isiy', '2026-02-20 05:11:10'),
-(3, 'try3', '0976543212', 'try3@gmail.com', '$2y$10$cSDsybcnOFSw5Jntw3iUCuwCwGbdcU2tLrCtqqT7qwUOTwtr9QQaG', '2026-02-20 05:26:06');
+(3, 'try3', '0976543212', 'try3@gmail.com', '$2y$10$cSDsybcnOFSw5Jntw3iUCuwCwGbdcU2tLrCtqqT7qwUOTwtr9QQaG', '2026-02-20 05:26:06'),
+(4, 'Francis Leo Marcos', '0915 738 1992', 'breadpan@gmail.com', '$2y$10$hzj4NUFDsrBS7oXwSIreB.ng5VCJ72/HRASc9UNzebJwgg/aKByyG', '2026-02-24 17:46:03');
 
 --
 -- Indexes for dumped tables
@@ -232,13 +238,13 @@ ALTER TABLE `loans`
 -- AUTO_INCREMENT for table `loan_applications`
 --
 ALTER TABLE `loan_applications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `loan_documents`
 --
 ALTER TABLE `loan_documents`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
 
 --
 -- AUTO_INCREMENT for table `transactions`
@@ -250,7 +256,7 @@ ALTER TABLE `transactions`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- Constraints for dumped tables
