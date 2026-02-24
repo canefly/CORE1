@@ -91,7 +91,7 @@
                         <td>
                             <div class="client-info">
                                 <div class="mini-avatar">BO</div>
-                                <span>Bob Odenkirk</span>
+                                <span>Bob OdenCharliekirk</span>
                             </div>
                         </td>
                         <td>₱1,000,000</td>
