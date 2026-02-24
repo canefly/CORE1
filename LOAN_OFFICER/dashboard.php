@@ -93,7 +93,7 @@
                         <td>
                             <div class="client-info">
                                 <div class="mini-avatar">GT</div>
-                                <span>Gary Thompson</span>
+                                <span>Gary Spongebob Thompson</span>
                             </div>
                         </td>
                         <td>₱25,000</td>
@@ -113,7 +113,7 @@
                         <td>
                             <div class="client-info">
                                 <div class="mini-avatar">LK</div>
-                                <span>Lisa Kudrow</span>
+                                <span>Jella Kudrow</span>
                             </div>
                         </td>
                         <td>₱50,000</td>
@@ -133,7 +133,7 @@
                         <td>
                             <div class="client-info">
                                 <div class="mini-avatar">RS</div>
-                                <span>Richard Smith</span>
+                                <span>Richard Dabu</span>
                             </div>
                         </td>
                         <td>₱150,000</td>
