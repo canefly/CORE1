@@ -1,0 +1,178 @@
+/* --- GLOBAL RESET --- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Google Sans', sans-serif;
+}
+
+body {
+    background-color: #111827; /* Dark Charcoal */
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #e5e7eb;
+}
+
+/* --- CARD CONTAINER --- */
+.login-wrapper {
+    background-color: #1f2937; /* Lighter Charcoal Card */
+    width: 400px;
+    padding: 40px;
+    border-radius: 16px;
+    border: 1px solid #374151; /* Subtle Border */
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+}
+
+/* --- HEADER --- */
+.header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.logo {
+    font-size: 40px;
+    color: #10b981; /* Green Brand Color */
+    margin-bottom: 10px;
+}
+
+.header h2 {
+    color: #fff;
+    font-size: 24px;
+    font-weight: 700;
+}
+
+.header p {
+    color: #9ca3af; /* Muted Text */
+    font-size: 14px;
+}
+
+/* --- LABELS --- */
+.field-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: #9ca3af;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    margin-left: 4px;
+}
+
+/* --- INPUT BOX WRAPPER --- */
+.input-box {
+    position: relative; 
+    width: 100%;
+    margin-bottom: 20px;
+    background-color: #374151; /* Dark Grey Input BG */
+    border-radius: 8px;
+    border: 1px solid transparent; 
+    transition: all 0.2s ease;
+}
+
+/* Input Fields Styling */
+.input-box input,
+.input-box select {
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    padding: 14px 14px 14px 45px; /* Padding for icon */
+    color: #fff; /* White Text */
+    font-size: 15px;
+    border-radius: 8px;
+    appearance: none; 
+    cursor: pointer;
+}
+
+/* --- FIX FOR INVISIBLE DROPDOWN ITEMS --- */
+select option {
+    background-color: #1f2937; /* Matches Card Color */
+    color: #ffffff; /* Visible White Text */
+    padding: 12px;
+}
+
+/* --- ICONS INSIDE INPUT --- */
+.input-box .icon {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af; 
+    font-size: 18px;
+    pointer-events: none;
+    transition: color 0.2s ease;
+}
+
+/* Custom Select Arrow */
+.input-box .arrow {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+    pointer-events: none;
+    font-size: 12px;
+}
+
+/* Password Toggle Eye */
+.input-box .toggle-pass {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+    cursor: pointer;
+    font-size: 18px;
+    transition: color 0.2s;
+}
+
+.input-box .toggle-pass:hover {
+    color: #fff;
+}
+
+/* --- FOCUS STATE (Green Glow) --- */
+.input-box:focus-within {
+    border-color: #10b981; 
+    background-color: #111827; 
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+
+.input-box:focus-within .icon {
+    color: #10b981;
+}
+
+/* --- SUBMIT BUTTON --- */
+.btn-submit {
+    width: 100%;
+    background-color: #10b981; 
+    color: #064e3b; 
+    border: none;
+    padding: 14px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.1s, background-color 0.2s;
+    margin-top: 10px;
+}
+
+.btn-submit:hover {
+    background-color: #34d399; 
+}
+
+.btn-submit:active {
+    transform: scale(0.98);
+}
+
+/* --- ERROR MESSAGE --- */
+.error-msg {
+    margin-top: 20px;
+    padding: 10px;
+    background-color: rgba(220, 38, 38, 0.2);
+    color: #fca5a5;
+    border: 1px solid #7f1d1d;
+    border-radius: 6px;
+    font-size: 13px;
+    text-align: center;
+}

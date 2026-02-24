@@ -1,0 +1,167 @@
+/* =========================================
+   CLIENT NOTIFICATIONS STYLES
+   ========================================= */
+
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Google Sans', sans-serif; }
+body { background-color: #111827; color: #e5e7eb; display: flex; min-height: 100vh; }
+
+.main-content {
+    margin-left: 260px; padding: 30px; width: calc(100% - 260px);
+    transition: 0.3s; /* Added for smooth resizing */
+}
+
+/* --- UPDATED: PAGE HEADER --- */
+.page-header {
+    display: flex; 
+    flex-direction: column; /* Stacks the button under the header text */
+    align-items: flex-start; /* Keeps the title and paragraph on the left */
+    gap: 25px; /* Adds clean spacing between text and button */
+    margin-bottom: 30px;
+    width: 100%; 
+}
+.page-header h1 { font-size: 24px; color: #fff; margin-bottom: 5px; }
+.page-header p { color: #9ca3af; font-size: 14px; }
+
+/* Mark All Read Button */
+.btn-read-all {
+    align-self: center; /* THIS CENTERS THE BUTTON PERFECTLY */
+    background: transparent; border: 1px solid #374151; color: #9ca3af;
+    padding: 10px 24px; /* Slightly wider padding for a better centered look */
+    border-radius: 6px; font-size: 13px; cursor: pointer; transition: 0.2s;
+    white-space: nowrap; 
+}
+.btn-read-all:hover { border-color: #10b981; color: #10b981; }
+
+/* --- UPDATED: NOTIFICATION LIST --- */
+.notif-container {
+    display: flex; flex-direction: column; gap: 15px; 
+    width: 100%; /* Expands the notifications to full screen width */
+}
+
+.notif-item {
+    background: #1f2937;
+    border: 1px solid #374151;
+    border-radius: 12px;
+    padding: 25px 30px; /* Increased padding to let the text breathe */
+    display: flex; gap: 25px; /* Increased gap between icon and text */
+    transition: 0.2s;
+    position: relative;
+}
+
+/* Hover Effect */
+.notif-item:hover { transform: translateX(5px); border-color: #4b5563; }
+
+/* Unread State (Highlight) */
+.notif-item.unread {
+    background: rgba(16, 185, 129, 0.05); /* Slight Green Tint */
+    border-color: rgba(16, 185, 129, 0.3);
+}
+.notif-item.unread::after {
+    content: ''; position: absolute; top: 25px; right: 25px; /* Adjusted to match new padding */
+    width: 10px; height: 10px; background: #10b981; border-radius: 50%;
+}
+
+/* Icons */
+.notif-icon-box {
+    width: 55px; height: 55px; /* Slightly enlarged icon box to match wider layout */
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px; flex-shrink: 0;
+}
+
+/* Icon Colors based on Type */
+.type-success { background: rgba(16, 185, 129, 0.15); color: #34d399; } /* Payment/Approval */
+.type-warning { background: rgba(245, 158, 11, 0.15); color: #fbbf24; } /* Due Date */
+.type-danger { background: rgba(239, 68, 68, 0.15); color: #f87171; }  /* Penalty/Reject */
+.type-info { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }    /* Updates */
+
+/* Content */
+.notif-content { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+.notif-header { display: flex; justify-content: space-between; margin-bottom: 8px; align-items: center; }
+.notif-title { color: #fff; font-weight: 700; font-size: 17px; } /* Slightly larger title */
+.notif-time { color: #6b7280; font-size: 13px; }
+
+/* Increased line-height for better readability on wide screens */
+.notif-body { color: #cbd5e1; font-size: 15px; line-height: 1.6; margin-bottom: 12px; max-width: 90%; } 
+
+/* Action Link inside Notification */
+.notif-action {
+    font-size: 14px; color: #60a5fa; font-weight: 600; text-decoration: none;
+    display: inline-flex; align-items: center; gap: 5px; align-self: flex-start;
+}
+.notif-action:hover { text-decoration: underline; }
+
+/* Empty State */
+.empty-state {
+    text-align: center; padding: 50px; color: #6b7280;
+}
+.empty-icon { font-size: 40px; margin-bottom: 10px; display: block; }
+
+/* =========================================
+   RESPONSIVE ADJUSTMENTS
+   ========================================= */
+
+/* Tablet / Laptop (Max Width 992px) */
+@media (max-width: 992px) {
+    /* Collapse Sidebar */
+    .main-content {
+        margin-left: 0;
+        width: 100%;
+        padding: 20px;
+    }
+
+    .notif-container { max-width: 100%; }
+    .notif-body { max-width: 100%; }
+}
+
+/* Mobile (Max Width 576px) */
+@media (max-width: 576px) {
+    /* Stack Page Header */
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    
+    /* Move 'Read All' button to start to align with flow */
+    .btn-read-all {
+        align-self: flex-start;
+        width: 100%;
+        text-align: center;
+    }
+
+    /* Compact Notification Item */
+    .notif-item {
+        padding: 18px 15px;
+        gap: 15px;
+    }
+
+    /* Make Icon Smaller */
+    .notif-icon-box {
+        width: 45px;
+        height: 45px;
+        font-size: 22px;
+    }
+
+    /* Stack Title and Time (Time moves below title) */
+    .notif-header {
+        flex-direction: column;
+        align-items: flex-start;
+        margin-bottom: 8px;
+    }
+
+    .notif-time {
+        margin-top: 4px;
+        font-size: 11px;
+    }
+    
+    /* Adjust Unread Dot position for compact view */
+    .notif-item.unread::after {
+        top: 15px;
+        right: 15px;
+    }
+
+    /* Typography Adjustments */
+    .notif-title { font-size: 15px; }
+    .notif-body { font-size: 13px; line-height: 1.5; }
+}

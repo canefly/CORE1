@@ -1,0 +1,220 @@
+/* =========================================
+   CLIENT APPLY LOAN STYLES
+   ========================================= */
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Google Sans', sans-serif; }
+body { background-color: #0f172a; color: #e2e8f0; display: flex; min-height: 100vh; }
+
+.main-content {
+    margin-left: 260px; padding: 30px; width: calc(100% - 260px);
+    transition: all 0.3s ease; /* Added for smooth resizing */
+}
+
+.page-header h1 { font-size: 24px; color: #fff; margin-bottom: 5px; }
+.page-header p { color: #94a3b8; font-size: 14px; margin-bottom: 30px; }
+
+/* --- STEP PROGRESS INDICATOR --- */
+.wizard-steps {
+    display: flex; justify-content: space-between; margin-bottom: 40px; position: relative;
+    max-width: 500px; margin-left: auto; margin-right: auto;
+}
+/* Line behind circles */
+.wizard-steps::before {
+    content: ''; position: absolute; top: 15px; left: 0; width: 100%; height: 2px;
+    background: #334155; z-index: 0;
+}
+
+.step { position: relative; z-index: 1; text-align: center; width: 80px; }
+.step-circle {
+    width: 32px; height: 32px; background: #1e293b; border: 2px solid #475569;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 14px; color: #94a3b8; margin: 0 auto 8px;
+    transition: 0.3s;
+}
+.step-label { font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* Active State */
+.step.active .step-circle { background: #10b981; border-color: #10b981; color: #064e3b; box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2); }
+.step.active .step-label { color: #10b981; }
+
+/* --- STEP 1: CALCULATOR CARD --- */
+.calc-container {
+    display: grid; grid-template-columns: 1.5fr 1fr; gap: 30px;
+    background: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 30px;
+    max-width: 800px; margin: 0 auto;
+}
+
+/* Sliders */
+.range-group { margin-bottom: 30px; }
+.range-header { display: flex; justify-content: space-between; margin-bottom: 15px; }
+.range-label { font-size: 13px; color: #cbd5e1; font-weight: 500; }
+.range-val { font-size: 18px; color: #10b981; font-weight: 700; }
+
+input[type=range] {
+    width: 100%; -webkit-appearance: none; background: transparent;
+}
+input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%;
+    background: #10b981; cursor: pointer; margin-top: -8px; box-shadow: 0 0 10px rgba(16,185,129,0.5);
+}
+input[type=range]::-webkit-slider-runnable-track {
+    width: 100%; height: 4px; cursor: pointer; background: #334155; border-radius: 2px;
+}
+
+/* --- NEW: Term Box Selection Styles (FORCED) --- */
+.term-options {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+    margin-top: 10px;
+}
+
+button.term-box {
+    flex: 1;
+    background-color: #1e293b !important;
+    border: 2px solid #334155 !important;
+    color: #94a3b8 !important;
+    padding: 14px 0 !important;
+    border-radius: 8px !important;
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    font-family: 'Google Sans', sans-serif !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    outline: none !important;
+    -webkit-appearance: none !important;
+}
+
+button.term-box:hover {
+    border-color: #10b981 !important;
+    color: #ffffff !important;
+    background-color: #283548 !important;
+}
+
+button.term-box.active {
+    background-color: #10b981 !important;
+    border-color: #10b981 !important;
+    color: #064e3b !important;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3) !important;
+}
+
+/* --- DISABLED TERM BOX --- */
+button.term-box:disabled {
+    opacity: 0.3 !important;
+    cursor: not-allowed !important;
+    background-color: #0f172a !important;
+    border-color: #334155 !important;
+    color: #475569 !important;
+}
+
+/* Result Side */
+.calc-result {
+    background: #0f172a; border-radius: 12px; padding: 25px;
+    display: flex; flex-direction: column; justify-content: center; text-align: center; border: 1px solid #334155;
+}
+.monthly-label { font-size: 12px; color: #94a3b8; text-transform: uppercase; margin-bottom: 5px; }
+.monthly-val { font-size: 32px; color: #fff; font-weight: 700; margin-bottom: 20px; }
+
+.breakdown-row {
+    display: flex; justify-content: space-between; font-size: 13px;
+    color: #94a3b8; margin-bottom: 8px; border-bottom: 1px dashed #334155; padding-bottom: 8px;
+}
+.breakdown-row span:last-child { color: #e2e8f0; }
+
+/* --- STEP 2 & 3: FORM STYLES --- */
+.form-card {
+    background: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 30px;
+    max-width: 600px; margin: 0 auto; display: none;
+}
+
+.input-group { margin-bottom: 20px; }
+.input-label { display: block; font-size: 13px; color: #94a3b8; margin-bottom: 8px; }
+.form-control {
+    width: 100%; background: #0f172a; border: 1px solid #334155;
+    padding: 12px; border-radius: 8px; color: #fff; outline: none;
+}
+.form-control:focus { border-color: #10b981; }
+
+/* Upload Box */
+.upload-area {
+    border: 2px dashed #475569; background: #0f172a; border-radius: 8px;
+    padding: 30px; text-align: center; cursor: pointer; transition: 0.2s;
+}
+.upload-area:hover { border-color: #10b981; background: rgba(16, 185, 129, 0.05); }
+
+/* Buttons */
+.btn-next {
+    width: 100%; background: #10b981; color: #064e3b; border: none;
+    padding: 14px; border-radius: 8px; font-weight: 700; font-size: 14px;
+    cursor: pointer; margin-top: 10px; transition: 0.2s;
+}
+.btn-next:hover { background: #34d399; }
+
+.btn-back {
+    background: transparent; border: none; color: #94a3b8; font-size: 13px;
+    cursor: pointer; margin-top: 15px; text-decoration: underline;
+}
+
+/* Manual Input Styling (Amount) */
+.input-wrapper-manual {
+    display: flex; align-items: center; gap: 5px;
+}
+
+.currency-symbol {
+    font-size: 18px; color: #10b981; font-weight: 700;
+}
+
+.manual-input {
+    background: transparent; border: 1px solid #334155; border-radius: 6px;
+    color: #10b981; font-size: 18px; font-weight: 700; width: 120px;
+    padding: 5px 10px; text-align: right; outline: none; transition: 0.2s;
+}
+.manual-input:focus { border-color: #10b981; background: rgba(16, 185, 129, 0.05); }
+.manual-input::-webkit-outer-spin-button,
+.manual-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* =========================================
+   ✅ MODAL STYLES (NEW)
+   ========================================= */
+.modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 9999; opacity: 0; visibility: hidden; transition: 0.3s;
+}
+.modal-overlay.show {
+    opacity: 1; visibility: visible;
+}
+.modal-content {
+    background: #1e293b; border: 1px solid #334155; border-radius: 16px;
+    padding: 30px; text-align: center; max-width: 400px; width: 90%;
+    transform: translateY(-20px); transition: 0.3s;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+}
+.modal-overlay.show .modal-content { transform: translateY(0); }
+.error-icon { font-size: 45px; color: #fbbf24; margin-bottom: 15px; display: block; }
+.modal-content h3 { color: #fff; margin-bottom: 10px; font-size: 20px; }
+.modal-content p { color: #94a3b8; font-size: 14px; margin-bottom: 25px; line-height: 1.5; }
+
+/* =========================================
+   RESPONSIVE ADJUSTMENTS
+   ========================================= */
+@media (max-width: 768px) {
+    body { flex-direction: column; }
+    .main-content { margin-left: 0; width: 100%; padding: 20px; }
+    .calc-container { grid-template-columns: 1fr; padding: 20px; gap: 25px; }
+    .wizard-steps { max-width: 100%; padding: 0 10px; }
+}
+
+@media (max-width: 480px) {
+    .page-header h1 { font-size: 20px; }
+    .range-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .input-wrapper-manual { width: 100%; justify-content: flex-start; }
+    .manual-input { width: 100%; max-width: 150px; }
+    
+    .term-options { flex-wrap: wrap; }
+    .term-box { flex-basis: calc(33.333% - 10px); }
+
+    .form-card { padding: 20px; }
+    .step-label { font-size: 9px; }
+    .step { width: 60px; }
+}
