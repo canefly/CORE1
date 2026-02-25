@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Feb 24, 2026 at 06:12 AM
+-- Generation Time: Feb 25, 2026 at 03:13 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -37,7 +37,7 @@ CREATE TABLE `loans` (
   `interest_rate` decimal(5,2) DEFAULT NULL,
   `interest_method` enum('FLAT','DIMINISHING') DEFAULT NULL,
   `outstanding` decimal(10,2) DEFAULT NULL,
-  `next_payment` decimal(10,2) DEFAULT NULL,
+  `next_payment` date DEFAULT NULL,
   `due_date` date DEFAULT NULL,
   `start_date` date DEFAULT NULL,
   `status` varchar(50) DEFAULT NULL
@@ -48,7 +48,7 @@ CREATE TABLE `loans` (
 --
 
 INSERT INTO `loans` (`id`, `user_id`, `application_id`, `loan_amount`, `term_months`, `monthly_due`, `interest_rate`, `interest_method`, `outstanding`, `next_payment`, `due_date`, `start_date`, `status`) VALUES
-(1, 1, NULL, 10000.00, 6, 2016.67, 3.50, 'FLAT', 12100.00, 20260322.00, '2026-08-22', '2026-02-22', 'ACTIVE');
+(1, 1, NULL, 10000.00, 6, 2016.67, 3.50, 'FLAT', 0.00, '2026-10-22', '2026-08-22', '2026-02-22', 'ACTIVE');
 
 -- --------------------------------------------------------
 
@@ -129,28 +129,62 @@ INSERT INTO `loan_documents` (`id`, `loan_application_id`, `doc_type`, `file_pat
 
 CREATE TABLE `transactions` (
   `id` int(11) NOT NULL,
+  `user_id` int(11) DEFAULT NULL,
   `loan_id` int(11) DEFAULT NULL,
   `amount` decimal(10,2) DEFAULT NULL,
-  `method` varchar(50) DEFAULT NULL,
-  `activity` varchar(100) DEFAULT NULL,
   `status` varchar(50) DEFAULT NULL,
-  `trans_date` date DEFAULT NULL,
-  `provider_ref` varchar(80) DEFAULT NULL,
+  `trans_date` datetime DEFAULT NULL,
   `provider_method` varchar(30) DEFAULT NULL,
   `paymongo_checkout_id` varchar(80) DEFAULT NULL,
   `paymongo_payment_id` varchar(80) DEFAULT NULL,
-  `checkout_url` text DEFAULT NULL,
-  `receipt_url` text DEFAULT NULL
+  `receipt_number` varchar(50) DEFAULT NULL,
+  `receipt_image_pending_url` text DEFAULT NULL,
+  `receipt_image_final_url` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `transactions`
 --
 
-INSERT INTO `transactions` (`id`, `loan_id`, `amount`, `method`, `activity`, `status`, `trans_date`, `provider_ref`, `provider_method`, `paymongo_checkout_id`, `paymongo_payment_id`, `checkout_url`, `receipt_url`) VALUES
-(1, 1, 2016.67, 'PAYMONGO', 'PAYMENT', 'PENDING', '2026-02-24', NULL, NULL, NULL, NULL, NULL, NULL),
-(2, 1, 2016.67, 'PAYMONGO', 'PAYMENT', 'PENDING', '2026-02-24', NULL, NULL, NULL, NULL, NULL, NULL),
-(3, 1, 2016.67, 'PAYMONGO', 'PAYMENT', 'PENDING', '2026-02-24', NULL, NULL, NULL, NULL, NULL, NULL);
+INSERT INTO `transactions` (`id`, `user_id`, `loan_id`, `amount`, `status`, `trans_date`, `provider_method`, `paymongo_checkout_id`, `paymongo_payment_id`, `receipt_number`, `receipt_image_pending_url`, `receipt_image_final_url`) VALUES
+(1, 1, 1, 2016.67, 'SUCCESS', '2026-02-25 10:00:32', 'GCASH', 'cs_ca7c4b1de80149cd5c300df5', 'pay_fBkzcqkZEcVUo1SQyAi1Ek8U', 'RCPT-20260225-000001', 'receipts/RCPT-20260225-000001-PENDING.png', 'receipts/RCPT-20260225-000001-FINAL.png'),
+(2, 1, 1, 2016.67, 'SUCCESS', '2026-02-25 10:07:29', 'GCASH', 'cs_b997ad2110260ea47609e3ab', 'pay_zonD6AdtEDHd2DdRAZrPNogQ', 'RCPT-20260225-000002', 'receipts/RCPT-20260225-000002-PENDING.png', 'receipts/RCPT-20260225-000002-FINAL.png');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `transactions_backup`
+--
+
+CREATE TABLE `transactions_backup` (
+  `id` int(11) NOT NULL DEFAULT 0,
+  `user_id` int(11) DEFAULT NULL,
+  `loan_id` int(11) DEFAULT NULL,
+  `amount` decimal(10,2) DEFAULT NULL,
+  `status` varchar(50) DEFAULT NULL,
+  `trans_date` datetime DEFAULT NULL,
+  `provider_ref` varchar(80) DEFAULT NULL,
+  `provider_method` varchar(30) DEFAULT NULL,
+  `paymongo_payment_id` varchar(80) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `transactions_backup`
+--
+
+INSERT INTO `transactions_backup` (`id`, `user_id`, `loan_id`, `amount`, `status`, `trans_date`, `provider_ref`, `provider_method`, `paymongo_payment_id`) VALUES
+(1, NULL, 1, 2016.67, 'PENDING', '2026-02-24 00:00:00', NULL, NULL, NULL),
+(2, NULL, 1, 2016.67, 'PENDING', '2026-02-24 00:00:00', NULL, NULL, NULL),
+(3, NULL, 1, 2016.67, 'PENDING', '2026-02-24 00:00:00', NULL, NULL, NULL),
+(4, 1, 1, 2016.67, 'PENDING', '2026-02-24 13:26:51', NULL, NULL, NULL),
+(5, NULL, 1, 2016.67, 'PENDING', '2026-02-24 13:29:16', NULL, NULL, NULL),
+(6, NULL, 1, 2016.67, 'PENDING', '2026-02-24 22:08:56', NULL, NULL, NULL),
+(7, NULL, 1, 2016.67, 'PENDING', '2026-02-24 22:11:08', NULL, NULL, NULL),
+(8, NULL, 1, 2016.67, 'PENDING', '2026-02-24 23:25:07', NULL, NULL, NULL),
+(9, NULL, 1, 2016.67, 'PENDING', '2026-02-25 00:04:41', NULL, NULL, NULL),
+(10, NULL, 1, 2016.67, 'PENDING', '2026-02-25 00:11:40', NULL, NULL, NULL),
+(11, NULL, 1, 2016.67, 'SUCCESS', '2026-02-25 00:20:43', NULL, NULL, NULL),
+(12, 1, 1, 2016.67, 'SUCCESS', '2026-02-25 00:52:49', NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -209,7 +243,8 @@ ALTER TABLE `loan_documents`
 ALTER TABLE `transactions`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `uq_paymongo_payment_id` (`paymongo_payment_id`),
-  ADD KEY `fk_tx_loan` (`loan_id`);
+  ADD KEY `fk_tx_loan` (`loan_id`),
+  ADD KEY `idx_tx_user_id` (`user_id`);
 
 --
 -- Indexes for table `users`
@@ -244,7 +279,7 @@ ALTER TABLE `loan_documents`
 -- AUTO_INCREMENT for table `transactions`
 --
 ALTER TABLE `transactions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `users`
@@ -281,7 +316,8 @@ ALTER TABLE `loan_documents`
 -- Constraints for table `transactions`
 --
 ALTER TABLE `transactions`
-  ADD CONSTRAINT `fk_tx_loan` FOREIGN KEY (`loan_id`) REFERENCES `loans` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+  ADD CONSTRAINT `fk_tx_loan` FOREIGN KEY (`loan_id`) REFERENCES `loans` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_tx_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
