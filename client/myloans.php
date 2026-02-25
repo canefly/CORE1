@@ -29,7 +29,6 @@ $res = $stmt->get_result();
 if ($res && $res->num_rows === 1) $loan = $res->fetch_assoc();
 $stmt->close();
 
-// If no active loan, show empty state
 if (!$loan) {
   $view = null;
 } else {
@@ -42,18 +41,20 @@ if (!$loan) {
   $monthly_due = (float)($loan['monthly_due'] ?? 0);
   if ($monthly_due <= 0) $monthly_due = $principal / $term;
 
-  $outstanding = (float)($loan['outstanding'] ?? 0);
-
   $start_date = $loan['start_date'] ?? date("Y-m-d");
-  $next_payment = $loan['next_payment'] ?? addMonths($start_date, 1);
-  $due_date = $loan['due_date'] ?? addMonths($start_date, $term);
 
-  // total payable derived from monthly_due * term (works for flat)
+  // total payable derived from monthly_due * term (flat)
   $total_payable = $monthly_due * $term;
 
   // 2) transactions of this loan
   $tx = [];
-  $tstmt = $conn->prepare("SELECT amount, trans_date FROM transactions WHERE loan_id = ? AND status='SUCCESS' ORDER BY trans_date ASC, id ASC");  $tstmt->bind_param("i", $loan_id);
+  $tstmt = $conn->prepare("
+    SELECT amount, trans_date
+    FROM transactions
+    WHERE loan_id = ? AND status='SUCCESS'
+    ORDER BY trans_date ASC, id ASC
+  ");
+  $tstmt->bind_param("i", $loan_id);
   $tstmt->execute();
   $tres = $tstmt->get_result();
   while ($tres && ($row = $tres->fetch_assoc())) $tx[] = $row;
@@ -62,10 +63,11 @@ if (!$loan) {
   $total_paid = 0.0;
   foreach ($tx as $t) $total_paid += (float)$t['amount'];
 
-  // If outstanding not maintained correctly, recompute remaining
-  if ($outstanding <= 0 && $total_paid < $total_payable) {
-    $outstanding = max(0, $total_payable - $total_paid);
-  }
+  // ✅ Always compute remaining from payments (UI will be correct)
+  $computed_outstanding = max(0, $total_payable - $total_paid);
+
+  // If DB has outstanding, still prefer computed (para consistent)
+  $outstanding = $computed_outstanding;
 
   $progress = ($total_payable > 0) ? ($total_paid / $total_payable) * 100 : 0;
   $progress = max(0, min(100, $progress));
@@ -84,15 +86,13 @@ if (!$loan) {
     if ($inst > $term) break;
   }
 
-  // how many installments are paid?
   $paidInstallments = 0;
   for ($i=1; $i <= $term; $i++) {
     if ($installmentPaidDates[$i]) $paidInstallments++;
     else break;
   }
-  $nextInstallment = min($term, $paidInstallments + 1);
 
-  // next deadline based on schedule (override DB next_payment if you want)
+  $nextInstallment = min($term, $paidInstallments + 1);
   $nextDeadline = addMonths($start_date, $nextInstallment);
 
   $view = [
@@ -128,7 +128,6 @@ if (!$loan) {
 <?php include 'include/theme_toggle.php'; ?>
 
 <div class="main-content">
-
   <div class="page-header">
     <h1>My Loans</h1>
     <p>View your active contract and repayment schedule.</p>
@@ -147,7 +146,6 @@ if (!$loan) {
   <?php else: ?>
 
   <div class="active-loan-card">
-
     <div class="card-header">
       <div class="loan-ref">Contract <span><?= htmlspecialchars($view['contract']) ?></span></div>
       <span class="status-badge">Active &bull; On Time</span>
@@ -227,19 +225,16 @@ if (!$loan) {
       </table>
 
       <div style="margin-top:20px; text-align:right;">
-        <a href="create_checkout.php?loan_id=<?= (int)$loan_id ?>"
+        <a href="create_checkout.php?loan_id=<?= (int)$view['loan_id'] ?>"
            style="background:#10b981; color:#064e3b; padding:10px 20px; border-radius:8px; text-decoration:none; font-weight:700; font-size:14px;">
           Pay Next Due
         </a>
       </div>
 
-
-
     </div>
   </div>
 
   <?php endif; ?>
-
 </div>
 </body>
 </html>
