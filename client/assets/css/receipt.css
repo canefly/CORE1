@@ -1,0 +1,68 @@
+body {
+  font-family: "Google Sans", Arial, sans-serif;
+  background: #0b1220;
+  color: #e5e7eb;
+  margin: 0;
+}
+
+.wrap { max-width: 980px; margin: 28px auto; padding: 0 16px; }
+.card {
+  background: #111827;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 18px;
+  padding: 20px;
+}
+
+.top { display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; align-items:flex-start; }
+.h2 { margin:0 0 6px; }
+.sub { color:#94a3b8; font-size:14px; }
+
+.badge {
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 12px;
+  border: 1px solid rgba(255,255,255,.12);
+}
+.paid { background: rgba(16,185,129,.16); color:#34d399; border-color: rgba(16,185,129,.35); }
+.pending { background: rgba(251,191,36,.16); color:#fbbf24; border-color: rgba(251,191,36,.35); }
+.failed { background: rgba(239,68,68,.16); color:#f87171; border-color: rgba(239,68,68,.35); }
+
+.grid { display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top: 16px; }
+.item {
+  background:#0b1220;
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 12px;
+  padding: 12px;
+}
+.k { color:#94a3b8; font-size:12px; margin-bottom:6px; }
+.v { font-weight:800; word-break:break-all; }
+.small { font-size:13px; font-weight:700; }
+
+.imgBlock { margin-top: 16px; }
+.imgTitle { color:#94a3b8; font-size:13px; margin: 10px 0 8px; }
+.img { width: 100%; max-width: 920px; border-radius: 12px; border:1px solid rgba(255,255,255,.08); }
+.note { margin-top:8px; color:#94a3b8; font-size:13px; line-height:1.4; }
+.warn { margin-top:8px; color:#fbbf24; font-size:13px; }
+
+.details { margin-top: 10px; }
+.details summary { cursor:pointer; color:#94a3b8; font-weight:700; }
+
+.btns { margin-top: 14px; display:flex; gap:10px; flex-wrap:wrap; }
+.btn {
+  display:inline-block;
+  padding:10px 14px;
+  border-radius:10px;
+  text-decoration:none;
+  font-weight:800;
+  font-size:14px;
+}
+.btn-green { background:#10b981; color:#064e3b; }
+.btn-dark { background:#1f2937; color:#e5e7eb; border:1px solid rgba(255,255,255,.08); }
+
+@media print {
+  body { background:#fff; color:#111; }
+  .card, .item { background:#fff; color:#111; border-color:#ddd; }
+  .btns { display:none; }
+  .sub, .k, .note, .warn { color:#111; }
+}
