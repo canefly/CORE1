@@ -113,7 +113,7 @@
                         <td>
                             <div class="client-info">
                                 <div class="mini-avatar">LK</div>
-                                <span>Jella Kudrow</span>
+                                <span>Jella mae Kudrow</span>
                             </div>
                         </td>
                         <td>₱50,000</td>
