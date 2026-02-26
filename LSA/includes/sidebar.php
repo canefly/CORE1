@@ -1,5 +1,19 @@
 <?php
+
+
 $currentPage = basename($_SERVER['PHP_SELF']);
+
+$pendingQuery = "SELECT COUNT(*) as total FROM loan_applications WHERE status = 'PENDING'";
+$pendingResult = $conn->query($pendingQuery);
+$newAppCount = ($pendingResult) ? $pendingResult->fetch_assoc()['total'] : 0;
+
+
+$restructureQuery = "SELECT COUNT(*) as total FROM loan_applications 
+                     WHERE (loan_purpose LIKE '%Restructure%' OR loan_purpose LIKE '%Extension%')
+                     AND status = 'PENDING'";
+$restructureResult = $conn->query($restructureQuery);
+$restructureCount = ($restructureResult) ? $restructureResult->fetch_assoc()['total'] : 0;
+
 ?>
 
 <style>
@@ -192,9 +206,9 @@ $currentPage = basename($_SERVER['PHP_SELF']);
     </div>
 
     <div class="user-profile">
-        <div class="avatar">JD</div>
+        <div class="avatar">MA</div>
         <div class="user-info">
-            <h4>Juan Dela Cruz</h4>
+            <h4>Mike Allen Dabu</h4>
             <span>LSA Associate</span>
         </div>
     </div>
@@ -211,7 +225,9 @@ $currentPage = basename($_SERVER['PHP_SELF']);
             <a href="application.php" 
                class="nav-item <?= ($currentPage == 'application.php') ? 'active' : '' ?>">
                 <i class="bi bi-file-earmark-plus-fill"></i> New Applications
-                <span class="nav-badge">3</span>
+                <?php if($newAppCount > 0): ?>
+                    <span class="nav-badge" data-count="<?= $newAppCount ?>"><?= $newAppCount ?></span>
+                <?php endif; ?>
             </a>
         </li>
 
@@ -233,7 +249,9 @@ $currentPage = basename($_SERVER['PHP_SELF']);
             <a href="restructure.php" 
                class="nav-item <?= ($currentPage == 'restructure.php') ? 'active' : '' ?>">
                 <i class="bi bi-arrow-repeat"></i> Restructure Requests
-                <span class="nav-badge amber">3</span>
+                <?php if($restructureCount > 0): ?>
+                    <span class="nav-badge amber" data-count="<?= $restructureCount ?>"><?= $restructureCount ?></span>
+                <?php endif; ?>
             </a>
         </li>
     </ul>
@@ -246,20 +264,39 @@ $currentPage = basename($_SERVER['PHP_SELF']);
 </div>
 
 <script>
+    // Existing DateTime Script
     function updateDateTime() {
         const now = new Date();
         const options = { 
-            weekday: 'short', 
-            year: 'numeric', 
-            month: 'short', 
-            day: 'numeric', 
-            hour: '2-digit', 
-            minute: '2-digit' 
+            weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', 
+            hour: '2-digit', minute: '2-digit' 
         };
-        document.getElementById('datetime').textContent = 
-            now.toLocaleDateString('en-US', options);
+        document.getElementById('datetime').textContent = now.toLocaleDateString('en-US', options);
     }
-
     updateDateTime();
     setInterval(updateDateTime, 1000);
+
+    // Function to update badges without refreshing
+function refreshBadges() {
+    fetch('get_badge_counts.php')
+        .then(response => response.json())
+        .then(data => {
+            // Update New Applications Badge
+            const appBadge = document.querySelector('a[href="application.php"] .nav-badge');
+            if (appBadge) {
+                appBadge.textContent = data.new_apps;
+                appBadge.style.display = data.new_apps > 0 ? 'inline-block' : 'none';
+            }
+
+            // Update Restructure Badge
+            const restBadge = document.querySelector('a[href="restructure.php"] .nav-badge');
+            if (restBadge) {
+                restBadge.textContent = data.restructure;
+                restBadge.style.display = data.restructure > 0 ? 'inline-block' : 'none';
+            }
+        });
+}
+
+// Refresh every 30 seconds
+setInterval(refreshBadges, 30000);
 </script>
