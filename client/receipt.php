@@ -40,8 +40,8 @@ $contract = "#LN-" . str_pad((string)$loan_id, 4, "0", STR_PAD_LEFT);
 $rcptNo = (string)($tx['receipt_number'] ?? '-');
 
 // Method: show nice placeholder while pending
-$methodRaw = strtoupper((string)($tx['provider_method'] ?? 'TO_BE_CONFIRMED'));
-$method = ($methodRaw === 'TO_BE_CONFIRMED' || $methodRaw === '') ? "To be confirmed (selected at checkout)" : $methodRaw;
+$methodRaw = strtoupper((string)($tx['provider_method'] ?? ''));
+$method = $methodRaw ? $methodRaw : "Selected at PayMongo Checkout";
 
 // Proof: pending uses checkout id, success uses payment id
 $proof = (string)($tx['paymongo_payment_id'] ?? '');
@@ -161,11 +161,11 @@ if ($finalImg)   $finalImg   .= (str_contains($finalImg, '?') ? '&' : '?') . "v=
 
       <div class="btns">
         <a class="btn btn-dark" href="myloans.php">Back to My Loans</a>
-        <a class="btn btn-green btn-print" href="#">Print</a>
+        <button type="button" class="btn btn-green btn-print" onclick="window.print()">Print</button>
       </div>
     </div>
   </div>
 
-  <script src="assets/js/receipt.js"></script>
+  
 </body>
 </html>

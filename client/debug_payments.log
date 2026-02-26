@@ -1,0 +1,16 @@
+[2026-02-25 02:41:43] HIT create_checkout.php
+[2026-02-25 09:41:43] INSERT OK tx_id=37
+[2026-02-25 02:45:51] HIT create_checkout.php
+[2026-02-25 02:45:51] INSERT OK tx_id=38
+[2026-02-25 02:46:32] HIT create_checkout.php
+[2026-02-25 02:46:32] INSERT OK tx_id=39
+[2026-02-25 02:56:42] HIT create_checkout.php
+[2026-02-25 02:56:42] INSERT OK tx_id=40
+[2026-02-25 02:58:40] HIT create_checkout.php
+[2026-02-25 02:58:40] INSERT OK tx_id=41
+[2026-02-25 03:00:13] HIT create_checkout.php
+[2026-02-25 03:00:13] INSERT OK tx_id=1
+[2026-02-25 03:06:34] HIT create_checkout.php
+[2026-02-25 03:06:34] INSERT OK tx_id=2
+[2026-02-25 04:04:28] HIT create_checkout.php
+[2026-02-25 04:04:28] INSERT OK tx_id=3
