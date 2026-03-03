@@ -173,3 +173,119 @@ tbody tr:hover { background-color: #0f172a; }
     display: inline-block;
 }
 .btn-view:hover { background: rgba(245, 158, 11, 0.1); }
+/* =========================================
+   PRINT MEDIA QUERY (OFFICIAL REPORT FORMAT)
+   ========================================= */
+@media print {
+    /* 1. Set paper to Landscape and add standard margins */
+    @page {
+        size: PORTRAIT;
+        margin: 1.5cm;
+    }
+
+    /* 2. Hide ALL interactive & structural UI elements */
+    .sidebar, 
+    .toolbar, 
+    .progress-wrapper,
+    .page-header p {
+        display: none !important;
+    }
+
+    /* 3. Hide the entire "VIEW" column (10th column) */
+    th:last-child, 
+    td:last-child {
+        display: none !important;
+    }
+
+    /* 4. Reset dark mode to pure white paper */
+    body, 
+    .main-content, 
+    .ledger-container, 
+    .table-wrapper {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        box-shadow: none !important;
+        border: none !important;
+        overflow: visible !important; /* Prevent tables from being cut off */
+    }
+
+    .main-content {
+        margin-left: 0 !important;
+    }
+
+    /* 5. Format the table to look like an official ledger */
+    table {
+        border-collapse: collapse !important;
+        width: 100% !important;
+        margin-top: 20px !important;
+        font-size: 10pt !important;
+    }
+    
+    th {
+        background-color: #e2e8f0 !important; /* Formal light gray header */
+        -webkit-print-color-adjust: exact; /* Forces printer to print the background color */
+        color-adjust: exact;
+        color: #000000 !important;
+        border: 1px solid #000000 !important;
+        padding: 10px 8px !important;
+        text-align: center !important;
+        font-weight: bold !important;
+        text-transform: uppercase;
+    }
+
+    td {
+        border: 1px solid #000000 !important;
+        color: #000000 !important; /* Force ALL text to black */
+        padding: 8px !important;
+        text-align: center !important; /* Default alignment */
+    }
+
+    /* 6. Strip all colors from status badges and amounts */
+    td span, td div, td {
+        color: #000000 !important;
+        background: transparent !important;
+    }
+
+    /* 7. Right-align all money columns for accounting standards */
+    .text-right, td:nth-child(4), td:nth-child(5), td:nth-child(6), td:nth-child(7) {
+        text-align: right !important;
+    }
+
+    /* 8. Modify the page header to look like a printed document */
+    .page-header {
+        text-align: center !important;
+        border-bottom: 2px solid #000000 !important;
+        padding-bottom: 15px !important;
+        margin-bottom: 20px !important;
+        display: block !important;
+    }
+
+    .page-header h1 {
+        color: #000000 !important;
+        font-size: 16pt !important;
+        margin: 0 !important;
+        text-transform: uppercase;
+    }
+    
+    /* Add a Company Name above the title */
+    .page-header h1::before {
+        content: "MICROFINANCE LENDING CORP\A";
+        white-space: pre;
+        font-size: 11pt !important;
+        font-weight: normal !important;
+        display: block;
+        margin-bottom: 5px;
+    }
+    
+    /* Append "OFFICIAL REPORT" to the title */
+    .page-header h1::after {
+        content: "\A OFFICIAL ACCOUNT REPORT";
+        white-space: pre;
+        font-size: 12pt !important;
+        display: block;
+        margin-top: 5px;
+    }
+}

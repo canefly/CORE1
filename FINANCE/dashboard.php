@@ -1,3 +1,40 @@
+<?php
+// 1. Establish Database Connection with absolute pathing
+$connection_file = __DIR__ . '/includes/db_connect.php';
+
+if (file_exists($connection_file)) {
+    require_once $connection_file;
+} else {
+    die("Error: Connection file not found at " . $connection_file);
+}
+
+// 2. Immediate check if $pdo exists
+if (!isset($pdo)) {
+    die("Fatal Error: \$pdo variable is not defined in includes/db_connect.php.");
+}
+
+// 3. Fetch Real-time Data
+try {
+    // Total Collections
+    $totalCollections = $pdo->query("SELECT SUM(amount) FROM transactions WHERE status = 'SUCCESS'")->fetchColumn() ?: 0;
+
+    // Outstanding Principal
+    $outstandingPrincipal = $pdo->query("SELECT SUM(outstanding) FROM loans WHERE status = 'ACTIVE'")->fetchColumn() ?: 0;
+
+    // Total Disbursed
+    $totalDisbursed = $pdo->query("SELECT SUM(loan_amount) FROM loans")->fetchColumn() ?: 0;
+    
+    // Recent Transactions with User Names
+    $stmt = $pdo->query("SELECT t.*, u.fullname FROM transactions t 
+                         LEFT JOIN users u ON t.user_id = u.id 
+                         ORDER BY t.trans_date DESC LIMIT 4");
+    $recentTransactions = $stmt->fetchAll();
+
+} catch (PDOException $e) {
+    die("Query Failed: " . $e->getMessage());
+}
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,9 +44,7 @@
     
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
     <link rel="stylesheet" href="assets/css/dashboard.css">
 </head>
 <body>
@@ -29,38 +64,34 @@
         </div>
 
         <div class="kpi-grid">
-            
             <div class="kpi-card card-green">
                 <div class="kpi-icon"><i class="bi bi-graph-up-arrow"></i></div>
-                <div class="kpi-value">₱ 845,000</div>
+                <div class="kpi-value">₱ <?php echo number_format($totalCollections, 2); ?></div>
                 <div class="kpi-label">Total Collections</div>
             </div>
 
             <div class="kpi-card card-gold">
                 <div class="kpi-icon"><i class="bi bi-piggy-bank"></i></div>
-                <div class="kpi-value">₱ 124,500</div>
-                <div class="kpi-label">Net Profit (YTD)</div>
+                <div class="kpi-value">₱ <?php echo number_format($totalCollections * 0.15, 2); ?></div> <div class="kpi-label">Net Profit (Est.)</div>
             </div>
 
             <div class="kpi-card card-red">
                 <div class="kpi-icon"><i class="bi bi-exclamation-circle"></i></div>
-                <div class="kpi-value">₱ 350,000</div>
+                <div class="kpi-value">₱ <?php echo number_format($outstandingPrincipal, 2); ?></div>
                 <div class="kpi-label">Outstanding Principal</div>
             </div>
 
             <div class="kpi-card card-blue">
                 <div class="kpi-icon"><i class="bi bi-cash-stack"></i></div>
-                <div class="kpi-value">₱ 1.2M</div>
+                <div class="kpi-value">₱ <?php echo number_format($totalDisbursed, 2); ?></div>
                 <div class="kpi-label">Total Disbursed</div>
             </div>
-
         </div>
 
         <div class="mid-section">
-            
             <div class="chart-container">
                 <div class="section-head">
-                    <h3>Cash Flow (Last 6 Months)</h3>
+                    <h3>Cash Flow (Real-time)</h3>
                 </div>
                 <canvas id="cashFlowChart" height="120"></canvas>
             </div>
@@ -70,28 +101,12 @@
                     <h3>Active Interest Rate</h3>
                     <i class="bi bi-gear-fill" style="color:#94a3b8;"></i>
                 </div>
-                
                 <div class="current-rate-box">
                     <div class="rate-big">3.5%</div>
-                    <div class="rate-sub">Monthly / Diminishing</div>
+                    <div class="rate-sub">Monthly / Flat</div>
                 </div>
-
-                <div style="margin-top: 10px; padding-top:10px; border-top:1px solid #334155; font-size:12px; color:#cbd5e1;">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                        <span>Penalty Rate:</span>
-                        <span style="color:#f87171; font-weight:700;">5.0%</span>
-                    </div>
-                    <div style="display:flex; justify-content:space-between;">
-                        <span>Processing Fee:</span>
-                        <span style="color:#fff; font-weight:700;">₱ 500.00</span>
-                    </div>
-                </div>
-
-                <a href="settings.php" class="btn-config">
-                    Configure Rates
-                </a>
+                <a href="settings.php" class="btn-config">Configure Rates</a>
             </div>
-
         </div>
 
         <div class="table-container">
@@ -105,91 +120,56 @@
                     <tr>
                         <th>Transaction ID</th>
                         <th>Client Name</th>
-                        <th>Type</th>
                         <th>Method</th>
                         <th>Date</th>
                         <th>Amount</th>
                     </tr>
                 </thead>
                 <tbody>
+                    <?php foreach ($recentTransactions as $row): ?>
                     <tr>
-                        <td>#TRX-8801</td>
-                        <td>Maria Clara</td>
-                        <td><span class="badge-in">Loan Payment</span></td>
-                        <td>GCash</td>
-                        <td>Oct 20, 2025 - 10:30 AM</td>
-                        <td class="amount-positive">+ ₱ 5,600.00</td>
+                        <td>#TRX-<?php echo $row['id']; ?></td>
+                        <td><?php echo htmlspecialchars($row['fullname'] ?? 'System'); ?></td>
+                        <td><?php echo htmlspecialchars($row['provider_method'] ?? 'Cash'); ?></td>
+                        <td><?php echo date("M j, Y", strtotime($row['trans_date'])); ?></td>
+                        <td class="amount-positive">+ ₱ <?php echo number_format($row['amount'], 2); ?></td>
                     </tr>
-                    <tr>
-                        <td>#TRX-8802</td>
-                        <td>Gary Thompson</td>
-                        <td><span class="badge-out">Disbursement</span></td>
-                        <td>Bank Transfer</td>
-                        <td>Oct 20, 2025 - 09:15 AM</td>
-                        <td class="amount-negative">- ₱ 25,000.00</td>
-                    </tr>
-                    <tr>
-                        <td>#TRX-8803</td>
-                        <td>Juan Dela Cruz</td>
-                        <td><span class="badge-in">Loan Payment</span></td>
-                        <td>Cash / OTC</td>
-                        <td>Oct 19, 2025 - 04:45 PM</td>
-                        <td class="amount-positive">+ ₱ 3,200.00</td>
-                    </tr>
-                    <tr>
-                        <td>#TRX-8804</td>
-                        <td>Pedro Penduko</td>
-                        <td><span class="badge-in">Loan Payment</span></td>
-                        <td>GCash</td>
-                        <td>Oct 19, 2025 - 02:20 PM</td>
-                        <td class="amount-positive">+ ₱ 4,150.00</td>
-                    </tr>
+                    <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
-
     </div>
 
     <script>
         const ctx = document.getElementById('cashFlowChart').getContext('2d');
-        const myChart = new Chart(ctx, {
+        new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'],
+                labels: ['Past Months Avg', 'Current'],
                 datasets: [
                     {
-                        label: 'Collections (In)',
-                        data: [120000, 150000, 180000, 200000, 210000, 240000],
-                        backgroundColor: '#10b981', // Green
+                        label: 'Collections',
+                        data: [150000, <?php echo $totalCollections; ?>],
+                        backgroundColor: '#10b981',
                         borderRadius: 4
                     },
                     {
-                        label: 'Disbursements (Out)',
-                        data: [80000, 100000, 120000, 90000, 150000, 110000],
-                        backgroundColor: '#60a5fa', // Blue
+                        label: 'Disbursements',
+                        data: [100000, <?php echo $totalDisbursed; ?>],
+                        backgroundColor: '#60a5fa',
                         borderRadius: 4
                     }
                 ]
             },
             options: {
                 responsive: true,
-                plugins: {
-                    legend: { labels: { color: '#94a3b8' } }
-                },
+                plugins: { legend: { labels: { color: '#94a3b8' } } },
                 scales: {
-                    y: {
-                        ticks: { color: '#64748b' },
-                        grid: { color: '#334155' },
-                        beginAtZero: true
-                    },
-                    x: {
-                        ticks: { color: '#64748b' },
-                        grid: { display: false }
-                    }
+                    y: { ticks: { color: '#64748b' }, grid: { color: '#334155' }, beginAtZero: true },
+                    x: { ticks: { color: '#64748b' }, grid: { display: false } }
                 }
             }
         });
     </script>
-
 </body>
 </html>
