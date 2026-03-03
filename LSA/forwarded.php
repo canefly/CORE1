@@ -8,7 +8,7 @@ include 'includes/db_connect.php';
 $query = "SELECT la.id, la.principal_amount, la.updated_at, la.status, u.fullname 
           FROM loan_applications la 
           JOIN users u ON la.user_id = u.id 
-          WHERE la.status = 'APPROVED' 
+          WHERE la.status IN ('VERIFIED', 'APPROVED') 
           ORDER BY la.updated_at DESC";
 $result = $conn->query($query);
 ?>

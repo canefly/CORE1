@@ -1,3 +1,43 @@
+<?php
+// 1. Establish Database Connection
+$connection_file = __DIR__ . '/includes/db_connect.php';
+
+if (file_exists($connection_file)) {
+    require_once $connection_file;
+} else {
+    die("Error: Connection file not found at " . $connection_file);
+}
+
+if (!isset($pdo)) {
+    die("Fatal Error: \$pdo variable is not defined in includes/db_connect.php.");
+}
+
+// 2. Fetch All Loans with User Data and Application Data
+try {
+    // We calculate total interest as a fallback in case it's missing from the application table
+    $query = "
+        SELECT 
+            l.id as loan_id,
+            u.fullname,
+            l.start_date,
+            l.loan_amount as principal,
+            l.outstanding,
+            l.status,
+            COALESCE(la.total_interest, (l.loan_amount * (l.interest_rate / 100) * l.term_months)) as total_interest
+        FROM loans l
+        LEFT JOIN users u ON l.user_id = u.id
+        LEFT JOIN loan_applications la ON l.application_id = la.id
+        ORDER BY l.id DESC
+    ";
+    
+    $stmt = $pdo->query($query);
+    $loans = $stmt->fetchAll();
+
+} catch (PDOException $e) {
+    die("Query Failed: " . $e->getMessage());
+}
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -18,7 +58,7 @@
         
         <div class="page-header">
             <div>
-                <h1>Master Loan Ledger</h1>
+                <h1>Loan Ledger</h1>
                 <p>Complete record of all active and closed loan accounts.</p>
             </div>
         </div>
@@ -27,31 +67,25 @@
             <div class="filter-group">
                 <div class="search-box">
                     <i class="bi bi-search search-icon"></i>
-                    <input type="text" class="search-input" placeholder="Search client, Loan ID...">
+                    <input type="text" id="searchInput" class="search-input" placeholder="Search client, Loan ID...">
                 </div>
                 
-                <select class="select-filter">
+                <select class="select-filter" id="statusFilter">
                     <option value="all">All Status</option>
-                    <option value="active" selected>Active</option>
-                    <option value="paid">Fully Paid</option>
-                    <option value="overdue">Overdue</option>
-                </select>
-
-                <select class="select-filter">
-                    <option value="this_month">This Month</option>
-                    <option value="last_month">Last Month</option>
-                    <option value="year_2025">2025</option>
+                    <option value="ACTIVE">Active</option>
+                    <option value="PAID">Fully Paid</option>
+                    <option value="OVERDUE">Overdue</option>
                 </select>
             </div>
 
-            <button class="btn-export">
-                <i class="bi bi-download"></i> Export CSV
+            <button class="btn-export" onclick="window.print()">
+                <i class="bi bi-download"></i> Export / Print
             </button>
         </div>
 
         <div class="ledger-container">
             <div class="table-wrapper">
-                <table>
+                <table id="ledgerTable">
                     <thead>
                         <tr>
                             <th>Loan ID</th>
@@ -67,93 +101,95 @@
                         </tr>
                     </thead>
                     <tbody>
-                        
-                        <tr>
-                            <td style="color:#fbbf24; font-weight:700;">#LN-2025-001</td>
-                            <td>Maria Clara</td>
-                            <td>Oct 01, 2025</td>
-                            <td class="text-right font-mono">15,000.00</td>
-                            <td class="text-right font-mono">1,500.00</td>
-                            <td class="text-right font-mono" style="color:#34d399;">5,500.00</td>
-                            <td class="text-right font-mono" style="color:#fff;">11,000.00</td>
-                            <td>
-                                <span class="progress-text">33% Paid</span>
-                                <div class="progress-wrapper">
-                                    <div class="progress-fill" style="width: 33%; background:#34d399;"></div>
-                                </div>
-                            </td>
-                            <td><span class="status-badge status-active">Active</span></td>
-                            <td style="text-align:center;">
-                                <a href="#" class="btn-view">OPEN</a>
-                            </td>
-                        </tr>
+                        <?php if (empty($loans)): ?>
+                            <tr><td colspan="10" style="text-align:center; padding: 20px;">No loan records found.</td></tr>
+                        <?php else: ?>
+                            <?php foreach ($loans as $row): 
+                                // Math logic for the row
+                                $principal = $row['principal'];
+                                $interest = $row['total_interest'];
+                                $total_payable = $principal + $interest;
+                                $balance = $row['outstanding'];
+                                
+                                // Total Paid = Total Payable minus current Balance
+                                $total_paid = $total_payable - $balance;
+                                if ($total_paid < 0) $total_paid = 0; // Prevent negative values
+                                
+                                // Progress Percentage
+                                $progress = ($total_payable > 0) ? round(($total_paid / $total_payable) * 100) : 0;
+                                if ($progress > 100) $progress = 100;
+                                
+                                // --- AUTOMATIC PAID STATUS FIX ---
+                                $displayStatus = $row['status'];
+                                if ($balance <= 0) {
+                                    $displayStatus = 'PAID';
+                                }
 
-                        <tr>
-                            <td style="color:#fbbf24; font-weight:700;">#LN-2025-004</td>
-                            <td>Juan Dela Cruz</td>
-                            <td>Sep 15, 2025</td>
-                            <td class="text-right font-mono">50,000.00</td>
-                            <td class="text-right font-mono">5,000.00</td>
-                            <td class="text-right font-mono" style="color:#34d399;">10,000.00</td>
-                            <td class="text-right font-mono" style="color:#f87171;">45,000.00</td>
-                            <td>
-                                <span class="progress-text">18% Paid</span>
-                                <div class="progress-wrapper">
-                                    <div class="progress-fill" style="width: 18%; background:#f87171;"></div>
-                                </div>
-                            </td>
-                            <td><span class="status-badge status-overdue">Overdue</span></td>
-                            <td style="text-align:center;">
-                                <a href="#" class="btn-view">OPEN</a>
-                            </td>
-                        </tr>
-
-                        <tr>
-                            <td style="color:#fbbf24; font-weight:700;">#LN-2025-008</td>
-                            <td>Gary Thompson</td>
-                            <td>Oct 20, 2025</td>
-                            <td class="text-right font-mono">25,000.00</td>
-                            <td class="text-right font-mono">2,500.00</td>
-                            <td class="text-right font-mono" style="color:#34d399;">0.00</td>
-                            <td class="text-right font-mono" style="color:#fff;">27,500.00</td>
-                            <td>
-                                <span class="progress-text">0% Paid</span>
-                                <div class="progress-wrapper">
-                                    <div class="progress-fill" style="width: 0%;"></div>
-                                </div>
-                            </td>
-                            <td><span class="status-badge status-active">Active</span></td>
-                            <td style="text-align:center;">
-                                <a href="#" class="btn-view">OPEN</a>
-                            </td>
-                        </tr>
-
-                        <tr>
-                            <td style="color:#fbbf24; font-weight:700;">#LN-2024-899</td>
-                            <td>Jose Rizal</td>
-                            <td>Jan 10, 2024</td>
-                            <td class="text-right font-mono">100,000.00</td>
-                            <td class="text-right font-mono">10,000.00</td>
-                            <td class="text-right font-mono" style="color:#34d399;">110,000.00</td>
-                            <td class="text-right font-mono" style="color:#94a3b8;">0.00</td>
-                            <td>
-                                <span class="progress-text">100% Paid</span>
-                                <div class="progress-wrapper">
-                                    <div class="progress-fill" style="width: 100%; background:#10b981;"></div>
-                                </div>
-                            </td>
-                            <td><span class="status-badge status-paid">Closed</span></td>
-                            <td style="text-align:center;">
-                                <a href="#" class="btn-view">OPEN</a>
-                            </td>
-                        </tr>
-
+                                // Determine progress bar color based on status/progress
+                                $progressColor = '#60a5fa'; // Blue default
+                                if ($progress >= 100) $progressColor = '#10b981'; // Green if paid
+                                if ($displayStatus == 'OVERDUE') $progressColor = '#f87171'; // Red if overdue
+                                
+                                // Format Status Badge CSS Class
+                                $statusClass = 'status-active';
+                                if ($displayStatus == 'CLOSED' || $displayStatus == 'PAID') $statusClass = 'status-paid';
+                                if ($displayStatus == 'OVERDUE') $statusClass = 'status-overdue';
+                            ?>
+                            <tr class="ledger-row" data-status="<?php echo strtoupper($displayStatus); ?>">
+                                <td style="color:#fbbf24; font-weight:700;">#LN-<?php echo str_pad($row['loan_id'], 4, '0', STR_PAD_LEFT); ?></td>
+                                <td class="client-name"><?php echo htmlspecialchars($row['fullname'] ?? 'N/A'); ?></td>
+                                <td><?php echo $row['start_date'] ? date("M d, Y", strtotime($row['start_date'])) : 'Pending'; ?></td>
+                                <td class="text-right font-mono"><?php echo number_format($principal, 2); ?></td>
+                                <td class="text-right font-mono"><?php echo number_format($interest, 2); ?></td>
+                                <td class="text-right font-mono" style="color:#34d399; font-weight: bold;"><?php echo number_format($total_paid, 2); ?></td>
+                                <td class="text-right font-mono" style="color:#fff; font-weight: bold;"><?php echo number_format($balance, 2); ?></td>
+                                <td>
+                                    <span class="progress-text"><?php echo $progress; ?>% Paid</span>
+                                    <div class="progress-wrapper">
+                                        <div class="progress-fill" style="width: <?php echo $progress; ?>%; background:<?php echo $progressColor; ?>;"></div>
+                                    </div>
+                                </td>
+                                <td><span class="status-badge <?php echo $statusClass; ?>"><?php echo htmlspecialchars($displayStatus); ?></span></td>
+                                <td style="text-align:center;">
+                                    <a href="view_loan.php?id=<?php echo $row['loan_id']; ?>" class="btn-view" style="color: #fbbf24; border: 1px solid #fbbf24; padding: 4px 10px; border-radius: 4px; text-decoration: none; font-size: 11px; font-weight: bold; transition: 0.2s;">OPEN</a>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
         </div>
 
     </div>
+
+    <script>
+        const searchInput = document.getElementById('searchInput');
+        const statusFilter = document.getElementById('statusFilter');
+        const rows = document.querySelectorAll('.ledger-row');
+
+        function filterTable() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const statusValue = statusFilter.value.toUpperCase();
+
+            rows.forEach(row => {
+                const textContent = row.textContent.toLowerCase();
+                const rowStatus = row.getAttribute('data-status');
+                
+                const matchesSearch = textContent.includes(searchTerm);
+                const matchesStatus = (statusValue === 'ALL' || rowStatus === statusValue);
+
+                if (matchesSearch && matchesStatus) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        searchInput.addEventListener('keyup', filterTable);
+        statusFilter.addEventListener('change', filterTable);
+    </script>
 
 </body>
 </html>

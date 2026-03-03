@@ -17,7 +17,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             WHERE id = '$application_id'";
 
     if ($conn->query($sql) === TRUE) {
-        $msg = ($new_status == 'APPROVED') ? "Verified & Forwarded" : "Returned to Client";
+        $msg = ($new_status == 'VERIFIED') ? "Verified & Forwarded" : "Returned to Client";
         header("Location: application.php?msg=" . urlencode($msg));
         exit();
     } else {

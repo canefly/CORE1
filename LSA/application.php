@@ -138,7 +138,7 @@ $result = $conn->query($query);
                     <button type="submit" name="status" value="REJECTED" class="btn-reject" onmouseover="showRemarks()">
                         <i class="bi bi-x-circle"></i> Return to Client
                     </button>
-                    <button type="submit" name="status" value="APPROVED" class="btn-confirm">
+                    <button type="submit" name="status" value="VERIFIED" class="btn-confirm">
                         <i class="bi bi-check2-circle"></i> Verify & Forward
                     </button>
                 </div>
