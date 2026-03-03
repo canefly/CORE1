@@ -227,6 +227,12 @@
             </a>
         </li>
         
+        <li>
+            <a href="transaction_log.php" class="nav-item <?= ($cp == 'transaction_log.php') ? 'active' : '' ?>">
+                <i class="bi bi-journal-text"></i> Master Cashflow
+            </a>
+        </li>
+        
         <li style="margin-top:20px; border-top:1px solid #374151; padding-top:10px;">
             <span style="font-size:10px; color:#6b7280; padding-left:16px; text-transform:uppercase; font-weight:700;">Admin Controls</span>
         </li>
