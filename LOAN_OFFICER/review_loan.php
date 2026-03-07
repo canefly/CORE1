@@ -13,87 +13,100 @@ $app_id = intval($_GET['id']);
 // 2. Handle Decision Submissions (POST Requests)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     try {
-        if ($_POST['action'] === 'approve') {
+            if ($_POST['action'] === 'approve') {
 
-            $pdo->beginTransaction();
+                $pdo->beginTransaction();
 
-            // Lock + fetch application details (source of truth)
-            $stmtApp = $pdo->prepare("
-                SELECT id, user_id, principal_amount, term_months, monthly_due,
-                       interest_rate, interest_method, total_payable
-                FROM loan_applications
-                WHERE id = ?
-                FOR UPDATE
-            ");
-            $stmtApp->execute([$app_id]);
-            $appRow = $stmtApp->fetch(PDO::FETCH_ASSOC);
+                // fetch application details
+                $stmtApp = $pdo->prepare("
+                    SELECT *
+                    FROM loan_applications
+                    WHERE id = ?
+                    FOR UPDATE
+                ");
+                $stmtApp->execute([$app_id]);
+                $appRow = $stmtApp->fetch(PDO::FETCH_ASSOC);
 
-            if (!$appRow) {
-                throw new Exception("Application not found.");
-            }
-
-            // 1) Update application status
-            $stmtUpd = $pdo->prepare("
-                UPDATE loan_applications
-                SET status = 'APPROVED', updated_at = NOW()
-                WHERE id = ?
-            ");
-            $stmtUpd->execute([$app_id]);
-
-            // 2) Prevent duplicate loan record
-            $stmtCheck = $pdo->prepare("SELECT id FROM loans WHERE application_id = ? LIMIT 1");
-            $stmtCheck->execute([$app_id]);
-            $existingLoanId = $stmtCheck->fetchColumn();
-
-            if (!$existingLoanId) {
-                $principal  = (float)$appRow['principal_amount'];
-                $termMonths = (int)$appRow['term_months'];
-
-                // monthly_due: use from applications, else compute
-                $monthlyDue = $appRow['monthly_due'] !== null ? (float)$appRow['monthly_due'] : 0.0;
-
-                // outstanding: use total_payable if available, else principal
-                $outstanding = $appRow['total_payable'] !== null ? (float)$appRow['total_payable'] : $principal;
-
-                if ($monthlyDue <= 0 && $termMonths > 0) {
-                    $monthlyDue = $outstanding / $termMonths;
+                if (!$appRow) {
+                    throw new Exception("Application not found.");
                 }
 
-                $startDate   = date('Y-m-d');
-                $nextPayment = date('Y-m-d', strtotime('+1 month'));
-                $dueDate     = date('Y-m-d', strtotime("+{$termMonths} months"));
-
-                // Insert into loans (status always ACTIVE)
-                $stmtIns = $pdo->prepare("
-                    INSERT INTO loans
-                        (user_id, application_id, loan_amount, term_months, monthly_due,
-                         interest_rate, interest_method, outstanding, next_payment, due_date,
-                         start_date, status)
-                    VALUES
-                        (:user_id, :application_id, :loan_amount, :term_months, :monthly_due,
-                         :interest_rate, :interest_method, :outstanding, :next_payment, :due_date,
-                         :start_date, 'ACTIVE')
+                // update application status
+                $stmtUpd = $pdo->prepare("
+                    UPDATE loan_applications
+                    SET status = 'APPROVED', updated_at = NOW()
+                    WHERE id = ?
                 ");
+                $stmtUpd->execute([$app_id]);
 
-                $stmtIns->execute([
-                    ':user_id'         => (int)$appRow['user_id'],
-                    ':application_id'  => (int)$appRow['id'],  // ✅ loan_applications.id -> loans.application_id
-                    ':loan_amount'     => $principal,
-                    ':term_months'     => $termMonths,
-                    ':monthly_due'     => $monthlyDue,
-                    ':interest_rate'   => (float)$appRow['interest_rate'],
-                    ':interest_method' => $appRow['interest_method'] ?? 'FLAT',
-                    ':outstanding'     => $outstanding,
-                    ':next_payment'    => $nextPayment,
-                    ':due_date'        => $dueDate,
-                    ':start_date'      => $startDate,
-                ]);
-            }
+                // check duplicate disbursement
+                $stmtCheck = $pdo->prepare("
+                    SELECT id
+                    FROM loan_disbursement
+                    WHERE application_id = ?
+                    LIMIT 1
+                ");
+                $stmtCheck->execute([$app_id]);
 
-            $pdo->commit();
+                if (!$stmtCheck->fetchColumn()) {
 
-            header("Location: dashboard.php?msg=approved");
-            exit;
+                    $stmtInsert = $pdo->prepare("
+                        INSERT INTO loan_disbursement (
+                            application_id,
+                            user_id,
+                            principal_amount,
+                            term_months,
+                            loan_purpose,
+                            source_of_income,
+                            estimated_monthly_income,
+                            interest_rate,
+                            interest_type,
+                            interest_method,
+                            total_interest,
+                            total_payable,
+                            monthly_due,
+                            status
+                        )
+                        VALUES (
+                            :application_id,
+                            :user_id,
+                            :principal_amount,
+                            :term_months,
+                            :loan_purpose,
+                            :source_of_income,
+                            :estimated_monthly_income,
+                            :interest_rate,
+                            :interest_type,
+                            :interest_method,
+                            :total_interest,
+                            :total_payable,
+                            :monthly_due,
+                            'WAITING FOR DISBURSEMENT'
+                        )
+                    ");
+
+                    $stmtInsert->execute([
+                        ':application_id' => $appRow['id'],
+                        ':user_id' => $appRow['user_id'],
+                        ':principal_amount' => $appRow['principal_amount'],
+                        ':term_months' => $appRow['term_months'],
+                        ':loan_purpose' => $appRow['loan_purpose'],
+                        ':source_of_income' => $appRow['source_of_income'],
+                        ':estimated_monthly_income' => $appRow['estimated_monthly_income'],
+                        ':interest_rate' => $appRow['interest_rate'],
+                        ':interest_type' => $appRow['interest_type'],
+                        ':interest_method' => $appRow['interest_method'],
+                        ':total_interest' => $appRow['total_interest'],
+                        ':total_payable' => $appRow['total_payable'],
+                        ':monthly_due' => $appRow['monthly_due']
+                    ]);
+                }
+
+                $pdo->commit();
+
+                header("Location: dashboard.php?msg=approved");
+                exit;
+
 
         } elseif ($_POST['action'] === 'reject') {
 

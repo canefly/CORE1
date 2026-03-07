@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once __DIR__ . "/include/config.php";
+
 if (!isset($_SESSION['user_id'])) {
   header("Location: login.php");
   exit;
@@ -8,8 +9,105 @@ if (!isset($_SESSION['user_id'])) {
 
 $user_id = (int)$_SESSION['user_id'];
 
+// ==============================
+// BLOCK CHECK: existing application / disbursement / active loan
+// ==============================
+$blockLoanApplication = false;
+$blockTitle = "Loan Application Unavailable";
+$blockMessage = "You already have an existing loan in process.";
+
+$latestApplication = null;
+$latestDisbursement = null;
+$latestLoan = null;
+
+// Latest application
+$stmt = $conn->prepare("
+  SELECT *
+  FROM loan_applications
+  WHERE user_id = ?
+  ORDER BY id DESC
+  LIMIT 1
+");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$res = $stmt->get_result();
+if ($res && $res->num_rows === 1) {
+  $latestApplication = $res->fetch_assoc();
+}
+$stmt->close();
+
+$appId = (int)($latestApplication['id'] ?? 0);
+$appStatus = strtoupper((string)($latestApplication['status'] ?? 'NONE'));
+
+// Related disbursement
+if ($appId > 0) {
+  $stmt = $conn->prepare("
+    SELECT *
+    FROM loan_disbursement
+    WHERE application_id = ?
+    ORDER BY id DESC
+    LIMIT 1
+  ");
+  $stmt->bind_param("i", $appId);
+  $stmt->execute();
+  $res = $stmt->get_result();
+  if ($res && $res->num_rows === 1) {
+    $latestDisbursement = $res->fetch_assoc();
+  }
+  $stmt->close();
+}
+
+$disbStatus = strtoupper((string)($latestDisbursement['status'] ?? 'NONE'));
+
+// Latest active loan
+$stmt = $conn->prepare("
+  SELECT *
+  FROM loans
+  WHERE user_id = ?
+    AND status = 'ACTIVE'
+  ORDER BY id DESC
+  LIMIT 1
+");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$res = $stmt->get_result();
+if ($res && $res->num_rows === 1) {
+  $latestLoan = $res->fetch_assoc();
+}
+$stmt->close();
+
+$hasOngoingApplication = in_array($appStatus, ['PENDING', 'VERIFIED', 'APPROVED'], true);
+$waitingDisbursement = ($disbStatus === 'WAITING FOR DISBURSEMENT');
+$hasActiveLoan = (bool)$latestLoan;
+
+if ($hasOngoingApplication || $waitingDisbursement || $hasActiveLoan) {
+  $blockLoanApplication = true;
+
+  if ($hasActiveLoan) {
+    $blockTitle = "Existing Active Loan";
+    $blockMessage = "You cannot apply for a new loan because you still have an active loan that is not yet fully paid.";
+  } elseif ($waitingDisbursement) {
+    $blockTitle = "Loan Waiting for Disbursement";
+    $blockMessage = "You cannot apply for a new loan because your approved loan is still waiting for disbursement.";
+  } elseif ($appStatus === 'PENDING') {
+    $blockTitle = "Application Still Pending";
+    $blockMessage = "You cannot apply for a new loan because your current application is still pending review.";
+  } elseif ($appStatus === 'VERIFIED') {
+    $blockTitle = "Application Under Review";
+    $blockMessage = "You cannot apply for a new loan because your current application has already been verified and is under Loan Officer review.";
+  } elseif ($appStatus === 'APPROVED') {
+    $blockTitle = "Application Already Approved";
+    $blockMessage = "You cannot apply for a new loan because your current application has already been approved and is being processed.";
+  }
+}
+
 // ✅ process only when submitted (POST)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+  if ($blockLoanApplication) {
+    http_response_code(403);
+    exit("You cannot apply for a new loan while an existing loan or application is still in process.");
+  }
 
   $principal_amount = (float)($_POST['principal_amount'] ?? 0);
   $term_months = (int)($_POST['term_months'] ?? 0);
@@ -18,7 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $source_of_income = trim($_POST['source_of_income'] ?? '');
   $estimated_monthly_income = (float)($_POST['estimated_monthly_income'] ?? 0);
 
-  $interest_rate = 3.5;        // fixed muna (customizable later)
+  $interest_rate = 3.5;
   $interest_type = 'MONTHLY';
   $interest_method = 'FLAT';
 
@@ -27,7 +125,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $total_payable  = $principal_amount + $total_interest;
   $monthly_due    = $total_payable / $term_months;
 
-  // validate
   if ($principal_amount <= 0) exit("Invalid loan amount.");
   if ($term_months < 1 || $term_months > 12) exit("Term must be 1-12 months.");
   if ($loan_purpose === '') exit("Loan purpose required.");
@@ -49,7 +146,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $conn->begin_transaction();
 
   try {
-    // Insert application
     $sql = "INSERT INTO loan_applications
       (user_id, principal_amount, term_months, loan_purpose, source_of_income, estimated_monthly_income,
       interest_rate, interest_type, interest_method,
@@ -60,8 +156,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt = $conn->prepare($sql);
     if (!$stmt) throw new Exception("Prepare failed: " . $conn->error);
 
-    // ✅ FIX: correct bind types count = 9
-        $stmt->bind_param(
+    $stmt->bind_param(
       "idissddssddd",
       $user_id,
       $principal_amount,
@@ -81,15 +176,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $application_id = $conn->insert_id;
     $stmt->close();
 
-    // Upload docs
     $uploadDir = __DIR__ . "/uploads/loan_docs/";
     if (!is_dir($uploadDir)) {
       if (!mkdir($uploadDir, 0775, true)) throw new Exception("Cannot create upload directory.");
     }
 
     $docStmt = $conn->prepare("INSERT INTO loan_documents
-     (loan_application_id, doc_type, file_path)
-      VALUES (?, ?, ? )");
+      (loan_application_id, doc_type, file_path)
+      VALUES (?, ?, ?)");
 
     if (!$docStmt) throw new Exception("Prepare docs failed: " . $conn->error);
 
@@ -112,10 +206,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       }
 
       $relativePath = "uploads/loan_docs/" . $safeName;
-      $mime = $f['type'] ?? '';
-      $size = (int)$f['size'];
 
-      $docStmt->bind_param("iss", $application_id, $docType, $relativePath);      
+      $docStmt->bind_param("iss", $application_id, $docType, $relativePath);
       if (!$docStmt->execute()) throw new Exception("Insert doc failed: " . $docStmt->error);
     }
 
@@ -171,6 +263,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
   </div>
 
+  <?php if (!$blockLoanApplication): ?>
   <div id="step1" class="calc-container">
     <div class="calc-inputs">
 
@@ -228,7 +321,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
   </div>
 
-  <form id="loanForm" method="POST" enctype="multipart/form-data">    <input type="hidden" name="principal_amount" id="principal_amount" value="10000">
+  <form id="loanForm" method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="principal_amount" id="principal_amount" value="10000">
     <input type="hidden" name="term_months" id="term_months" value="6">
 
     <input type="hidden" name="interest_rate" value="3.5">
@@ -301,6 +395,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <center><button class="btn-back" type="button" onclick="goToStep(2)">Back to Details</button></center>
     </div>
   </form>
+  <?php endif; ?>
 
 </div>
 
@@ -314,7 +409,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </div>
 
 <script>
-  // --- MODAL LOGIC ---
   function showModal(title, message) {
     document.getElementById('modalTitle').innerText = title;
     document.getElementById('modalMessage').innerText = message;
@@ -323,13 +417,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   function closeModal() {
     document.getElementById('errorModal').classList.remove('show');
+    <?php if ($blockLoanApplication): ?>
+      window.location.href = 'dashboard.php';
+    <?php endif; ?>
   }
 
-  // --- LOAN RULES ---
   function checkRules() {
-    let amount = parseInt(document.getElementById('manual-amt').value) || 0;
+    let amount = parseInt(document.getElementById('manual-amt')?.value || 0) || 0;
     let term12Btn = document.getElementById('btn-term-12');
-    let currentTerm = parseInt(document.getElementById('manual-term').value);
+    let currentTerm = parseInt(document.getElementById('manual-term')?.value || 6);
+
+    if (!term12Btn) return;
 
     if (amount < 50000) {
       term12Btn.disabled = true;
@@ -352,7 +450,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
 
   function selectTerm(months, btnElement) {
-    if (btnElement.disabled) return;
+    if (!btnElement || btnElement.disabled) return;
     document.getElementById('manual-term').value = months;
 
     let boxes = document.querySelectorAll('.term-box');
@@ -363,80 +461,103 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
 
   function calculate() {
-    let amount = parseInt(document.getElementById('manual-amt').value) || 0;
-    let months = parseInt(document.getElementById('manual-term').value) || 1;
-    let rate = 0.035; // 3.5% monthly (decimal)
+    let amount = parseInt(document.getElementById('manual-amt')?.value || 0) || 0;
+    let months = parseInt(document.getElementById('manual-term')?.value || 1) || 1;
+    let rate = 0.035;
 
     let totalInterest = amount * rate * months;
     let total = amount + totalInterest;
     let monthly = total / months;
 
-    document.getElementById('monthly-pay').innerText =
-      '₱ ' + monthly.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-    document.getElementById('bd-principal').innerText = '₱ ' + amount.toLocaleString();
-    document.getElementById('bd-interest').innerText = '₱ ' + totalInterest.toLocaleString();
+    const monthlyPay = document.getElementById('monthly-pay');
+    const bdPrincipal = document.getElementById('bd-principal');
+    const bdInterest = document.getElementById('bd-interest');
+    const principalAmount = document.getElementById('principal_amount');
+    const termMonths = document.getElementById('term_months');
 
-    // sync into hidden inputs for form submit
-    document.getElementById('principal_amount').value = amount;
-    document.getElementById('term_months').value = months;
+    if (monthlyPay) {
+      monthlyPay.innerText =
+        '₱ ' + monthly.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    }
+    if (bdPrincipal) bdPrincipal.innerText = '₱ ' + amount.toLocaleString();
+    if (bdInterest) bdInterest.innerText = '₱ ' + totalInterest.toLocaleString();
+
+    if (principalAmount) principalAmount.value = amount;
+    if (termMonths) termMonths.value = months;
   }
 
   function goToStep(step) {
-    document.getElementById('step1').style.display = 'none';
-    document.getElementById('step2').style.display = 'none';
-    document.getElementById('step3').style.display = 'none';
+    const s1 = document.getElementById('step1');
+    const s2 = document.getElementById('step2');
+    const s3 = document.getElementById('step3');
 
-    document.getElementById('step1-ind').classList.remove('active');
-    document.getElementById('step2-ind').classList.remove('active');
-    document.getElementById('step3-ind').classList.remove('active');
+    if (s1) s1.style.display = 'none';
+    if (s2) s2.style.display = 'none';
+    if (s3) s3.style.display = 'none';
 
-    if (step === 1) {
-      document.getElementById('step1').style.display = 'grid';
+    document.getElementById('step1-ind')?.classList.remove('active');
+    document.getElementById('step2-ind')?.classList.remove('active');
+    document.getElementById('step3-ind')?.classList.remove('active');
+
+    if (step === 1 && s1) {
+      s1.style.display = 'grid';
     } else {
-      document.getElementById('step' + step).style.display = 'block';
+      const target = document.getElementById('step' + step);
+      if (target) target.style.display = 'block';
     }
 
     for (let i = 1; i <= step; i++) {
-      document.getElementById('step' + i + '-ind').classList.add('active');
+      document.getElementById('step' + i + '-ind')?.classList.add('active');
     }
   }
 
-  // ✅ ENHANCED SUBMIT LOGIC WITH MODAL
   function submitApp() {
-    // 1. Check Income from Step 2
-    const income = document.querySelector('[name="estimated_monthly_income"]').value;
-    const source = document.querySelector('[name="source_of_income"]').value;
-    
+    const incomeField = document.querySelector('[name="estimated_monthly_income"]');
+    const sourceField = document.querySelector('[name="source_of_income"]');
+
+    const income = incomeField ? incomeField.value : '';
+    const source = sourceField ? sourceField.value : '';
+
     if (!source || !income || parseFloat(income) <= 0) {
-      showModal("Missing Details", "Please complete your 'Source of Income' and 'Estimated Monthly Income' before proceeding.");
+      showModal("Missing Details", "Please complete your Source of Income and Estimated Monthly Income before proceeding.");
       goToStep(2);
       return;
     }
 
-    // 2. Check Files from Step 3
-    const govId = document.getElementById('gov_id').files.length;
-    const proofIncome = document.getElementById('proof_income').files.length;
-    const proofBilling = document.getElementById('proof_billing').files.length;
+    const govId = document.getElementById('gov_id')?.files.length || 0;
+    const proofIncome = document.getElementById('proof_income')?.files.length || 0;
+    const proofBilling = document.getElementById('proof_billing')?.files.length || 0;
 
     if (govId === 0 || proofIncome === 0 || proofBilling === 0) {
-      showModal("Missing Documents", "You must upload all 3 requirements (Government ID, Proof of Income, and Proof of Billing) to submit your application.");
+      showModal("Missing Documents", "You must upload all 3 requirements to submit your application.");
       return;
     }
 
-    // If everything is good, submit!
     document.getElementById('loanForm').submit();
   }
 
-  // show filenames when selected
   document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('gov_id').addEventListener('change', e => {
-      document.getElementById('gov_id_name').innerText = e.target.files[0]?.name || '';
+    <?php if ($blockLoanApplication): ?>
+      showModal(
+        <?= json_encode($blockTitle) ?>,
+        <?= json_encode($blockMessage) ?>
+      );
+      return;
+    <?php endif; ?>
+
+    document.getElementById('gov_id')?.addEventListener('change', e => {
+      const el = document.getElementById('gov_id_name');
+      if (el) el.innerText = e.target.files[0]?.name || '';
     });
-    document.getElementById('proof_income').addEventListener('change', e => {
-      document.getElementById('proof_income_name').innerText = e.target.files[0]?.name || '';
+
+    document.getElementById('proof_income')?.addEventListener('change', e => {
+      const el = document.getElementById('proof_income_name');
+      if (el) el.innerText = e.target.files[0]?.name || '';
     });
-    document.getElementById('proof_billing').addEventListener('change', e => {
-      document.getElementById('proof_billing_name').innerText = e.target.files[0]?.name || '';
+
+    document.getElementById('proof_billing')?.addEventListener('change', e => {
+      const el = document.getElementById('proof_billing_name');
+      if (el) el.innerText = e.target.files[0]?.name || '';
     });
 
     checkRules();
