@@ -1,5 +1,24 @@
 <?php
 $currentPage = basename($_SERVER['PHP_SELF']);
+
+// Dynamically fetch the user's name for the sidebar
+$sidebar_name = "Client";
+$sidebar_initial = "C";
+
+// Since sidebar.php is included AFTER config.php and session_start() in your main files, 
+// we can safely use $conn and $_SESSION here.
+if (isset($_SESSION['user_id']) && isset($conn)) {
+    $sid = (int)$_SESSION['user_id'];
+    $s_query = $conn->prepare("SELECT fullname FROM users WHERE id = ?");
+    $s_query->bind_param("i", $sid);
+    $s_query->execute();
+    $s_res = $s_query->get_result();
+    if ($s_row = $s_res->fetch_assoc()) {
+        $sidebar_name = $s_row['fullname'];
+        $sidebar_initial = strtoupper(substr($sidebar_name, 0, 1));
+    }
+    $s_query->close();
+}
 ?>
 
 <style>
@@ -47,7 +66,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
     .avatar {
         width: 35px; height: 35px; background-color: #374151; color: #fff;
         border-radius: 50%; display: flex; align-items: center; justify-content: center;
-        font-weight: 700; font-size: 12px; border: 2px solid #10b981; flex-shrink: 0;
+        font-weight: 700; font-size: 16px; border: 2px solid #10b981; flex-shrink: 0;
     }
     .user-info { flex-grow: 1; overflow: hidden; }
     .user-info h4 { color: #fff; font-size: 13px; font-weight: 600; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -182,11 +201,12 @@ $currentPage = basename($_SERVER['PHP_SELF']);
     </div>
 
     <div class="user-profile">
-        <div class="avatar">JD</div>
+        <div class="avatar"><?php echo htmlspecialchars($sidebar_initial); ?></div>
         <div class="user-info">
-            <h4>Juan Dela Cruz</h4>
+            <h4><?php echo htmlspecialchars($sidebar_name); ?></h4>
             <span class="verified-badge"><i class="bi bi-patch-check-fill"></i> Verified</span>
         </div>
+        
         <button class="notif-btn" onclick="toggleDropdown()">
             <i class="bi bi-bell-fill"></i><span class="red-dot"></span>
         </button>
@@ -207,7 +227,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
     </ul>
 
     <div class="logout-btn">
-        <a href="./login.php" class="nav-item logout-link"><i class="bi bi-box-arrow-right"></i> Sign Out</a>
+        <a href="logout.php" class="nav-item logout-link"><i class="bi bi-box-arrow-right"></i> Sign Out</a>
     </div>
 </div>
 

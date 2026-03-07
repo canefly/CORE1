@@ -1,3 +1,24 @@
+<?php
+session_start();
+require_once __DIR__ . "/include/config.php";
+
+// Kick out if not logged in
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit;
+}
+
+$user_id = (int)$_SESSION['user_id'];
+
+// Fetch all transactions for the logged-in user
+$query = "SELECT * FROM transactions WHERE user_id = ? ORDER BY trans_date DESC";
+$stmt = $conn->prepare($query);
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$result = $stmt->get_result();
+$transactions = $result->fetch_all(MYSQLI_ASSOC);
+$stmt->close();
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -22,9 +43,6 @@
                 <h1>Transaction History</h1>
                 <p>View your payment records and official receipts.</p>
             </div>
-            <button class="btn-report" onclick="openModal()">
-                <i class="bi bi-cloud-upload"></i> Report Payment
-            </button>
         </div>
 
         <div class="history-card">
@@ -40,127 +58,60 @@
                     </tr>
                 </thead>
                 <tbody>
-                    
-                    <tr>
-                        <td>
-                            <div style="font-weight:600; color:#fff;">Oct 20, 2025</div>
-                            <div style="font-size:12px; color:#9ca3af;">10:45 AM</div>
-                        </td>
-                        <td><span class="ref-code">GC-991200</span></td>
-                        <td>Payment via GCash</td>
-                        <td class="amount-credit">+ ₱ 3,500.00</td>
-                        <td><span class="status-badge status-pending">Pending Review</span></td>
-                        <td>
-                            <a href="#" style="color:#60a5fa; font-size:13px; text-decoration:none;">View Image</a>
-                        </td>
-                    </tr>
+                    <?php if (empty($transactions)): ?>
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 30px; color: #9ca3af;">No transactions found.</td>
+                        </tr>
+                    <?php else: ?>
+                        <?php foreach ($transactions as $tx): 
+                            // Format the date and time
+                            $dateObj = new DateTime($tx['trans_date']);
+                            $dateStr = $dateObj->format('M d, Y');
+                            $timeStr = $dateObj->format('h:i A');
+                            
+                            // Determine styles based on status
+                            $status = strtoupper($tx['status']);
+                            if ($status === 'SUCCESS') {
+                                $statusClass = 'status-verified';
+                                $statusText = 'Verified';
+                            } elseif ($status === 'FAILED') {
+                                $statusClass = 'status-posted'; // Repurposing your CSS for errors
+                                $statusText = 'Failed';
+                            } else {
+                                $statusClass = 'status-pending';
+                                $statusText = 'Pending Review';
+                            }
 
-                    <tr>
-                        <td>
-                            <div style="font-weight:600; color:#fff;">Sep 25, 2025</div>
-                            <div style="font-size:12px; color:#9ca3af;">02:15 PM</div>
-                        </td>
-                        <td><span class="ref-code">CSH-0021</span></td>
-                        <td>Cash Payment (OTC)</td>
-                        <td class="amount-credit">+ ₱ 3,500.00</td>
-                        <td><span class="status-badge status-verified">Verified</span></td>
-                        <td>
-                            <a href="#" style="color:#60a5fa; font-size:13px; text-decoration:none;">Download OR</a>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td>
-                            <div style="font-weight:600; color:#fff;">Sep 26, 2025</div>
-                            <div style="font-size:12px; color:#9ca3af;">12:00 AM</div>
-                        </td>
-                        <td><span class="ref-code">SYS-PNL-01</span></td>
-                        <td>Late Payment Penalty</td>
-                        <td class="amount-debit">- ₱ 250.00</td>
-                        <td><span class="status-badge status-posted">Posted</span></td>
-                        <td>
-                            <span style="color:#6b7280; font-size:13px;">System Generated</span>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td>
-                            <div style="font-weight:600; color:#fff;">Aug 25, 2025</div>
-                            <div style="font-size:12px; color:#9ca3af;">09:00 AM</div>
-                        </td>
-                        <td><span class="ref-code">LN-DISB-10</span></td>
-                        <td>Loan Disbursement (Principal)</td>
-                        <td class="amount-credit" style="color:#60a5fa;">+ ₱ 25,000.00</td>
-                        <td><span class="status-badge status-verified">Success</span></td>
-                        <td>
-                            <a href="#" style="color:#60a5fa; font-size:13px; text-decoration:none;">View Contract</a>
-                        </td>
-                    </tr>
-
+                            // Clean up reference numbers and methods
+                            $refCode = !empty($tx['receipt_number']) ? $tx['receipt_number'] : (!empty($tx['paymongo_payment_id']) ? $tx['paymongo_payment_id'] : 'SYS-GEN');
+                            $method = !empty($tx['provider_method']) ? $tx['provider_method'] : 'System';
+                        ?>
+                        <tr>
+                            <td>
+                                <div style="font-weight:600; color:#fff;"><?php echo $dateStr; ?></div>
+                                <div style="font-size:12px; color:#9ca3af;"><?php echo $timeStr; ?></div>
+                            </td>
+                            <td><span class="ref-code"><?php echo htmlspecialchars($refCode); ?></span></td>
+                            <td>Payment via <?php echo htmlspecialchars($method); ?></td>
+                            <td class="amount-credit">+ ₱ <?php echo number_format($tx['amount'], 2); ?></td>
+                            <td><span class="status-badge <?php echo $statusClass; ?>"><?php echo $statusText; ?></span></td>
+                            <td>
+                                <?php if (!empty($tx['receipt_image_final_url'])): ?>
+                                    <a href="<?php echo htmlspecialchars($tx['receipt_image_final_url']); ?>" target="_blank" style="color:#60a5fa; font-size:13px; text-decoration:none;">Download OR</a>
+                                <?php elseif (!empty($tx['receipt_image_pending_url'])): ?>
+                                    <a href="<?php echo htmlspecialchars($tx['receipt_image_pending_url']); ?>" target="_blank" style="color:#60a5fa; font-size:13px; text-decoration:none;">View Image</a>
+                                <?php else: ?>
+                                    <span style="color:#6b7280; font-size:13px;">System Generated</span>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>
 
     </div>
-
-    <div id="reportModal" class="modal-overlay">
-        <div class="modal-box">
-            <div class="modal-header">
-                <h3>Report a Payment</h3>
-                <button class="close-modal" onclick="closeModal()">&times;</button>
-            </div>
-            
-            <form>
-                <div class="form-group">
-                    <label class="form-label">Payment Channel</label>
-                    <select class="form-input" style="cursor:pointer;">
-                        <option>GCash</option>
-                        <option>Maya</option>
-                        <option>Bank Transfer (BPI/BDO)</option>
-                        <option>Palawan / Remittance</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Reference Number</label>
-                    <input type="text" class="form-input" placeholder="e.g. 10029938812">
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Amount Paid</label>
-                    <input type="number" class="form-input" placeholder="₱ 0.00">
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Upload Receipt / Screenshot</label>
-                    <div class="upload-box">
-                        <i class="bi bi-card-image"></i>
-                        <span class="upload-text">Click to browse or drag file here</span>
-                        <input type="file" style="display:none;">
-                    </div>
-                </div>
-
-                <button type="button" class="btn-submit" onclick="alert('Payment Submitted for Review!')">Submit Payment</button>
-            </form>
-        </div>
-    </div>
-
-    <script>
-        const modal = document.getElementById('reportModal');
-
-        function openModal() {
-            modal.style.display = 'flex';
-        }
-
-        function closeModal() {
-            modal.style.display = 'none';
-        }
-
-        // Close on outside click
-        window.onclick = function(e) {
-            if (e.target == modal) closeModal();
-        }
-    </script>
 
 </body>
 </html>
