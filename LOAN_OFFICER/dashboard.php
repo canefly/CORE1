@@ -6,7 +6,7 @@ if (!isset($pdo)) { die("Fatal Error: \$pdo variable is not defined."); }
 
 try {
     // KPI: Pending Approvals
-    $pendingCount = $pdo->query("SELECT COUNT(*) FROM loan_applications WHERE status = 'PENDING'")->fetchColumn() ?: 0;
+    $pendingCount = $pdo->query("SELECT COUNT(*) FROM loan_applications WHERE status = 'VERIFIED'")->fetchColumn() ?: 0;
     
     // KPI: Approved this month
     $approvedCount = $pdo->query("SELECT COUNT(*) FROM loan_applications WHERE status = 'APPROVED' AND MONTH(updated_at) = MONTH(CURRENT_DATE()) AND YEAR(updated_at) = YEAR(CURRENT_DATE())")->fetchColumn() ?: 0;
@@ -22,7 +22,7 @@ try {
         SELECT la.*, u.fullname 
         FROM loan_applications la 
         JOIN users u ON la.user_id = u.id 
-        WHERE la.status = 'PENDING' 
+        WHERE la.status = 'VERIFIED' 
         ORDER BY la.created_at ASC LIMIT 5
     ");
     $priorityApps = $stmt->fetchAll();

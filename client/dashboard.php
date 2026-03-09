@@ -46,33 +46,90 @@ if (!$user) {
 }
 
 $user_id = (int)$user['id'];
-$displayName = $user['name'] ?? $user['full_name'] ?? $user['firstname'] ?? "Client";
+$displayName = $user['name'] ?? $user['full_name'] ?? $user['fullname'] ?? $user['firstname'] ?? "Client";
 
-// Fetch latest ACTIVE loan (if none, fallback latest loan)
+// ==============================
+// Latest application
+// ==============================
+$application = null;
+$appQuery = $conn->prepare("
+  SELECT *
+  FROM loan_applications
+  WHERE user_id = ?
+  ORDER BY id DESC
+  LIMIT 1
+");
+$appQuery->bind_param("i", $user_id);
+$appQuery->execute();
+$appResult = $appQuery->get_result();
+if ($appResult && $appResult->num_rows === 1) {
+  $application = $appResult->fetch_assoc();
+}
+$appQuery->close();
+
+$appStatus = strtoupper((string)($application['status'] ?? 'NO APPLICATION'));
+$appId = (int)($application['id'] ?? 0);
+
+// ==============================
+// Related disbursement for latest application
+// ==============================
+$disbursement = null;
+if ($appId > 0) {
+  $disbQuery = $conn->prepare("
+    SELECT *
+    FROM loan_disbursement
+    WHERE application_id = ?
+    ORDER BY id DESC
+    LIMIT 1
+  ");
+  $disbQuery->bind_param("i", $appId);
+  $disbQuery->execute();
+  $disbResult = $disbQuery->get_result();
+  if ($disbResult && $disbResult->num_rows === 1) {
+    $disbursement = $disbResult->fetch_assoc();
+  }
+  $disbQuery->close();
+}
+$disbStatus = strtoupper((string)($disbursement['status'] ?? 'NONE'));
+
+// ==============================
+// Active loan: only show if DISBURSED na
+// ==============================
 $loan = null;
-
-// Try ACTIVE first
-$loanQuery = $conn->prepare("SELECT * FROM loans WHERE user_id = ? AND status='ACTIVE' ORDER BY id DESC LIMIT 1");
+$loanQuery = $conn->prepare("
+  SELECT l.*
+  FROM loans l
+  INNER JOIN loan_disbursement ld ON ld.application_id = l.application_id
+  WHERE l.user_id = ?
+    AND l.status = 'ACTIVE'
+    AND ld.status = 'DISBURSED'
+  ORDER BY l.id DESC
+  LIMIT 1
+");
 $loanQuery->bind_param("i", $user_id);
 $loanQuery->execute();
 $loanResult = $loanQuery->get_result();
-if ($loanResult && $loanResult->num_rows === 1) $loan = $loanResult->fetch_assoc();
-$loanQuery->close();
-
-// Fallback: latest loan (maybe COMPLETED)
-if (!$loan) {
-  $loanQuery = $conn->prepare("SELECT * FROM loans WHERE user_id = ? ORDER BY id DESC LIMIT 1");
-  $loanQuery->bind_param("i", $user_id);
-  $loanQuery->execute();
-  $loanResult = $loanQuery->get_result();
-  if ($loanResult && $loanResult->num_rows === 1) $loan = $loanResult->fetch_assoc();
-  $loanQuery->close();
+if ($loanResult && $loanResult->num_rows === 1) {
+  $loan = $loanResult->fetch_assoc();
 }
+$loanQuery->close();
 
 $hasLoan = (bool)$loan;
 $loan_id = $hasLoan ? (int)$loan['id'] : 0;
 $loanStatus = $hasLoan ? strtoupper((string)($loan['status'] ?? '')) : 'NO LOAN';
 
+// ==============================
+// Ongoing checks
+// ==============================
+$hasOngoingApplication = in_array($appStatus, ['PENDING', 'VERIFIED', 'APPROVED'], true);
+$waitingDisbursement = ($disbStatus === 'WAITING FOR DISBURSEMENT');
+$hasActiveLoan = $hasLoan;
+
+$canApplyLoan = !($hasOngoingApplication || $waitingDisbursement || $hasActiveLoan);
+
+// ==============================
+// Active loan calculations
+// ==============================
 $principal = $hasLoan ? (float)($loan['loan_amount'] ?? 0) : 0;
 $term = $hasLoan ? (int)($loan['term_months'] ?? 0) : 0;
 if ($term <= 0) $term = 1;
@@ -83,10 +140,13 @@ if ($hasLoan && $monthly_due <= 0) $monthly_due = $principal / $term;
 $start_date = $hasLoan ? ($loan['start_date'] ?? date("Y-m-d")) : date("Y-m-d");
 $total_payable = $monthly_due * $term;
 
-// Sum payments (SUCCESS only = verified)
 $total_paid_verified = 0.0;
 if ($hasLoan) {
-  $sumQ = $conn->prepare("SELECT COALESCE(SUM(amount),0) AS paid FROM transactions WHERE loan_id=? AND status='SUCCESS'");
+  $sumQ = $conn->prepare("
+    SELECT COALESCE(SUM(amount),0) AS paid
+    FROM transactions
+    WHERE loan_id = ? AND status = 'SUCCESS'
+  ");
   $sumQ->bind_param("i", $loan_id);
   $sumQ->execute();
   $sumRow = $sumQ->get_result()->fetch_assoc();
@@ -96,12 +156,8 @@ if ($hasLoan) {
 
 $outstanding = $hasLoan ? max(0, $total_payable - $total_paid_verified) : 0;
 
-// Determine next due date:
-// prefer loans.next_payment, else compute based on installments paid
 $next_payment = $hasLoan ? ($loan['next_payment'] ?? null) : null;
-
 if ($hasLoan && !$next_payment) {
-  // approximate paid installments by amount
   $paidInstallments = 0;
   if ($monthly_due > 0) {
     $paidInstallments = (int)floor($total_paid_verified / $monthly_due + 0.00001);
@@ -110,24 +166,34 @@ if ($hasLoan && !$next_payment) {
   $next_payment = addMonths($start_date, $nextInstallment);
 }
 
-// If outstanding is 0, treat as completed in UI
 if ($hasLoan && $outstanding <= 0.00001) {
   $loanStatus = 'COMPLETED';
 }
 
+// ==============================
 // Recent transactions
-$transResult = null;
+// ==============================
 $recentTx = [];
 if ($hasLoan) {
-  $transQuery = $conn->prepare("SELECT * FROM transactions WHERE loan_id = ? ORDER BY trans_date DESC, id DESC LIMIT 5");
+  $transQuery = $conn->prepare("
+    SELECT *
+    FROM transactions
+    WHERE loan_id = ?
+    ORDER BY trans_date DESC, id DESC
+    LIMIT 5
+  ");
   $transQuery->bind_param("i", $loan_id);
   $transQuery->execute();
   $transResult = $transQuery->get_result();
-  while ($transResult && ($r = $transResult->fetch_assoc())) $recentTx[] = $r;
+  while ($transResult && ($r = $transResult->fetch_assoc())) {
+    $recentTx[] = $r;
+  }
   $transQuery->close();
 }
 
+// ==============================
 // Due countdown
+// ==============================
 $days = $hasLoan ? daysLeft($next_payment) : null;
 $daysLabel = "";
 if ($days !== null) {
@@ -135,6 +201,44 @@ if ($days !== null) {
   elseif ($days === 1) $daysLabel = "(1 Day Left)";
   elseif ($days === 0) $daysLabel = "(Due Today)";
   else $daysLabel = "(Overdue " . abs($days) . " Days)";
+}
+
+// ==============================
+// Hero text
+// ==============================
+$heroTitle = "No Loan Yet";
+$heroAmount = "—";
+$heroText = "Apply for a loan to see your repayment summary here.";
+$heroBadge = null;
+
+if ($hasLoan) {
+  $heroTitle = "Next Payment Due";
+  $heroAmount = peso($monthly_due);
+  $heroText = "Due on " . fmtDatePretty($next_payment) . ($daysLabel ? " " . $daysLabel : "");
+  $heroBadge = $loanStatus;
+} elseif ($waitingDisbursement) {
+  $heroTitle = "Loan Approved";
+  $heroAmount = "WAITING FOR DISBURSEMENT";
+  $heroText = "Your loan is approved and waiting for disbursement.";
+  $heroBadge = "WAITING FOR DISBURSEMENT";
+} elseif ($hasOngoingApplication) {
+  $heroTitle = "Loan Application Status";
+  $heroAmount = $appStatus;
+  if ($appStatus === 'PENDING') {
+    $heroText = "Your application is pending initial review.";
+  } elseif ($appStatus === 'VERIFIED') {
+    $heroText = "Your application has been verified and is now under Loan Officer review.";
+  } elseif ($appStatus === 'APPROVED') {
+    $heroText = "Your application is approved and is being prepared for disbursement.";
+  } else {
+    $heroText = "Your application is currently being processed.";
+  }
+  $heroBadge = $appStatus;
+} elseif (in_array($appStatus, ['REJECTED', 'CANCELLED'], true)) {
+  $heroTitle = "Latest Application";
+  $heroAmount = $appStatus;
+  $heroText = "Your last application was " . strtolower($appStatus) . ". You may submit a new one.";
+  $heroBadge = $appStatus;
 }
 ?>
 <!DOCTYPE html>
@@ -160,37 +264,18 @@ if ($days !== null) {
     <p>Welcome back, <strong><?= htmlspecialchars($displayName) ?></strong>! Here is your financial summary.</p>
   </div>
 
-  <?php if (!$hasLoan): ?>
-    <div class="hero-card">
-      <div class="hero-info">
-        <h2>No Loan Yet</h2>
-        <div class="amount">—</div>
-        <div class="due-date">
-          <i class="bi bi-info-circle"></i> Apply for a loan to see your repayment summary here.
-        </div>
-      </div>
-      <div class="hero-actions">
-        <a href="apply_loan.php" class="btn-pay">
-          <i class="bi bi-file-earmark-text"></i> Apply Loan
-        </a>
-        <a href="myloans.php" class="btn-secondary">
-          View Details
-        </a>
+  <div class="hero-card">
+    <div class="hero-info">
+      <h2><?= htmlspecialchars($heroTitle) ?></h2>
+      <div class="amount"><?= htmlspecialchars($heroAmount) ?></div>
+      <div class="due-date">
+        <i class="bi bi-info-circle"></i>
+        <?= htmlspecialchars($heroText) ?>
       </div>
     </div>
 
-  <?php else: ?>
-    <div class="hero-card">
-      <div class="hero-info">
-        <h2>Next Payment Due</h2>
-        <div class="amount"><?= peso($monthly_due) ?></div>
-        <div class="due-date">
-          <i class="bi bi-calendar-event"></i>
-          Due on <strong><?= htmlspecialchars(fmtDatePretty($next_payment)) ?></strong>
-          <?= $daysLabel ? " " . htmlspecialchars($daysLabel) : "" ?>
-        </div>
-      </div>
-      <div class="hero-actions">
+    <div class="hero-actions">
+      <?php if ($hasLoan): ?>
         <?php if ($outstanding <= 0.00001): ?>
           <a href="myloans.php" class="btn-pay">
             <i class="bi bi-check2-circle"></i> Loan Completed
@@ -200,13 +285,54 @@ if ($days !== null) {
             <i class="bi bi-qr-code-scan"></i> Pay Now
           </a>
         <?php endif; ?>
-
-        <a href="myloans.php" class="btn-secondary">
-          View Details
+      <?php elseif ($canApplyLoan): ?>
+        <a href="apply_loan.php" class="btn-pay">
+          <i class="bi bi-file-earmark-text"></i> Apply Loan
         </a>
+      <?php else: ?>
+        <button class="btn-pay" type="button" disabled style="opacity:.65; cursor:not-allowed;">
+          <i class="bi bi-lock-fill"></i> Loan In Process
+        </button>
+      <?php endif; ?>
+
+      <a href="myloans.php" class="btn-secondary">
+        View Details
+      </a>
+    </div>
+  </div>
+
+  <?php if ($heroBadge && !$hasLoan): ?>
+    <div class="stats-grid">
+      <div class="stat-box">
+        <h4>Current Status</h4>
+        <div class="val text-blue"><?= htmlspecialchars($heroBadge) ?></div>
+      </div>
+
+      <div class="stat-box">
+        <h4>Application ID</h4>
+        <div class="val">#LA-<?= str_pad((string)$appId, 4, "0", STR_PAD_LEFT) ?></div>
+      </div>
+
+      <div class="stat-box">
+        <h4>Requested Amount</h4>
+        <div class="val">
+          <?= $application ? peso($application['principal_amount'] ?? 0) : "—" ?>
+        </div>
+      </div>
+
+      <div class="stat-box score-box">
+        <div class="score-ring">
+          <span class="score-text">720</span>
+        </div>
+        <div class="score-label">
+          <h4>Credit Score</h4>
+          <span class="score-desc">Excellent <i class="bi bi-graph-up-arrow"></i></span>
+        </div>
       </div>
     </div>
+  <?php endif; ?>
 
+  <?php if ($hasLoan): ?>
     <div class="stats-grid">
       <div class="stat-box">
         <h4>Outstanding Balance</h4>
@@ -223,7 +349,6 @@ if ($days !== null) {
         <div class="val text-blue"><?= htmlspecialchars($loanStatus) ?></div>
       </div>
 
-      <!-- Keep your credit score UI (still static unless you have a table for it) -->
       <div class="stat-box score-box">
         <div class="score-ring">
           <span class="score-text">720</span>
@@ -234,62 +359,72 @@ if ($days !== null) {
         </div>
       </div>
     </div>
-
-    <div class="table-card">
-      <div class="section-head">
-        <h3>Recent Transactions</h3>
-        <a href="transactions.php" class="link-all">View All</a>
-      </div>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Activity</th>
-            <th>Method</th>
-            <th>Amount</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          <?php if (empty($recentTx)): ?>
-            <tr>
-              <td colspan="5" style="padding:18px; color:#94a3b8;">No transactions yet.</td>
-            </tr>
-          <?php else: ?>
-            <?php foreach ($recentTx as $t): ?>
-              <?php
-                $st = strtoupper((string)($t['status'] ?? 'PENDING'));
-                $badgeClass = "bg-yellow";
-                $badgeText  = "Pending";
-
-                if ($st === 'SUCCESS') { $badgeClass = "bg-green"; $badgeText = "Verified"; }
-                elseif ($st === 'PAID_PENDING') { $badgeClass = "bg-yellow"; $badgeText = "Paid Pending"; }
-                elseif ($st === 'FAILED') { $badgeClass = "bg-red"; $badgeText = "Failed"; }
-                elseif ($st === 'PENDING') { $badgeClass = "bg-yellow"; $badgeText = "Pending"; }
-
-                $method = $t['provider_method'] ?? '—';
-                $ref = $t['receipt_number'] ?? '';
-                $methodLabel = $ref ? ($method . " (Ref: " . $ref . ")") : $method;
-
-                $activity = "Payment";
-                if ($st === 'FAILED') $activity = "Payment Failed";
-                elseif ($st === 'PAID_PENDING') $activity = "Payment Submitted";
-                elseif ($st === 'SUCCESS') $activity = "Payment Verified";
-              ?>
-              <tr>
-                <td><?= htmlspecialchars(fmtDatePretty($t['trans_date'] ?? null)) ?></td>
-                <td><?= htmlspecialchars($activity) ?></td>
-                <td><?= htmlspecialchars($methodLabel) ?></td>
-                <td style="font-weight:700;"><?= htmlspecialchars(peso($t['amount'] ?? 0)) ?></td>
-                <td><span class="badge <?= htmlspecialchars($badgeClass) ?>"><?= htmlspecialchars($badgeText) ?></span></td>
-              </tr>
-            <?php endforeach; ?>
-          <?php endif; ?>
-        </tbody>
-      </table>
-    </div>
   <?php endif; ?>
+
+  <div class="table-card">
+    <div class="section-head">
+      <h3>Recent Transactions</h3>
+      <?php if ($hasLoan): ?>
+        <a href="transactions.php" class="link-all">View All</a>
+      <?php endif; ?>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Activity</th>
+          <th>Method</th>
+          <th>Amount</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php if (!$hasLoan): ?>
+          <tr>
+            <td colspan="5" style="padding:18px; color:#94a3b8;">
+              No transactions yet. Your payment history will appear here once your loan is disbursed and payments begin.
+            </td>
+          </tr>
+        <?php elseif (empty($recentTx)): ?>
+          <tr>
+            <td colspan="5" style="padding:18px; color:#94a3b8;">
+              No transactions yet.
+            </td>
+          </tr>
+        <?php else: ?>
+          <?php foreach ($recentTx as $t): ?>
+            <?php
+              $st = strtoupper((string)($t['status'] ?? 'PENDING'));
+              $badgeClass = "bg-yellow";
+              $badgeText  = "Pending";
+
+              if ($st === 'SUCCESS') { $badgeClass = "bg-green"; $badgeText = "Verified"; }
+              elseif ($st === 'PAID_PENDING') { $badgeClass = "bg-yellow"; $badgeText = "Paid Pending"; }
+              elseif ($st === 'FAILED') { $badgeClass = "bg-red"; $badgeText = "Failed"; }
+              elseif ($st === 'PENDING') { $badgeClass = "bg-yellow"; $badgeText = "Pending"; }
+
+              $method = $t['provider_method'] ?? '—';
+              $ref = $t['receipt_number'] ?? '';
+              $methodLabel = $ref ? ($method . " (Ref: " . $ref . ")") : $method;
+
+              $activity = "Payment";
+              if ($st === 'FAILED') $activity = "Payment Failed";
+              elseif ($st === 'PAID_PENDING') $activity = "Payment Submitted";
+              elseif ($st === 'SUCCESS') $activity = "Payment Verified";
+            ?>
+            <tr>
+              <td><?= htmlspecialchars(fmtDatePretty($t['trans_date'] ?? null)) ?></td>
+              <td><?= htmlspecialchars($activity) ?></td>
+              <td><?= htmlspecialchars($methodLabel) ?></td>
+              <td style="font-weight:700;"><?= htmlspecialchars(peso($t['amount'] ?? 0)) ?></td>
+              <td><span class="badge <?= htmlspecialchars($badgeClass) ?>"><?= htmlspecialchars($badgeText) ?></span></td>
+            </tr>
+          <?php endforeach; ?>
+        <?php endif; ?>
+      </tbody>
+    </table>
+  </div>
 
 </div>
 </body>
