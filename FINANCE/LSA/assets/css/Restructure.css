@@ -1,0 +1,206 @@
+/* =========================================
+   LSA RESTRUCTURE REQUESTS STYLES
+   ========================================= */
+
+/* Base Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Google Sans', sans-serif;
+}
+
+body {
+    background-color: #111827; /* LSA Dark Theme */
+    color: #e5e7eb;
+    display: flex;
+    min-height: 100vh;
+}
+
+/* Main Layout */
+.main-content {
+    margin-left: 260px;
+    padding: 30px;
+    width: calc(100% - 260px);
+}
+
+.page-header { margin-bottom: 25px; }
+.page-header h1 { font-size: 24px; color: #fff; margin-bottom: 5px; }
+.page-header p { color: #9ca3af; font-size: 14px; }
+
+/* --- FILTER BAR --- */
+.filter-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.filter-group { display: flex; gap: 10px; }
+
+.btn-filter {
+    background: transparent;
+    border: 1px solid #374151;
+    color: #9ca3af;
+    padding: 8px 18px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+.btn-filter:hover { border-color: #f59e0b; color: #fff; } /* Amber Hover */
+
+.btn-filter.active {
+    background-color: #f59e0b; /* Amber Active */
+    border-color: #f59e0b;
+    color: #0f172a; /* Dark Text */
+    font-weight: 700;
+}
+
+/* Search */
+.search-wrapper { position: relative; width: 250px; }
+.search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+    font-size: 14px;
+}
+.search-input {
+    width: 100%;
+    padding: 10px 10px 10px 38px;
+    border-radius: 8px;
+    border: 1px solid #374151;
+    background: #1f2937;
+    color: #fff;
+    outline: none;
+    font-size: 13px;
+    transition: border-color 0.2s;
+}
+.search-input:focus { border-color: #f59e0b; }
+
+/* --- TABLE STYLES --- */
+.content-card {
+    background-color: #1f2937;
+    border: 1px solid #374151;
+    border-radius: 12px;
+    padding: 20px;
+    overflow-x: auto;
+}
+
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+
+thead th {
+    text-align: left;
+    color: #9ca3af;
+    padding: 15px 10px;
+    border-bottom: 1px solid #374151;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+}
+
+tbody td {
+    padding: 15px 10px;
+    border-bottom: 1px solid #374151;
+    color: #e5e7eb;
+    vertical-align: middle;
+}
+tbody tr:last-child td { border-bottom: none; }
+
+/* Client Info */
+.client-info { display: flex; align-items: center; gap: 12px; }
+.mini-avatar {
+    width: 32px;
+    height: 32px;
+    background-color: #374151;
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+/* --- VISUAL COMPARISON (Old vs New) --- */
+.comparison-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid #374151;
+    width: fit-content;
+}
+.val-old {
+    color: #9ca3af;
+    text-decoration: line-through;
+    font-size: 12px;
+}
+.val-new {
+    color: #fbbf24; /* Amber */
+    font-weight: 700;
+}
+.arrow-icon { color: #6b7280; font-size: 12px; }
+
+/* --- BADGES --- */
+.badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+.bg-amber { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+
+/* --- ACTION BUTTON --- */
+.btn-assess {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background-color: #f59e0b;
+    color: #0f172a;
+    text-decoration: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+}
+.btn-assess:hover {
+    background-color: #d97706;
+    transform: translateY(-1px);
+}
+
+/* --- DOCUMENT LINK STYLE (New) --- */
+.doc-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #60a5fa; /* Blue link color */
+    text-decoration: none;
+    font-size: 13px;
+    background: rgba(96, 165, 250, 0.1);
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: 0.2s;
+    border: 1px solid transparent;
+}
+
+.doc-link:hover {
+    background: rgba(96, 165, 250, 0.2);
+    border-color: #60a5fa;
+    color: #93c5fd;
+}
+
+.doc-link i {
+    font-size: 14px;
+}
