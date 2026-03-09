@@ -27,17 +27,32 @@ function addMonths($date, $m) {
 }
 
 // ==============================
-// Latest application
+// Fetch Application (Specific by app_id or Latest)
 // ==============================
 $application = null;
-$appStmt = $conn->prepare("
-  SELECT *
-  FROM loan_applications
-  WHERE user_id = ?
-  ORDER BY id DESC
-  LIMIT 1
-");
-$appStmt->bind_param("i", $user_id);
+
+if (isset($_GET['app_id']) && is_numeric($_GET['app_id'])) {
+    // Kung galing sa Notification Link (may ?app_id=)
+    $req_app_id = (int)$_GET['app_id'];
+    $appStmt = $conn->prepare("
+      SELECT *
+      FROM loan_applications
+      WHERE user_id = ? AND id = ?
+      LIMIT 1
+    ");
+    $appStmt->bind_param("ii", $user_id, $req_app_id);
+} else {
+    // Default: Kunin ang pinakalatest na application kapag normal na pinindot sa sidebar
+    $appStmt = $conn->prepare("
+      SELECT *
+      FROM loan_applications
+      WHERE user_id = ?
+      ORDER BY id DESC
+      LIMIT 1
+    ");
+    $appStmt->bind_param("i", $user_id);
+}
+
 $appStmt->execute();
 $appRes = $appStmt->get_result();
 if ($appRes && $appRes->num_rows === 1) {
@@ -47,6 +62,7 @@ $appStmt->close();
 
 $appId = (int)($application['id'] ?? 0);
 $appStatus = strtoupper((string)($application['status'] ?? 'NO APPLICATION'));
+$appRemarks = $application['remarks'] ?? ''; // Kukunin ang remarks kung na-reject
 
 // ==============================
 // Related disbursement
@@ -121,11 +137,11 @@ if ($appStatus === 'PENDING') {
   $statusClass = "status-disbursed";
 } elseif ($appStatus === 'REJECTED') {
   $statusLabel = 'REJECTED';
-  $statusMessage = "Your latest loan application was rejected.";
+  $statusMessage = "We reviewed your application, but it was declined or returned for corrections.";
   $statusClass = "status-rejected";
 } elseif ($appStatus === 'CANCELLED') {
   $statusLabel = 'CANCELLED';
-  $statusMessage = "Your latest loan application was cancelled.";
+  $statusMessage = "Your application was cancelled.";
   $statusClass = "status-cancelled";
 }
 
@@ -322,6 +338,36 @@ if ($loan) {
       line-height:1.6;
       margin:0;
     }
+
+    /* REJECTION REASON BOX STYLES */
+    .rejection-box {
+        background: rgba(239, 68, 68, 0.05);
+        border: 1px solid rgba(239, 68, 68, 0.2);
+        padding: 15px 20px;
+        border-radius: 12px;
+        margin-top: 15px;
+        display: flex;
+        gap: 15px;
+        align-items: flex-start;
+    }
+    .rejection-box i {
+        color: #f87171;
+        font-size: 20px;
+        margin-top: 2px;
+    }
+    .rejection-box h4 {
+        margin: 0 0 5px 0;
+        color: #f87171;
+        font-size: 13px;
+        text-transform: uppercase;
+        font-weight: 700;
+    }
+    .rejection-box p {
+        margin: 0;
+        color: #e2e8f0;
+        font-size: 14px;
+        line-height: 1.5;
+    }
   </style>
 </head>
 <body>
@@ -335,7 +381,6 @@ if ($loan) {
     <p>Track your loan application and repayment details.</p>
   </div>
 
-  <!-- Loan Application Status -->
   <div class="status-card">
     <div class="status-header">
       <h2 class="status-title">Loan Application Status</h2>
@@ -345,6 +390,16 @@ if ($loan) {
     </div>
 
     <p class="status-message"><?= htmlspecialchars($statusMessage) ?></p>
+
+    <?php if ($appStatus === 'REJECTED' && !empty($appRemarks)): ?>
+    <div class="rejection-box">
+        <i class="bi bi-exclamation-triangle"></i>
+        <div>
+            <h4>Reason for Return / Rejection</h4>
+            <p><?= htmlspecialchars($appRemarks) ?></p>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <div class="status-grid">
       <div class="status-item">
@@ -373,9 +428,17 @@ if ($loan) {
         <div class="val"><?= htmlspecialchars($statusLabel) ?></div>
       </div>
     </div>
+    
+    <?php if ($appStatus === 'REJECTED'): ?>
+    <div style="margin-top: 20px;">
+        <a href="apply_loan.php" style="display: inline-block; background: #334155; color: #fff; text-decoration: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; font-size: 14px;">
+            <i class="bi bi-arrow-counterclockwise"></i> Re-apply / Correct Documents
+        </a>
+    </div>
+    <?php endif; ?>
+
   </div>
 
-  <!-- Payment Schedule -->
   <?php if ($view): ?>
     <div class="active-loan-card">
       <div class="card-header">

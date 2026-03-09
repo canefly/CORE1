@@ -1,3 +1,39 @@
+<?php
+session_start();
+require_once __DIR__ . "/include/config.php"; 
+
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit;
+}
+
+$user_id = (int)$_SESSION['user_id'];
+
+// --- HANDLE "MARK ALL AS READ" ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mark_read'])) {
+    $update_q = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0");
+    $update_q->bind_param("i", $user_id);
+    $update_q->execute();
+    $update_q->close();
+    
+    // Refresh page para mawala yung 'unread' highlight at badge
+    header("Location: notifications.php");
+    exit;
+}
+
+// --- FETCH ALL NOTIFICATIONS FROM DATABASE ---
+$notifications = [];
+$notif_q = $conn->prepare("SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC");
+$notif_q->bind_param("i", $user_id);
+$notif_q->execute();
+$notif_res = $notif_q->get_result();
+
+while ($row = $notif_res->fetch_assoc()) {
+    $notifications[] = $row;
+}
+$notif_q->close();
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -22,90 +58,48 @@
                 <h1>Notifications</h1>
                 <p>Stay updated on your loan status and payment reminders.</p>
             </div>
-            <button class="btn-read-all" onclick="markAllRead()">
-                <i class="bi bi-check2-all"></i> Mark all as read
-            </button>
+            
+            <form method="POST" style="margin: 0;">
+                <button type="submit" name="mark_read" class="btn-read-all" style="cursor: pointer;">
+                    <i class="bi bi-check-all"></i> Mark all as read
+                </button>
+            </form>
         </div>
 
         <div class="notif-container">
             
-            <div class="notif-item unread">
-                <div class="notif-icon-box type-success">
-                    <i class="bi bi-patch-check-fill"></i>
+            <?php if (empty($notifications)): ?>
+                <div style="text-align: center; color: #9ca3af; padding: 40px; background: #1f2937; border-radius: 12px; border: 1px solid #374151;">
+                    <i class="bi bi-bell-slash" style="font-size: 30px; margin-bottom: 10px; display: block;"></i>
+                    No notifications yet.
                 </div>
-                <div class="notif-content">
-                    <div class="notif-header">
-                        <span class="notif-title">Payment Verified</span>
-                        <span class="notif-time">2 hours ago</span>
+            <?php else: ?>
+                <?php foreach ($notifications as $notif): ?>
+                    <div class="notif-item <?php echo ($notif['is_read'] == 0) ? 'unread' : ''; ?>">
+                        <div class="notif-icon-box type-<?php echo htmlspecialchars($notif['type']); ?>">
+                            <i class="bi <?php echo htmlspecialchars($notif['icon']); ?>"></i>
+                        </div>
+                        <div class="notif-content">
+                            <div class="notif-header">
+                                <span class="notif-title"><?php echo htmlspecialchars($notif['title']); ?></span>
+                                <span class="notif-time"><?php echo date('M d, Y h:i A', strtotime($notif['created_at'])); ?></span>
+                            </div>
+                            <div class="notif-body">
+                                <?php echo $notif['message']; ?>
+                            </div>
+                            
+                            <?php if (!empty($notif['link']) && $notif['link'] !== '#'): ?>
+                                <a href="<?php echo htmlspecialchars($notif['link']); ?>" class="notif-action">
+                                    View Details <i class="bi bi-arrow-right"></i>
+                                </a>
+                            <?php endif; ?>
+                        </div>
                     </div>
-                    <div class="notif-body">
-                        Your payment of <strong>₱ 3,500.00</strong> via GCash has been successfully verified and posted to your account.
-                    </div>
-                    <a href="transactions.php" class="notif-action">View Receipt <i class="bi bi-arrow-right"></i></a>
-                </div>
-            </div>
-
-            <div class="notif-item unread">
-                <div class="notif-icon-box type-warning">
-                    <i class="bi bi-alarm-fill"></i>
-                </div>
-                <div class="notif-content">
-                    <div class="notif-header">
-                        <span class="notif-title">Upcoming Due Date</span>
-                        <span class="notif-time">Yesterday</span>
-                    </div>
-                    <div class="notif-body">
-                        Friendly reminder: Your monthly amortization of <strong>₱ 3,500.00</strong> is due on <strong>Oct 25, 2025</strong>. Please pay on time to avoid penalties.
-                    </div>
-                    <a href="transactions.php" class="notif-action">Pay Now <i class="bi bi-arrow-right"></i></a>
-                </div>
-            </div>
-
-            <div class="notif-item">
-                <div class="notif-icon-box type-info">
-                    <i class="bi bi-file-earmark-text-fill"></i>
-                </div>
-                <div class="notif-content">
-                    <div class="notif-header">
-                        <span class="notif-title">Loan Application Approved</span>
-                        <span class="notif-time">Oct 20, 2025</span>
-                    </div>
-                    <div class="notif-body">
-                        Congratulations! Your loan application #LN-1025 has been approved. The funds have been queued for disbursement.
-                    </div>
-                    <a href="my_loans.php" class="notif-action">View Contract <i class="bi bi-arrow-right"></i></a>
-                </div>
-            </div>
-
-            <div class="notif-item">
-                <div class="notif-icon-box type-danger">
-                    <i class="bi bi-exclamation-triangle-fill"></i>
-                </div>
-                <div class="notif-content">
-                    <div class="notif-header">
-                        <span class="notif-title">Penalty Applied</span>
-                        <span class="notif-time">Sep 26, 2025</span>
-                    </div>
-                    <div class="notif-body">
-                        A late payment penalty of <strong>₱ 250.00</strong> has been added to your account balance due to missed payment deadline.
-                    </div>
-                </div>
-            </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
 
         </div>
-
     </div>
-
-    <script>
-        function markAllRead() {
-            // Visual logic: Remove 'unread' class from all items
-            const items = document.querySelectorAll('.notif-item');
-            items.forEach(item => {
-                item.classList.remove('unread');
-            });
-            alert('All notifications marked as read.');
-        }
-    </script>
 
 </body>
 </html>
