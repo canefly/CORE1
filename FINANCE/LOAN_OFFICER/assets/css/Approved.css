@@ -1,0 +1,167 @@
+/* =========================================
+   APPROVED LOANS PAGE STYLES
+   ========================================= */
+
+/* Base Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Google Sans', sans-serif;
+}
+
+body {
+    background-color: #0f172a; /* Dark Slate LO Theme */
+    color: #e2e8f0;
+    display: flex;
+    min-height: 100vh;
+}
+
+/* Main Layout */
+.main-content {
+    margin-left: 260px;
+    padding: 30px;
+    width: calc(100% - 260px);
+}
+
+.page-header { margin-bottom: 25px; }
+.page-header h1 { font-size: 24px; color: #fff; margin-bottom: 5px; }
+.page-header p { color: #94a3b8; font-size: 14px; }
+
+/* --- FILTER BAR --- */
+.filter-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.date-filter {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.date-input {
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #cbd5e1;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    outline: none;
+}
+
+/* Search */
+.search-wrapper { position: relative; width: 250px; }
+.search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    font-size: 14px;
+}
+.search-input {
+    width: 100%;
+    padding: 10px 10px 10px 38px;
+    border-radius: 8px;
+    border: 1px solid #334155;
+    background: #1e293b;
+    color: #fff;
+    outline: none;
+    font-size: 13px;
+    transition: border-color 0.2s;
+}
+.search-input:focus { border-color: #10b981; } /* Green focus for Approved page */
+
+/* --- TABLE STYLES --- */
+.content-card {
+    background-color: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 20px;
+    overflow-x: auto;
+}
+
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+
+thead th {
+    text-align: left;
+    color: #94a3b8;
+    padding: 15px 10px;
+    border-bottom: 1px solid #334155;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+}
+
+tbody td {
+    padding: 15px 10px;
+    border-bottom: 1px solid #334155;
+    color: #cbd5e1;
+    vertical-align: middle;
+}
+tbody tr:last-child td { border-bottom: none; }
+
+/* Client Info */
+.client-info { display: flex; align-items: center; gap: 12px; }
+.mini-avatar {
+    width: 32px;
+    height: 32px;
+    background-color: #334155;
+    color: #f1f5f9;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+/* --- APPROVED STATUS BADGE --- */
+.badge-approved {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* --- ACTION BUTTONS --- */
+.action-btn-group {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    color: #94a3b8;
+    cursor: pointer;
+    transition: 0.2s;
+    font-size: 14px;
+}
+
+.btn-icon:hover {
+    background-color: #334155;
+    color: #fff;
+}
+
+.btn-print:hover {
+    color: #60a5fa; /* Blue hover for print */
+    border-color: #60a5fa;
+}
