@@ -13,189 +13,98 @@ $app_id = intval($_GET['id']);
 // 2. Handle Decision Submissions (POST Requests)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     try {
-            if ($_POST['action'] === 'approve') {
+        if ($_POST['action'] === 'approve') {
 
             $pdo->beginTransaction();
 
-            // 1️⃣ Kunin loan application
-            $stmt = $pdo->prepare("
-                SELECT *
+            // Lock + fetch application details
+            $stmtApp = $pdo->prepare("
+                SELECT id, user_id, principal_amount, term_months, monthly_due,
+                       interest_rate, interest_method, total_payable
                 FROM loan_applications
                 WHERE id = ?
                 FOR UPDATE
             ");
-            $stmt->execute([$app_id]);
-            $app = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stmtApp->execute([$app_id]);
+            $appRow = $stmtApp->fetch(PDO::FETCH_ASSOC);
 
-            if (!$app) {
-                throw new Exception("Loan application not found.");
+            if (!$appRow) {
+                throw new Exception("Application not found.");
             }
 
-            if ($app['status'] !== 'VERIFIED') {
-                throw new Exception("Only VERIFIED applications can be approved.");
-            }
-
-            // 2️⃣ Update application status
-            $stmt = $pdo->prepare("
+            // 1) Update application status
+            $stmtUpd = $pdo->prepare("
                 UPDATE loan_applications
-                SET status='APPROVED', updated_at=NOW()
-                WHERE id=?
+                SET status = 'APPROVED', updated_at = NOW()
+                WHERE id = ?
             ");
-            $stmt->execute([$app_id]);
+            $stmtUpd->execute([$app_id]);
 
-            // ==============================
-            // 3️⃣ Insert into loan_disbursement
-            // ==============================
-
-            $stmtCheck = $pdo->prepare("
-                SELECT id
-                FROM loan_disbursement
-                WHERE application_id=?
-                LIMIT 1
-            ");
+            // 2) Prevent duplicate loan record
+            $stmtCheck = $pdo->prepare("SELECT id FROM loans WHERE application_id = ? LIMIT 1");
             $stmtCheck->execute([$app_id]);
+            $existingLoanId = $stmtCheck->fetchColumn();
 
-            if (!$stmtCheck->fetchColumn()) {
+            if (!$existingLoanId) {
+                $principal  = (float)$appRow['principal_amount'];
+                $termMonths = (int)$appRow['term_months'];
+                $monthlyDue = $appRow['monthly_due'] !== null ? (float)$appRow['monthly_due'] : 0.0;
+                $outstanding = $appRow['total_payable'] !== null ? (float)$appRow['total_payable'] : $principal;
 
-                $stmtInsert = $pdo->prepare("
-                    INSERT INTO loan_disbursement
-                    (
-                        application_id,
-                        user_id,
-                        principal_amount,
-                        term_months,
-                        loan_purpose,
-                        source_of_income,
-                        estimated_monthly_income,
-                        interest_rate,
-                        interest_type,
-                        interest_method,
-                        total_interest,
-                        total_payable,
-                        monthly_due,
-                        status
-                    )
-                    VALUES
-                    (
-                        :application_id,
-                        :user_id,
-                        :principal_amount,
-                        :term_months,
-                        :loan_purpose,
-                        :source_of_income,
-                        :estimated_monthly_income,
-                        :interest_rate,
-                        :interest_type,
-                        :interest_method,
-                        :total_interest,
-                        :total_payable,
-                        :monthly_due,
-                        'WAITING FOR DISBURSEMENT'
-                    )
-                ");
+                if ($monthlyDue <= 0 && $termMonths > 0) {
+                    $monthlyDue = $outstanding / $termMonths;
+                }
 
-                $stmtInsert->execute([
-                    ':application_id'=>$app['id'],
-                    ':user_id'=>$app['user_id'],
-                    ':principal_amount'=>$app['principal_amount'],
-                    ':term_months'=>$app['term_months'],
-                    ':loan_purpose'=>$app['loan_purpose'],
-                    ':source_of_income'=>$app['source_of_income'],
-                    ':estimated_monthly_income'=>$app['estimated_monthly_income'],
-                    ':interest_rate'=>$app['interest_rate'],
-                    ':interest_type'=>$app['interest_type'],
-                    ':interest_method'=>$app['interest_method'],
-                    ':total_interest'=>$app['total_interest'],
-                    ':total_payable'=>$app['total_payable'],
-                    ':monthly_due'=>$app['monthly_due']
-                ]);
-            }
+                $startDate   = date('Y-m-d');
+                $nextPayment = date('Y-m-d', strtotime('+1 month'));
+                $dueDate     = date('Y-m-d', strtotime("+{$termMonths} months"));
 
-            // ==============================
-            // 4️⃣ Insert into loans
-            // ==============================
-
-            $stmtCheckLoan = $pdo->prepare("
-                SELECT id
-                FROM loans
-                WHERE application_id=?
-                LIMIT 1
-            ");
-            $stmtCheckLoan->execute([$app_id]);
-
-            if (!$stmtCheckLoan->fetchColumn()) {
-
-                $principal = (float)$app['principal_amount'];
-                $term = (int)$app['term_months'];
-
-                $monthly_due = (float)$app['monthly_due'];
-
-                $total_payable = (float)$app['total_payable'];
-
-                $outstanding = $total_payable;
-
-                $start_date = date("Y-m-d");
-                $next_payment = date("Y-m-d",strtotime("+1 month"));
-                $due_date = date("Y-m-d",strtotime("+{$term} months"));
-
-                $stmtInsertLoan = $pdo->prepare("
+                // Insert into loans
+                $stmtIns = $pdo->prepare("
                     INSERT INTO loans
-                    (
-                        user_id,
-                        application_id,
-                        loan_amount,
-                        term_months,
-                        monthly_due,
-                        interest_rate,
-                        interest_method,
-                        outstanding,
-                        next_payment,
-                        due_date,
-                        start_date,
-                        status
-                    )
+                        (user_id, application_id, loan_amount, term_months, monthly_due,
+                         interest_rate, interest_method, outstanding, next_payment, due_date,
+                         start_date, status)
                     VALUES
-                    (
-                        :user_id,
-                        :application_id,
-                        :loan_amount,
-                        :term_months,
-                        :monthly_due,
-                        :interest_rate,
-                        :interest_method,
-                        :outstanding,
-                        :next_payment,
-                        :due_date,
-                        :start_date,
-                        'ACTIVE'
-                    )
+                        (:user_id, :application_id, :loan_amount, :term_months, :monthly_due,
+                         :interest_rate, :interest_method, :outstanding, :next_payment, :due_date,
+                         :start_date, 'ACTIVE')
                 ");
 
-                $stmtInsertLoan->execute([
-                    ':user_id'=>$app['user_id'],
-                    ':application_id'=>$app['id'],
-                    ':loan_amount'=>$principal,
-                    ':term_months'=>$term,
-                    ':monthly_due'=>$monthly_due,
-                    ':interest_rate'=>$app['interest_rate'],
-                    ':interest_method'=>$app['interest_method'],
-                    ':outstanding'=>$outstanding,
-                    ':next_payment'=>$next_payment,
-                    ':due_date'=>$due_date,
-                    ':start_date'=>$start_date
+                $stmtIns->execute([
+                    ':user_id'         => (int)$appRow['user_id'],
+                    ':application_id'  => (int)$appRow['id'],
+                    ':loan_amount'     => $principal,
+                    ':term_months'     => $termMonths,
+                    ':monthly_due'     => $monthlyDue,
+                    ':interest_rate'   => (float)$appRow['interest_rate'],
+                    ':interest_method' => $appRow['interest_method'] ?? 'FLAT',
+                    ':outstanding'     => $outstanding,
+                    ':next_payment'    => $nextPayment,
+                    ':due_date'        => $dueDate,
+                    ':start_date'      => $startDate,
                 ]);
             }
+
+            // 3) INSERT NOTIFICATION FOR APPROVAL
+            $notif_title = "Loan Application Approved";
+            $notif_msg = "Congratulations! Your loan application <strong>#LA-{$app_id}</strong> has been formally approved by the Loan Officer. The funds are now queued for disbursement.";
+            $stmtNotif = $pdo->prepare("INSERT INTO notifications (user_id, title, message, type, icon, link) VALUES (?, ?, ?, 'success', 'bi-patch-check-fill', 'myloans.php?app_id={$app_id}')");           
+            $stmtNotif->execute([(int)$appRow['user_id'], $notif_title, $notif_msg]);
 
             $pdo->commit();
 
             header("Location: dashboard.php?msg=approved");
             exit;
-        }
 
-
-         elseif ($_POST['action'] === 'reject') {
+        } elseif ($_POST['action'] === 'reject') {
 
             $reason = trim($_POST['rejection_reason']);
+
+            // Fetch user_id before updating
+            $stmtUser = $pdo->prepare("SELECT user_id FROM loan_applications WHERE id = ?");
+            $stmtUser->execute([$app_id]);
+            $user_id = $stmtUser->fetchColumn();
 
             $stmt = $pdo->prepare("
                 UPDATE loan_applications
@@ -203,6 +112,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 WHERE id = ?
             ");
             $stmt->execute([$reason, $app_id]);
+
+            // INSERT NOTIFICATION FOR REJECTION
+            if ($user_id) {
+                $notif_title = "Loan Application Declined";
+                $notif_msg = "We regret to inform you that your application <strong>#LA-{$app_id}</strong> was declined after review. Reason: " . htmlspecialchars($reason);
+                $stmtNotif = $pdo->prepare("INSERT INTO notifications (user_id, title, message, type, icon, link) VALUES (?, ?, ?, 'danger', 'bi-x-circle-fill', 'myloans.php?app_id={$app_id}')");                
+                $stmtNotif->execute([$user_id, $notif_title, $notif_msg]);
+            }
 
             header("Location: dashboard.php?msg=rejected");
             exit;
@@ -335,13 +252,12 @@ try {
                             <p style="color:#94a3b8; font-size: 13px;">No documents uploaded.</p>
                         <?php else: ?>
                             <?php foreach($documents as $doc): 
-                                // Clean up the doc type name
                                 $docName = str_replace('_', ' ', $doc['doc_type']);
                             ?>
                             <div class="doc-card">
                                 <div class="doc-icon"><i class="bi bi-file-earmark-image"></i></div>
                                 <div class="doc-name"><?php echo htmlspecialchars($docName); ?></div>
-                                <a href="../client/<?php echo htmlspecialchars($doc['file_path']); ?>" target="_blank" class="btn-view-doc">View File</a>
+                                <a href="../../client/<?php echo htmlspecialchars($doc['file_path']); ?>" target="_blank" class="btn-view-doc">View File</a>
                             </div>
                             <?php endforeach; ?>
                         <?php endif; ?>

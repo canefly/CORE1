@@ -20,12 +20,12 @@ while ($loan = $loan_res->fetch_assoc()) {
         'type' => 'warning',
         'icon' => 'bi-alarm-fill',
         'title' => 'Upcoming Due Date',
-        'sort_date' => $loan['next_payment'] . ' 00:00:00', 
+        'created_at' => $loan['next_payment'] . ' 00:00:00', // Changed to match DB key
         'display_time' => date('M d, Y', strtotime($loan['next_payment'])),
         'message' => "Friendly reminder: Your monthly amortization of <strong>₱ " . number_format($loan['monthly_due'], 2) . "</strong> is due on <strong>" . date('M d, Y', strtotime($loan['next_payment'])) . "</strong>. Please pay on time to avoid penalties.",
-        'action_link' => 'transactions.php',
+        'link' => 'transactions.php', // Changed to match DB key
         'action_text' => 'Pay Now',
-        'unread' => true
+        'is_read' => 0 // Changed to match DB key (0 = unread)
     ];
 }
 $loan_q->close();
@@ -41,24 +41,24 @@ while ($app = $app_res->fetch_assoc()) {
             'type' => 'info',
             'icon' => 'bi-file-earmark-text-fill',
             'title' => 'Loan Application Approved',
-            'sort_date' => $app['updated_at'],
+            'created_at' => $app['updated_at'],
             'display_time' => date('M d, Y h:i A', strtotime($app['updated_at'])),
             'message' => "Congratulations! Your loan application #LA-" . $app['id'] . " has been approved. The funds have been queued for disbursement.",
-            'action_link' => 'myloans.php',
+            'link' => 'myloans.php',
             'action_text' => 'View Contract',
-            'unread' => false
+            'is_read' => 1 // 1 = read
         ];
     } elseif ($app['status'] == 'REJECTED') {
         $notifications[] = [
             'type' => 'danger',
             'icon' => 'bi-exclamation-triangle-fill',
             'title' => 'Application Returned',
-            'sort_date' => $app['updated_at'],
+            'created_at' => $app['updated_at'],
             'display_time' => date('M d, Y h:i A', strtotime($app['updated_at'])),
             'message' => "Your application #LA-" . $app['id'] . " was returned. Reason: " . htmlspecialchars($app['remarks']),
-            'action_link' => 'apply_loan.php',
+            'link' => 'apply_loan.php',
             'action_text' => 'Review Application',
-            'unread' => true
+            'is_read' => 0
         ];
     }
 }
@@ -74,20 +74,43 @@ while ($txn = $txn_res->fetch_assoc()) {
         'type' => 'success',
         'icon' => 'bi-patch-check-fill',
         'title' => 'Payment Verified',
-        'sort_date' => $txn['trans_date'],
+        'created_at' => $txn['trans_date'],
         'display_time' => date('M d, Y h:i A', strtotime($txn['trans_date'])),
         'message' => "Your payment of <strong>₱ " . number_format($txn['amount'], 2) . "</strong> has been successfully verified and posted to your account.",
-        'action_link' => 'transactions.php',
+        'link' => 'transactions.php',
         'action_text' => 'View Receipt',
-        'unread' => false
+        'is_read' => 1
     ];
 }
 $txn_q->close();
 
-// I-sort ang lahat ng notifications mula sa pinakabago pababa
+// --- FETCH ALL NOTIFICATIONS FROM DATABASE (WITHOUT WIPING THE ARRAY) ---
+$notif_q = $conn->prepare("SELECT * FROM notifications WHERE user_id = ?");
+$notif_q->bind_param("i", $user_id);
+$notif_q->execute();
+$notif_res = $notif_q->get_result();
+
+while ($row = $notif_res->fetch_assoc()) {
+    $notifications[] = $row; // Just add them to the pile
+}
+$notif_q->close();
+
+// --- SORT EVERYTHING TOGETHER ---
 usort($notifications, function($a, $b) {
-    return strtotime($b['sort_date']) - strtotime($a['sort_date']);
+    return strtotime($b['created_at']) - strtotime($a['created_at']);
 });
+
+// --- HANDLE "MARK ALL AS READ" ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mark_read'])) {
+    $update_q = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0");
+    $update_q->bind_param("i", $user_id);
+    $update_q->execute();
+    $update_q->close();
+    
+    // Refresh page para mawala yung 'unread' highlight at badge
+    header("Location: notifications.php");
+    exit;
+}
 ?>
 
 <!DOCTYPE html>
@@ -114,9 +137,12 @@ usort($notifications, function($a, $b) {
                 <h1>Notifications</h1>
                 <p>Stay updated on your loan status and payment reminders.</p>
             </div>
-            <button class="btn-read-all" onclick="markAllRead()">
-                <i class="bi bi-check2-all"></i> Mark all as read
-            </button>
+            
+            <form method="POST" style="margin: 0;">
+                <button type="submit" name="mark_read" class="btn-read-all" style="cursor: pointer;">
+                    <i class="bi bi-check-all"></i> Mark all as read
+                </button>
+            </form>
         </div>
 
         <div class="notif-container">
@@ -124,25 +150,26 @@ usort($notifications, function($a, $b) {
             <?php if (empty($notifications)): ?>
                 <div style="text-align: center; color: #9ca3af; padding: 40px; background: #1f2937; border-radius: 12px; border: 1px solid #374151;">
                     <i class="bi bi-bell-slash" style="font-size: 30px; margin-bottom: 10px; display: block;"></i>
-                    No new notifications at the moment.
+                    No notifications yet.
                 </div>
             <?php else: ?>
                 <?php foreach ($notifications as $notif): ?>
-                    <div class="notif-item <?php echo $notif['unread'] ? 'unread' : ''; ?>">
-                        <div class="notif-icon-box type-<?php echo $notif['type']; ?>">
-                            <i class="bi <?php echo $notif['icon']; ?>"></i>
+                    <div class="notif-item <?php echo ($notif['is_read'] == 0) ? 'unread' : ''; ?>">
+                        <div class="notif-icon-box type-<?php echo htmlspecialchars($notif['type']); ?>">
+                            <i class="bi <?php echo htmlspecialchars($notif['icon']); ?>"></i>
                         </div>
                         <div class="notif-content">
                             <div class="notif-header">
-                                <span class="notif-title"><?php echo $notif['title']; ?></span>
-                                <span class="notif-time"><?php echo $notif['display_time']; ?></span>
+                                <span class="notif-title"><?php echo htmlspecialchars($notif['title']); ?></span>
+                                <span class="notif-time"><?php echo date('M d, Y h:i A', strtotime($notif['created_at'])); ?></span>
                             </div>
                             <div class="notif-body">
                                 <?php echo $notif['message']; ?>
                             </div>
-                            <?php if (!empty($notif['action_link'])): ?>
-                                <a href="<?php echo $notif['action_link']; ?>" class="notif-action">
-                                    <?php echo $notif['action_text']; ?> <i class="bi bi-arrow-right"></i>
+                            
+                            <?php if (!empty($notif['link']) && $notif['link'] !== '#'): ?>
+                                <a href="<?php echo htmlspecialchars($notif['link']); ?>" class="notif-action">
+                                    View Details <i class="bi bi-arrow-right"></i>
                                 </a>
                             <?php endif; ?>
                         </div>

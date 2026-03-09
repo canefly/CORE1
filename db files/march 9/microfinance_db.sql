@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Mar 09, 2026 at 04:04 PM
+-- Generation Time: Mar 09, 2026 at 05:07 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -83,7 +83,8 @@ CREATE TABLE `loan_applications` (
 
 INSERT INTO `loan_applications` (`id`, `user_id`, `principal_amount`, `term_months`, `loan_purpose`, `source_of_income`, `estimated_monthly_income`, `interest_rate`, `interest_type`, `interest_method`, `total_interest`, `total_payable`, `monthly_due`, `status`, `remarks`, `created_at`, `updated_at`) VALUES
 (15, 1, 36000.00, 6, 'Business Capital', 'ASAWA KO AY AFAM', 70000.00, 3.50, 'MONTHLY', 'FLAT', 7560.00, 43560.00, 7260.00, 'APPROVED', '', '2026-02-27 18:33:15', '2026-02-27 18:34:09'),
-(16, 7, 10000.00, 6, 'Home Repair', 'ASAWA KO AY AFAM', 50000.00, 3.50, 'MONTHLY', 'FLAT', 2100.00, 12100.00, 2016.67, 'APPROVED', '', '2026-03-07 14:09:41', '2026-03-07 17:45:51');
+(16, 7, 10000.00, 6, 'Home Repair', 'ASAWA KO AY AFAM', 50000.00, 3.50, 'MONTHLY', 'FLAT', 2100.00, 12100.00, 2016.67, 'APPROVED', '', '2026-03-07 14:09:41', '2026-03-07 17:45:51'),
+(17, 6, 37000.00, 6, 'Business Capital', 'drag racing', 10000.00, 3.50, 'MONTHLY', 'FLAT', 7770.00, 44770.00, 7461.67, 'REJECTED', 'Blurry ID, Suspicious Documents', '2026-03-09 15:37:17', '2026-03-09 15:41:18');
 
 -- --------------------------------------------------------
 
@@ -142,7 +143,36 @@ INSERT INTO `loan_documents` (`id`, `loan_application_id`, `doc_type`, `file_pat
 (39, 15, 'PROOF_OF_BILLING', 'uploads/loan_docs/PROOF_OF_BILLING_15_e2ad75118e1584e4.jpg', '2026-02-27 18:33:15'),
 (40, 16, 'GOV_ID', 'uploads/loan_docs/GOV_ID_16_39acfa32aa474c42.jpg', '2026-03-07 14:09:41'),
 (41, 16, 'PROOF_OF_INCOME', 'uploads/loan_docs/PROOF_OF_INCOME_16_a88894e77acd824b.png', '2026-03-07 14:09:41'),
-(42, 16, 'PROOF_OF_BILLING', 'uploads/loan_docs/PROOF_OF_BILLING_16_c064849ff25a2702.jpg', '2026-03-07 14:09:41');
+(42, 16, 'PROOF_OF_BILLING', 'uploads/loan_docs/PROOF_OF_BILLING_16_c064849ff25a2702.jpg', '2026-03-07 14:09:41'),
+(43, 17, 'GOV_ID', 'uploads/loan_docs/GOV_ID_17_2ad3de4b237eeb76.jpg', '2026-03-09 15:37:17'),
+(44, 17, 'PROOF_OF_INCOME', 'uploads/loan_docs/PROOF_OF_INCOME_17_853174af0513fa83.jpg', '2026-03-09 15:37:17'),
+(45, 17, 'PROOF_OF_BILLING', 'uploads/loan_docs/PROOF_OF_BILLING_17_40a96597d07235fd.jpg', '2026-03-09 15:37:17');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `notifications`
+--
+
+CREATE TABLE `notifications` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `message` text NOT NULL,
+  `type` enum('info','success','warning','danger') DEFAULT 'info',
+  `icon` varchar(50) DEFAULT 'bi-bell-fill',
+  `link` varchar(255) DEFAULT '#',
+  `is_read` tinyint(1) DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `notifications`
+--
+
+INSERT INTO `notifications` (`id`, `user_id`, `title`, `message`, `type`, `icon`, `link`, `is_read`, `created_at`) VALUES
+(1, 6, 'Application Verified', 'Good news! Your application <strong>#LA-17</strong> has been verified by our support team and forwarded to the Loan Officer for final review.', 'info', 'bi-check2-circle', 'myloans.php', 1, '2026-03-09 15:37:51'),
+(2, 6, 'Loan Application Declined', 'We regret to inform you that your application <strong>#LA-17</strong> was declined after review. Reason: Blurry ID, Suspicious Documents', 'danger', 'bi-x-circle-fill', 'myloans.php', 1, '2026-03-09 15:41:18');
 
 -- --------------------------------------------------------
 
@@ -227,7 +257,7 @@ INSERT INTO `users` (`id`, `fullname`, `profile_pic`, `phone`, `email`, `passwor
 (3, 'try3', NULL, '0976543212', 'try3@gmail.com', '$2y$10$cSDsybcnOFSw5Jntw3iUCuwCwGbdcU2tLrCtqqT7qwUOTwtr9QQaG', '2026-02-20 05:26:06'),
 (4, 'Francis Leo Marcos', NULL, '0915 738 1992', 'breadpan@gmail.com', '$2y$10$hzj4NUFDsrBS7oXwSIreB.ng5VCJ72/HRASc9UNzebJwgg/aKByyG', '2026-02-24 17:46:03'),
 (5, 'juan miguel', NULL, '09918713153', 'jm1@gmail.com', '$2y$10$CqnvDwZiK0E6V12e12cgKu2r6AlpuVnPS6HJWw8lsmngHAGtGhNES', '2026-02-26 03:15:37'),
-(6, 'LebWrong James', NULL, '0912 654 9865', 'libron@gmail.com', '$2y$10$RzIQRAVkbuIS0oYcGWImgeNdRg/eDn/iyFjBfV1z0.fG5w1d9ZaDG', '2026-02-27 17:56:40'),
+(6, 'LebWrong James', 'user_6_1773070078.jpg', '0912 654 9865', 'libron@gmail.com', '$2y$10$RzIQRAVkbuIS0oYcGWImgeNdRg/eDn/iyFjBfV1z0.fG5w1d9ZaDG', '2026-02-27 17:56:40'),
 (7, 'MARC LLOYD DE LEON', NULL, '09812345667', 'try4@gmail.com', '$2y$10$AYgd9ovitJo/yUr5/KJ4euxPFUAZN.Ftqa04vmofFuQ2O9fjr.47.', '2026-03-07 14:07:53'),
 (8, 'Anonymous', NULL, '09254385712', 'anony@gmail.com', '$2y$10$uznGuBhy00/ed/RH/CwQ1ekxxQRxbNqUbXZXsmqoXVdT2tEw7s/ai', '2026-03-07 18:29:58');
 
@@ -267,6 +297,13 @@ ALTER TABLE `loan_documents`
   ADD KEY `idx_ld_app_id` (`loan_application_id`);
 
 --
+-- Indexes for table `notifications`
+--
+ALTER TABLE `notifications`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_notif_user` (`user_id`);
+
+--
 -- Indexes for table `transactions`
 --
 ALTER TABLE `transactions`
@@ -296,7 +333,7 @@ ALTER TABLE `loans`
 -- AUTO_INCREMENT for table `loan_applications`
 --
 ALTER TABLE `loan_applications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
 
 --
 -- AUTO_INCREMENT for table `loan_disbursement`
@@ -308,7 +345,13 @@ ALTER TABLE `loan_disbursement`
 -- AUTO_INCREMENT for table `loan_documents`
 --
 ALTER TABLE `loan_documents`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=43;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=46;
+
+--
+-- AUTO_INCREMENT for table `notifications`
+--
+ALTER TABLE `notifications`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `transactions`
@@ -353,6 +396,12 @@ ALTER TABLE `loan_disbursement`
 ALTER TABLE `loan_documents`
   ADD CONSTRAINT `fk_doc_application` FOREIGN KEY (`loan_application_id`) REFERENCES `loan_applications` (`id`),
   ADD CONSTRAINT `fk_ld_app` FOREIGN KEY (`loan_application_id`) REFERENCES `loan_applications` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `notifications`
+--
+ALTER TABLE `notifications`
+  ADD CONSTRAINT `fk_notif_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `transactions`
