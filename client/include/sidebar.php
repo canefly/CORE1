@@ -5,7 +5,8 @@ $currentPage = basename($_SERVER['PHP_SELF']);
 $sidebar_name = "Client";
 $sidebar_initial = "C";
 $profile_pic = null;
-$notifications = [];
+$unread_count = 0;
+$dropdown_notifs = [];
 
 if (isset($_SESSION['user_id']) && isset($conn)) {
     $sid = (int)$_SESSION['user_id'];
@@ -22,31 +23,22 @@ if (isset($_SESSION['user_id']) && isset($conn)) {
     }
     $s_query->close();
 
-    // 2. Kunin ang Notifications (OLA Style Alerts)
-    
-    // Alert A: Active Loan Due Date
-    $loan_q = $conn->prepare("SELECT monthly_due, next_payment FROM loans WHERE user_id = ? AND status = 'ACTIVE' LIMIT 1");
-    $loan_q->bind_param("i", $sid);
-    $loan_q->execute();
-    $loan_res = $loan_q->get_result();
-    if ($loan_row = $loan_res->fetch_assoc()) {
-        $notifications[] = "<strong>Due Soon:</strong> Pay ₱" . number_format($loan_row['monthly_due'], 2) . " on " . date('M d', strtotime($loan_row['next_payment']));
-    }
-    $loan_q->close();
+    // 2. Kunin ang Unread Count
+    $count_q = $conn->prepare("SELECT COUNT(*) as unread FROM notifications WHERE user_id = ? AND is_read = 0");
+    $count_q->bind_param("i", $sid);
+    $count_q->execute();
+    $unread_count = $count_q->get_result()->fetch_assoc()['unread'];
+    $count_q->close();
 
-    // Alert B: Loan Application Status
-    $app_q = $conn->prepare("SELECT id, status FROM loan_applications WHERE user_id = ? ORDER BY updated_at DESC LIMIT 1");
-    $app_q->bind_param("i", $sid);
-    $app_q->execute();
-    $app_res = $app_q->get_result();
-    if ($app_row = $app_res->fetch_assoc()) {
-        if ($app_row['status'] == 'APPROVED') {
-            $notifications[] = "Your application #LA-{$app_row['id']} is Approved!";
-        } elseif ($app_row['status'] == 'REJECTED') {
-            $notifications[] = "Application #LA-{$app_row['id']} was returned. Please check.";
-        }
+    // 3. Kunin ang Top 5 Latest Notifications para sa Dropdown
+    $notif_q = $conn->prepare("SELECT title, message, created_at, is_read FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 5");
+    $notif_q->bind_param("i", $sid);
+    $notif_q->execute();
+    $notif_res = $notif_q->get_result();
+    while ($row = $notif_res->fetch_assoc()) {
+        $dropdown_notifs[] = $row;
     }
-    $app_q->close();
+    $notif_q->close();
 }
 ?>
 
@@ -60,22 +52,25 @@ if (isset($_SESSION['user_id']) && isset($conn)) {
     .brand h2 { color: #fff; font-size: 20px; font-weight: 700; margin: 0; }
     .user-profile { display: flex; align-items: center; gap: 12px; padding: 12px; background-color: #111827; border-radius: 12px; margin-bottom: 30px; border: 1px solid #374151; position: relative; }
     
-    /* Na-update para sa image fitting */
     .avatar { width: 35px; height: 35px; background-color: #374151; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; border: 2px solid #10b981; flex-shrink: 0; overflow: hidden; }
     .avatar img { width: 100%; height: 100%; object-fit: cover; }
     
     .user-info { flex-grow: 1; overflow: hidden; }
     .user-info h4 { color: #fff; font-size: 13px; font-weight: 600; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .verified-badge { color: #10b981; font-size: 10px; text-transform: uppercase; font-weight: 700; display: flex; align-items: center; gap: 3px; }
+    
     .notif-btn { background: transparent; border: none; color: #9ca3af; cursor: pointer; position: relative; padding: 5px; transition: 0.2s; }
     .notif-btn:hover { color: #fff; }
     .notif-btn i { font-size: 18px; }
-    .red-dot { position: absolute; top: 2px; right: 2px; width: 8px; height: 8px; background: #ef4444; border-radius: 50%; border: 1px solid #111827; }
+    .red-dot { position: absolute; top: -2px; right: -2px; background: #ef4444; color: white; border-radius: 50%; font-size: 9px; font-weight: bold; padding: 2px 5px; border: 2px solid #111827; }
+    
     .notif-dropdown { display: none; position: absolute; top: 60px; right: 0; left: 0; background: #1f2937; border: 1px solid #374151; border-radius: 8px; box-shadow: 0 10px 15px rgba(0,0,0,0.5); z-index: 2000; padding: 10px; }
     .notif-dropdown.show { display: block; animation: fadeIn 0.2s; }
     .dropdown-header { font-size: 11px; color: #9ca3af; text-transform: uppercase; margin-bottom: 8px; font-weight: 700; }
-    .dropdown-item { font-size: 12px; color: #cbd5e1; padding: 8px; border-bottom: 1px solid #374151; }
+    .dropdown-item { font-size: 12px; color: #cbd5e1; padding: 10px 8px; border-bottom: 1px solid #374151; line-height: 1.4; }
+    .dropdown-item.unread { background: rgba(255,255,255,0.05); border-left: 2px solid #10b981; }
     .btn-see-all { display: block; width: 100%; text-align: center; background: #10b981; color: #064e3b; text-decoration: none; font-size: 11px; font-weight: 700; padding: 8px; border-radius: 4px; margin-top: 8px; }
+    
     .nav-links { list-style: none; display: flex; flex-direction: column; gap: 8px; padding: 0; margin: 0; flex-grow: 1; }
     .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 8px; color: #9ca3af; text-decoration: none; font-size: 14px; font-weight: 500; transition: all 0.2s ease; }
     .nav-item:hover { background-color: rgba(255, 255, 255, 0.05); color: #fff; }
@@ -84,6 +79,7 @@ if (isset($_SESSION['user_id']) && isset($conn)) {
     .logout-btn { border-top: 1px solid #374151; padding-top: 20px; margin-top: auto; }
     .logout-link { color: #ef4444; }
     .logout-link:hover { background-color: rgba(239, 68, 68, 0.1); color: #fca5a5; }
+    
     @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
     .mobile-menu-btn { display: none; position: fixed; top: 25px; left: 20px; z-index: 3000; background: transparent; color: #10b981; border: none; padding: 5px; font-size: 28px; cursor: pointer; box-shadow: none; transition: transform 0.3s ease-in-out, color 0.3s; }
     .mobile-menu-btn.active { transform: translateX(180px); background: transparent; color: #ef4444; }
@@ -115,20 +111,23 @@ if (isset($_SESSION['user_id']) && isset($conn)) {
         
         <button class="notif-btn" onclick="toggleDropdown()">
             <i class="bi bi-bell-fill"></i>
-            <?php if(count($notifications) > 0): ?>
-                <span class="red-dot"></span>
+            <?php if($unread_count > 0): ?>
+                <span class="red-dot"><?= $unread_count ?></span>
             <?php endif; ?>
         </button>
         <div class="notif-dropdown" id="notifDropdown">
             <div class="dropdown-header">Recent Alerts</div>
-            <?php if(count($notifications) > 0): ?>
-                <?php foreach($notifications as $notif): ?>
-                    <div class="dropdown-item"><?= $notif ?></div>
+            <?php if(count($dropdown_notifs) > 0): ?>
+                <?php foreach($dropdown_notifs as $dn): ?>
+                    <div class="dropdown-item <?= ($dn['is_read'] == 0) ? 'unread' : '' ?>">
+                        <strong><?= htmlspecialchars($dn['title']) ?></strong><br>
+                        <span style="font-size: 10px; color: #6b7280;"><?= date('M d, h:i A', strtotime($dn['created_at'])) ?></span>
+                    </div>
                 <?php endforeach; ?>
             <?php else: ?>
                 <div class="dropdown-item" style="text-align:center; color:#6b7280;">No new alerts.</div>
             <?php endif; ?>
-            <a href="#" class="btn-see-all">See All</a>
+            <a href="notifications.php" class="btn-see-all">See All Notifications</a>
         </div>
     </div>
 
