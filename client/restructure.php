@@ -11,76 +11,181 @@ if (!isset($_SESSION['user_id'])) {
 $user_id = (int)$_SESSION['user_id'];
 $message = "";
 
+/**
+ * Build valid term options based on old term and restructure type.
+ */
+function getValidTermOptions(int $oldTerm, string $type): array
+{
+    $options = [];
+
+    switch ($type) {
+        case 'Extension':
+            $candidates = [$oldTerm + 3, $oldTerm + 6, $oldTerm + 9, $oldTerm + 12];
+            foreach ($candidates as $term) {
+                if ($term > $oldTerm && $term <= 60) {
+                    $options[] = $term;
+                }
+            }
+            break;
+
+        case 'Holiday':
+            // Payment holiday usually means the loan continues later,
+            // so term is extended a bit.
+            $candidates = [$oldTerm + 1, $oldTerm + 2, $oldTerm + 3, $oldTerm + 6];
+            foreach ($candidates as $term) {
+                if ($term > $oldTerm && $term <= 60) {
+                    $options[] = $term;
+                }
+            }
+            break;
+
+        case 'Shorten':
+            $candidates = [$oldTerm - 3, $oldTerm - 6, $oldTerm - 9, $oldTerm - 12];
+            foreach ($candidates as $term) {
+                if ($term >= 1 && $term < $oldTerm) {
+                    $options[] = $term;
+                }
+            }
+            break;
+    }
+
+    return array_values(array_unique($options));
+}
+
+/**
+ * Estimate monthly payment using simple flat style estimate.
+ * Since your existing page preview is already estimation-based,
+ * this keeps the behavior consistent.
+ */
+function estimateMonthly(float $principal, float $ratePercent, int $termMonths): float
+{
+    if ($termMonths <= 0) return 0;
+    $rateDecimal = $ratePercent / 100;
+    $totalInterest = $principal * $rateDecimal * $termMonths;
+    return ($principal + $totalInterest) / $termMonths;
+}
+
 // --- 1. HANDLE FORM SUBMISSION ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $target_loan_id = (int)$_POST['loan_id'];
-    $restructure_type = $_POST['restructure_type'] ?? '';
-    $new_term = (int)$_POST['new_term'];
-    $reason = trim($_POST['reason'] ?? '');
-    
-    // Fetch the target loan to get the outstanding balance
-    $loanQuery = $conn->prepare("SELECT outstanding, interest_rate FROM loans WHERE id = ? AND user_id = ? AND status = 'ACTIVE'");
-    $loanQuery->bind_param("ii", $target_loan_id, $user_id);
-    $loanQuery->execute();
-    $loanResult = $loanQuery->get_result();
-    $targetLoan = $loanResult->fetch_assoc();
-    $loanQuery->close();
+    $target_loan_id    = (int)($_POST['loan_id'] ?? 0);
+    $restructure_type  = trim($_POST['restructure_type'] ?? '');
+    $new_term          = (int)($_POST['new_term'] ?? 0);
+    $reason            = trim($_POST['reason'] ?? '');
 
-    if (!$targetLoan) {
-        $message = "<div style='background: #ef4444; color: white; padding: 10px; border-radius: 8px; margin-bottom: 20px;'>Error: Active loan not found.</div>";
-    } elseif (empty($reason) || empty($_FILES['proof_doc']['name'])) {
-        $message = "<div style='background: #ef4444; color: white; padding: 10px; border-radius: 8px; margin-bottom: 20px;'>Please provide a reason and upload your proof document.</div>";
+    $allowedTypes = ['Extension', 'Holiday', 'Shorten'];
+
+    if (!in_array($restructure_type, $allowedTypes, true)) {
+        $message = "<div style='background:#ef4444;color:white;padding:10px;border-radius:8px;margin-bottom:20px;'>Invalid restructure type selected.</div>";
     } else {
-        $outstanding = $targetLoan['outstanding'];
-        $rate = $targetLoan['interest_rate'];
-        
-        // We tag the loan purpose so the LSA Admin picks it up as a Restructure
-        $loan_purpose = "Restructure ($restructure_type) - $reason";
-        
-        $conn->begin_transaction();
-        try {
-            // Insert into loan_applications
-            $sql = "INSERT INTO loan_applications 
-                    (user_id, principal_amount, term_months, loan_purpose, source_of_income, estimated_monthly_income, interest_rate, interest_type, interest_method, status) 
-                    VALUES (?, ?, ?, ?, 'Restructure Request', 0, ?, 'MONTHLY', 'FLAT', 'PENDING')";
-            
-            $stmt = $conn->prepare($sql);
-            $stmt->bind_param("idiss", $user_id, $outstanding, $new_term, $loan_purpose, $rate);
-            $stmt->execute();
-            $application_id = $conn->insert_id;
-            $stmt->close();
+        // Fetch the target loan to get the outstanding balance
+        $loanQuery = $conn->prepare("
+            SELECT id, loan_amount, outstanding, interest_rate, term_months, monthly_due, status
+            FROM loans
+            WHERE id = ? AND user_id = ? AND status = 'ACTIVE'
+            LIMIT 1
+        ");
+        $loanQuery->bind_param("ii", $target_loan_id, $user_id);
+        $loanQuery->execute();
+        $loanResult = $loanQuery->get_result();
+        $targetLoan = $loanResult->fetch_assoc();
+        $loanQuery->close();
 
-            // Handle the File Upload
-            $uploadDir = __DIR__ . "/uploads/loan_docs/";
-            if (!is_dir($uploadDir)) mkdir($uploadDir, 0775, true);
+        if (!$targetLoan) {
+            $message = "<div style='background:#ef4444;color:white;padding:10px;border-radius:8px;margin-bottom:20px;'>Error: Active loan not found.</div>";
+        } elseif (empty($reason)) {
+            $message = "<div style='background:#ef4444;color:white;padding:10px;border-radius:8px;margin-bottom:20px;'>Please provide a reason for your restructure request.</div>";
+        } elseif (empty($_FILES['proof_doc']['name'])) {
+            $message = "<div style='background:#ef4444;color:white;padding:10px;border-radius:8px;margin-bottom:20px;'>Please upload a proof document.</div>";
+        } else {
+            $oldTerm      = (int)$targetLoan['term_months'];
+            $outstanding  = (float)$targetLoan['outstanding'];
+            $rate         = (float)$targetLoan['interest_rate'];
+            $oldMonthly   = (float)$targetLoan['monthly_due'];
 
-            $f = $_FILES['proof_doc'];
-            $ext = strtolower(pathinfo($f['name'], PATHINFO_EXTENSION));
-            $safeName = "PROOF_OF_INCOME_" . $application_id . "_" . bin2hex(random_bytes(8)) . "." . $ext;
-            $target = $uploadDir . $safeName;
+            $validTerms = getValidTermOptions($oldTerm, $restructure_type);
 
-            if (move_uploaded_file($f['tmp_name'], $target)) {
-                $relativePath = "uploads/loan_docs/" . $safeName;
-                // Note: using PROOF_OF_INCOME because the DB ENUM restricts doc_types
-                $docStmt = $conn->prepare("INSERT INTO loan_documents (loan_application_id, doc_type, file_path) VALUES (?, 'PROOF_OF_INCOME', ?)");
-                $docStmt->bind_param("is", $application_id, $relativePath);
-                $docStmt->execute();
-                $docStmt->close();
+            if ($new_term <= 0 || !in_array($new_term, $validTerms, true)) {
+                $message = "<div style='background:#ef4444;color:white;padding:10px;border-radius:8px;margin-bottom:20px;'>Invalid proposed term selected for the chosen restructure type.</div>";
+            } else {
+                // Estimate new monthly for record text
+                $estimatedNewMonthly = estimateMonthly($outstanding, $rate, $new_term);
+
+                // Make the purpose more descriptive for reviewer
+                $loan_purpose = "RESTRUCTURE REQUEST | Type: {$restructure_type} | Loan ID: {$target_loan_id} | Old Term: {$oldTerm} | New Term: {$new_term} | Old Monthly: {$oldMonthly} | Est New Monthly: {$estimatedNewMonthly} | Reason: {$reason}";
+
+                $conn->begin_transaction();
+
+                try {
+                    // Insert into loan_applications
+                    $sql = "INSERT INTO loan_applications 
+                            (user_id, principal_amount, term_months, loan_purpose, source_of_income, estimated_monthly_income, interest_rate, interest_type, interest_method, status) 
+                            VALUES (?, ?, ?, ?, 'Restructure Request', 0, ?, 'MONTHLY', 'FLAT', 'PENDING')";
+
+                    $stmt = $conn->prepare($sql);
+                    $stmt->bind_param("idisd", $user_id, $outstanding, $new_term, $loan_purpose, $rate);
+                    $stmt->execute();
+                    $application_id = $conn->insert_id;
+                    $stmt->close();
+
+                    // Handle file upload
+                    $uploadDir = __DIR__ . "/uploads/loan_docs/";
+                    if (!is_dir($uploadDir)) {
+                        mkdir($uploadDir, 0775, true);
+                    }
+
+                    $f = $_FILES['proof_doc'];
+                    $ext = strtolower(pathinfo($f['name'], PATHINFO_EXTENSION));
+                    $allowedExt = ['jpg', 'jpeg', 'png', 'pdf'];
+
+                    if (!in_array($ext, $allowedExt, true)) {
+                        throw new Exception("Invalid file type. Only JPG, JPEG, PNG, and PDF are allowed.");
+                    }
+
+                    if (!isset($f['tmp_name']) || !is_uploaded_file($f['tmp_name'])) {
+                        throw new Exception("Uploaded file is invalid.");
+                    }
+
+                    $safeName = "RESTRUCTURE_PROOF_" . $application_id . "_" . bin2hex(random_bytes(8)) . "." . $ext;
+                    $target = $uploadDir . $safeName;
+
+                    if (!move_uploaded_file($f['tmp_name'], $target)) {
+                        throw new Exception("Failed to upload proof document.");
+                    }
+
+                    $relativePath = "uploads/loan_docs/" . $safeName;
+
+                    // Using existing enum-compatible document type
+                    $docStmt = $conn->prepare("
+                        INSERT INTO loan_documents (loan_application_id, doc_type, file_path)
+                        VALUES (?, 'PROOF_OF_INCOME', ?)
+                    ");
+                    $docStmt->bind_param("is", $application_id, $relativePath);
+                    $docStmt->execute();
+                    $docStmt->close();
+
+                    $conn->commit();
+
+                    $message = "<div style='background:#10b981;color:white;padding:10px;border-radius:8px;margin-bottom:20px;'>
+                        <i class='bi bi-check-circle'></i> Restructure request submitted successfully! Waiting for review.
+                    </div>";
+                } catch (Exception $e) {
+                    $conn->rollback();
+                    $message = "<div style='background:#ef4444;color:white;padding:10px;border-radius:8px;margin-bottom:20px;'>
+                        Error submitting request: " . htmlspecialchars($e->getMessage()) . "
+                    </div>";
+                }
             }
-
-            $conn->commit();
-            $message = "<div style='background: #10b981; color: white; padding: 10px; border-radius: 8px; margin-bottom: 20px;'><i class='bi bi-check-circle'></i> Restructure request submitted successfully! Waiting for LSA review.</div>";
-
-        } catch (Exception $e) {
-            $conn->rollback();
-            $message = "<div style='background: #ef4444; color: white; padding: 10px; border-radius: 8px; margin-bottom: 20px;'>Error submitting request: " . $e->getMessage() . "</div>";
         }
     }
 }
 
 // --- 2. FETCH ACTIVE LOANS FOR DROPDOWN ---
 $active_loans = [];
-$stmt = $conn->prepare("SELECT id, loan_amount, outstanding, term_months, monthly_due FROM loans WHERE user_id = ? AND status = 'ACTIVE'");
+$stmt = $conn->prepare("
+    SELECT id, loan_amount, outstanding, term_months, monthly_due, interest_rate
+    FROM loans
+    WHERE user_id = ? AND status = 'ACTIVE'
+");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $res = $stmt->get_result();
@@ -95,168 +200,270 @@ $stmt->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Request Restructure | MicroFinance</title>
-    
+
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    
     <link rel="stylesheet" href="assets/css/restructure.css">
 </head>
 <body>
 
-    <?php include 'include/sidebar.php'; ?>
-    <?php include 'include/theme_toggle.php'; ?>
+<?php include 'include/sidebar.php'; ?>
+<?php include 'include/theme_toggle.php'; ?>
 
-    <div class="main-content">
-        
-        <div class="page-header">
-            <h1>Loan Restructuring</h1>
-            <p>Apply for changes to your loan terms if you are facing financial difficulties.</p>
+<div class="main-content">
+
+    <div class="page-header">
+        <h1>Loan Restructuring</h1>
+        <p>Apply for changes to your loan terms if you are facing financial difficulties.</p>
+    </div>
+
+    <?php echo $message; ?>
+
+    <div class="notice-card">
+        <div class="notice-icon"><i class="bi bi-info-circle"></i></div>
+        <div class="notice-content">
+            <h4>Before you proceed</h4>
+            <p>Restructuring is subject to approval. You must provide a valid reason and supporting proof. Final terms are still subject to review.</p>
+        </div>
+    </div>
+
+    <div class="form-container">
+
+        <div class="request-card">
+            <div class="section-title">Application Details</div>
+
+            <?php if (empty($active_loans)): ?>
+                <p style="color:#94a3b8;padding:20px;text-align:center;">You don't have any active loans to restructure right now.</p>
+            <?php else: ?>
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label class="form-label">Select Active Loan</label>
+                        <select class="form-select" name="loan_id" id="loanSelect" onchange="handleRestructureChange()" required>
+                            <?php foreach ($active_loans as $loan): ?>
+                                <option
+                                    value="<?php echo (int)$loan['id']; ?>"
+                                    data-outstanding="<?php echo htmlspecialchars($loan['outstanding']); ?>"
+                                    data-monthly="<?php echo htmlspecialchars($loan['monthly_due']); ?>"
+                                    data-term="<?php echo htmlspecialchars($loan['term_months']); ?>"
+                                    data-rate="<?php echo htmlspecialchars($loan['interest_rate']); ?>"
+                                >
+                                    Loan #LN-<?php echo str_pad($loan['id'], 4, "0", STR_PAD_LEFT); ?>
+                                    (Balance: ₱ <?php echo number_format((float)$loan['outstanding'], 2); ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Type of Restructure</label>
+                        <select class="form-select" name="restructure_type" id="restructureType" onchange="handleRestructureChange()" required>
+                            <option value="Extension">Term Extension (Lower Monthly Payment)</option>
+                            <option value="Holiday">Payment Holiday (Pause for 1 Month)</option>
+                            <option value="Shorten">Shorten Term (Higher Monthly Payment)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Proposed New Term (Months)</label>
+                        <select name="new_term" id="newTerm" class="form-select" onchange="updatePreview()" required>
+                        </select>
+                        <small style="display:block;margin-top:8px;color:#64748b;">
+                            Options are automatically suggested based on the selected restructure type.
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Reason for Request</label>
+                        <textarea name="reason" class="form-textarea" placeholder="Please explain why you need to restructure..." required></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Proof of Hardship (Required)</label>
+                        <div class="upload-area" onclick="document.getElementById('proof_doc').click()" style="cursor:pointer;">
+                            <i class="bi bi-cloud-arrow-up" style="font-size:24px;color:#6b7280;"></i>
+                            <span class="upload-text" id="file-label">Upload Medical Cert, Termination Letter, etc.</span>
+                            <input
+                                type="file"
+                                name="proof_doc"
+                                id="proof_doc"
+                                accept=".jpg,.jpeg,.png,.pdf,image/*,application/pdf"
+                                style="display:none;"
+                                required
+                                onchange="document.getElementById('file-label').innerText = this.files[0] ? this.files[0].name : 'Upload Medical Cert, Termination Letter, etc.'"
+                            >
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-submit" style="margin-top:20px;width:100%;">Submit Request</button>
+                </form>
+            <?php endif; ?>
         </div>
 
-        <?php echo $message; ?>
+        <div class="preview-card" <?php if (empty($active_loans)) echo 'style="display:none;"'; ?>>
+            <div class="preview-header">Projected Changes</div>
 
-        <div class="notice-card">
-            <div class="notice-icon"><i class="bi bi-info-circle"></i></div>
-            <div class="notice-content">
-                <h4>Before you proceed</h4>
-                <p>Restructuring is subject to approval. You must provide a valid reason (e.g., medical emergency, job loss) and proof. A restructuring fee may apply.</p>
-            </div>
-        </div>
-
-        <div class="form-container">
-            
-            <div class="request-card">
-                <div class="section-title">Application Details</div>
-                
-                <?php if (empty($active_loans)): ?>
-                    <p style="color: #94a3b8; padding: 20px; text-align: center;">You don't have any active loans to restructure right now.</p>
-                <?php else: ?>
-                    <form method="POST" enctype="multipart/form-data">
-                        <div class="form-group">
-                            <label class="form-label">Select Active Loan</label>
-                            <select class="form-select" name="loan_id" id="loanSelect" onchange="updatePreview()">
-                                <?php foreach ($active_loans as $loan): ?>
-                                    <option value="<?php echo $loan['id']; ?>" 
-                                            data-outstanding="<?php echo $loan['outstanding']; ?>"
-                                            data-monthly="<?php echo $loan['monthly_due']; ?>"
-                                            data-term="<?php echo $loan['term_months']; ?>">
-                                        Loan #LN-<?php echo str_pad($loan['id'], 4, "0", STR_PAD_LEFT); ?> (Balance: ₱ <?php echo number_format($loan['outstanding'], 2); ?>)
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">Type of Restructure</label>
-                            <select class="form-select" name="restructure_type" id="restructureType" onchange="updatePreview()">
-                                <option value="Extension">Term Extension (Lower Monthly Payment)</option>
-                                <option value="Holiday">Payment Holiday (Pause for 1 Month)</option>
-                                <option value="Shorten">Shorten Term (Higher Monthly Payment)</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">Proposed New Term (Months)</label>
-                            <input type="number" name="new_term" id="newTerm" class="form-select" value="6" min="1" max="24" oninput="updatePreview()" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">Reason for Request</label>
-                            <textarea name="reason" class="form-textarea" placeholder="Please explain why you need to restructure..." required></textarea>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">Proof of Hardship (Required)</label>
-                            <div class="upload-area" onclick="document.getElementById('proof_doc').click()" style="cursor: pointer;">
-                                <i class="bi bi-cloud-arrow-up" style="font-size:24px; color:#6b7280;"></i>
-                                <span class="upload-text" id="file-label">Upload Medical Cert, Termination Letter, etc.</span>
-                                <input type="file" name="proof_doc" id="proof_doc" accept="image/*,application/pdf" style="display:none;" required onchange="document.getElementById('file-label').innerText = this.files[0].name">
-                            </div>
-                        </div>
-                        
-                        <button type="submit" class="btn-submit" style="margin-top: 20px; width: 100%;">Submit Request</button>
-                    </form>
-                <?php endif; ?>
-            </div>
-
-            <div class="preview-card" <?php if (empty($active_loans)) echo 'style="display:none;"'; ?>>
-                <div class="preview-header">Projected Changes</div>
-
-                <div class="compare-row">
-                    <span class="compare-label">Loan Term</span>
-                    <div class="compare-vals">
-                        <span class="val-old" id="old-term">X Months</span>
-                        <span class="val-new" id="preview-term">Y Months</span>
-                    </div>
-                </div>
-
-                <div class="compare-row">
-                    <span class="compare-label">Monthly Payment</span>
-                    <div class="compare-vals">
-                        <span class="val-old" id="old-monthly">₱ 0.00</span>
-                        <span class="val-new" id="preview-monthly">₱ 0.00</span>
-                    </div>
-                </div>
-
-                <div class="compare-row">
-                    <span class="compare-label">Interest Rate</span>
-                    <div class="compare-vals">
-                        <span class="val-old">3.5%</span>
-                        <span class="val-new">3.5%</span> 
-                    </div>
-                </div>
-
-                <div class="impact-box">
-                    <div class="impact-text">
-                        <i class="bi bi-exclamation-triangle-fill"></i>
-                        <span>
-                            Note: These projections are estimates. Final terms will be reviewed and finalized by the Loan Officer upon approval.
-                        </span>
-                    </div>
+            <div class="compare-row">
+                <span class="compare-label">Loan Term</span>
+                <div class="compare-vals">
+                    <span class="val-old" id="old-term">X Months</span>
+                    <span class="val-new" id="preview-term">Y Months</span>
                 </div>
             </div>
 
+            <div class="compare-row">
+                <span class="compare-label">Monthly Payment</span>
+                <div class="compare-vals">
+                    <span class="val-old" id="old-monthly">₱ 0.00</span>
+                    <span class="val-new" id="preview-monthly">₱ 0.00</span>
+                </div>
+            </div>
+
+            <div class="compare-row">
+                <span class="compare-label">Interest Rate</span>
+                <div class="compare-vals">
+                    <span class="val-old" id="old-rate">0%</span>
+                    <span class="val-new" id="preview-rate">0%</span>
+                </div>
+            </div>
+
+            <div class="impact-box">
+                <div class="impact-text">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <span id="impact-note">
+                        Note: These projections are estimates. Final terms will be reviewed and finalized upon approval.
+                    </span>
+                </div>
+            </div>
         </div>
 
     </div>
+</div>
 
-    <script>
-        // Dynamic JavaScript to handle real-time calculations for the Preview Card
-        function updatePreview() {
-            const loanSelect = document.getElementById('loanSelect');
-            if (!loanSelect || loanSelect.options.length === 0) return;
+<script>
+function peso(val) {
+    return "₱ " + Number(val).toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+}
 
-            const selectedOption = loanSelect.options[loanSelect.selectedIndex];
-            const outstanding = parseFloat(selectedOption.getAttribute('data-outstanding'));
-            const oldMonthly = parseFloat(selectedOption.getAttribute('data-monthly'));
-            const oldTerm = parseInt(selectedOption.getAttribute('data-term'));
+function getLoanData() {
+    const loanSelect = document.getElementById('loanSelect');
+    if (!loanSelect || loanSelect.options.length === 0) return null;
 
-            const type = document.getElementById('restructureType').value;
-            const newTerm = parseInt(document.getElementById('newTerm').value) || 1;
-            
-            // Set old values
-            document.getElementById('old-term').innerText = oldTerm + " Months";
-            document.getElementById('old-monthly').innerText = "₱ " + oldMonthly.toLocaleString(undefined, {minimumFractionDigits: 2});
+    const selectedOption = loanSelect.options[loanSelect.selectedIndex];
 
-            // Calculate new values (Estimating 3.5% flat rate on remaining balance)
-            const termDisplay = document.getElementById('preview-term');
-            const monthlyDisplay = document.getElementById('preview-monthly');
+    return {
+        outstanding: parseFloat(selectedOption.getAttribute('data-outstanding')) || 0,
+        oldMonthly: parseFloat(selectedOption.getAttribute('data-monthly')) || 0,
+        oldTerm: parseInt(selectedOption.getAttribute('data-term')) || 0,
+        rate: parseFloat(selectedOption.getAttribute('data-rate')) || 0
+    };
+}
 
-            if (type === 'Holiday') {
-                termDisplay.innerText = "Paused (1 Mo)";
-                monthlyDisplay.innerText = "₱ 0.00 (Next Mo)";
-            } else {
-                termDisplay.innerText = newTerm + " Months";
-                // Basic Flat Rate Calculation: (Outstanding + (Outstanding * 0.035 * newTerm)) / newTerm
-                const newTotalInterest = outstanding * 0.035 * newTerm;
-                const newMonthly = (outstanding + newTotalInterest) / newTerm;
-                monthlyDisplay.innerText = "₱ " + newMonthly.toLocaleString(undefined, {minimumFractionDigits: 2});
-            }
+function buildTermOptions() {
+    const loanData = getLoanData();
+    const type = document.getElementById('restructureType').value;
+    const newTermSelect = document.getElementById('newTerm');
+
+    if (!loanData || !newTermSelect) return;
+
+    const oldTerm = loanData.oldTerm;
+    let options = [];
+
+    if (type === 'Extension') {
+        options = [oldTerm + 3, oldTerm + 6, oldTerm + 9, oldTerm + 12]
+            .filter(term => term > oldTerm && term <= 60);
+    } else if (type === 'Holiday') {
+        options = [oldTerm + 1, oldTerm + 2, oldTerm + 3, oldTerm + 6]
+            .filter(term => term > oldTerm && term <= 60);
+    } else if (type === 'Shorten') {
+        options = [oldTerm - 3, oldTerm - 6, oldTerm - 9, oldTerm - 12]
+            .filter(term => term >= 1 && term < oldTerm);
+    }
+
+    options = [...new Set(options)];
+    newTermSelect.innerHTML = '';
+
+    if (options.length === 0) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = 'No available options';
+        newTermSelect.appendChild(opt);
+        return;
+    }
+
+    options.forEach((term, index) => {
+        const opt = document.createElement('option');
+        opt.value = term;
+
+        if (type === 'Holiday') {
+            const extension = term - oldTerm;
+            opt.textContent = `${term} months (includes +${extension} month extension)`;
+        } else {
+            opt.textContent = `${term} months`;
         }
 
-        // Run once on load to populate the initial preview
-        window.onload = updatePreview;
-    </script>
+        if (index === 0) opt.selected = true;
+        newTermSelect.appendChild(opt);
+    });
+}
+
+function updatePreview() {
+    const loanData = getLoanData();
+    if (!loanData) return;
+
+    const type = document.getElementById('restructureType').value;
+    const newTerm = parseInt(document.getElementById('newTerm').value) || 0;
+
+    const outstanding = loanData.outstanding;
+    const oldMonthly = loanData.oldMonthly;
+    const oldTerm = loanData.oldTerm;
+    const rate = loanData.rate;
+
+    document.getElementById('old-term').innerText = oldTerm + " Months";
+    document.getElementById('old-monthly').innerText = peso(oldMonthly);
+    document.getElementById('old-rate').innerText = rate + "%";
+    document.getElementById('preview-rate').innerText = rate + "%";
+
+    const termDisplay = document.getElementById('preview-term');
+    const monthlyDisplay = document.getElementById('preview-monthly');
+    const impactNote = document.getElementById('impact-note');
+
+    if (!newTerm) {
+        termDisplay.innerText = "-";
+        monthlyDisplay.innerText = "₱ 0.00";
+        impactNote.innerText = "No valid restructuring option is available for this loan.";
+        return;
+    }
+
+    const totalInterest = outstanding * (rate / 100) * newTerm;
+    const estimatedMonthly = (outstanding + totalInterest) / newTerm;
+
+    if (type === 'Extension') {
+        termDisplay.innerText = newTerm + " Months";
+        monthlyDisplay.innerText = peso(estimatedMonthly);
+        impactNote.innerText = "Extension usually lowers the monthly payment, but total paid over time may become higher.";
+    } else if (type === 'Holiday') {
+        termDisplay.innerText = newTerm + " Months";
+        monthlyDisplay.innerText = peso(estimatedMonthly);
+        impactNote.innerText = "Payment holiday gives temporary relief now, but usually extends the loan term.";
+    } else if (type === 'Shorten') {
+        termDisplay.innerText = newTerm + " Months";
+        monthlyDisplay.innerText = peso(estimatedMonthly);
+        impactNote.innerText = "Shortening the term usually increases monthly payment, but finishes the loan faster.";
+    }
+}
+
+function handleRestructureChange() {
+    buildTermOptions();
+    updatePreview();
+}
+
+window.onload = function () {
+    handleRestructureChange();
+};
+</script>
 
 </body>
 </html>
