@@ -14,7 +14,49 @@ $message = "";
 // --- HANDLE FORM SUBMISSIONS ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
-    if (isset($_POST['update_profile'])) {
+    // 1. UPDATE PROFILE PICTURE LOGIC
+    if (isset($_FILES['profile_pic']) && $_FILES['profile_pic']['error'] === UPLOAD_ERR_OK) {
+        $upload_dir = 'uploads/profiles/';
+        
+        // Gagawa ng folder kung wala pa
+        if (!is_dir($upload_dir)) {
+            mkdir($upload_dir, 0777, true); 
+        }
+        
+        $file_tmp = $_FILES['profile_pic']['tmp_name'];
+        $file_name = $_FILES['profile_pic']['name'];
+        $file_size = $_FILES['profile_pic']['size'];
+        
+        $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+        $allowed_ext = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+        
+        if (in_array($file_ext, $allowed_ext)) {
+            if ($file_size < 5000000) { // 5MB limit
+                // Create unique file name para iwas overwrite
+                $new_file_name = 'user_' . $user_id . '_' . time() . '.' . $file_ext;
+                $dest_path = $upload_dir . $new_file_name;
+                
+                if (move_uploaded_file($file_tmp, $dest_path)) {
+                    // Update database
+                    $stmt = $conn->prepare("UPDATE users SET profile_pic = ? WHERE id = ?");
+                    $stmt->bind_param("si", $new_file_name, $user_id);
+                    if ($stmt->execute()) {
+                        $message = "<div style='background: #10b981; color: #064e3b; padding: 12px; border-radius: 8px; margin-bottom: 20px; font-weight: bold;'><i class='bi bi-check-circle'></i> Profile picture updated successfully!</div>";
+                    }
+                    $stmt->close();
+                } else {
+                    $message = "<div class='security-alert'><div class='alert-text'><i class='bi bi-exclamation-triangle'></i> Failed to move uploaded file.</div></div>";
+                }
+            } else {
+                $message = "<div class='security-alert'><div class='alert-text'><i class='bi bi-exclamation-triangle'></i> Image is too large. Max 5MB allowed.</div></div>";
+            }
+        } else {
+            $message = "<div class='security-alert'><div class='alert-text'><i class='bi bi-exclamation-triangle'></i> Invalid file type. Only JPG, PNG, and WEBP are allowed.</div></div>";
+        }
+    }
+
+    // 2. UPDATE PERSONAL INFO
+    elseif (isset($_POST['update_profile'])) {
         $fullname = trim($_POST['fullname']);
         $phone = trim($_POST['phone']);
         
@@ -30,6 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->close();
     } 
     
+    // 3. UPDATE PASSWORD
     elseif (isset($_POST['update_password'])) {
         $new_password = $_POST['new_password'];
         $confirm_password = $_POST['confirm_password'];
@@ -50,13 +93,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // --- FETCH CURRENT USER DATA ---
-$stmt = $conn->prepare("SELECT fullname, email, phone, created_at FROM users WHERE id = ?");
+// Dinagdag ang profile_pic sa query
+$stmt = $conn->prepare("SELECT fullname, email, phone, created_at, profile_pic FROM users WHERE id = ?");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $user = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 
-// Get first letter of name for the Avatar
+// Get first letter of name for the Avatar if no picture
 $initial = strtoupper(substr($user['fullname'], 0, 1));
 ?>
 <!DOCTYPE html>
@@ -86,10 +130,23 @@ $initial = strtoupper(substr($user['fullname'], 0, 1));
         <?php echo $message; ?>
 
         <div class="profile-card">
-            <div class="profile-avatar">
-                <div class="avatar-img"><?php echo $initial; ?></div>
-                <div class="edit-avatar"><i class="bi bi-camera-fill" style="margin-top: 2px;"></i></div>
+            
+            <div class="profile-avatar" onclick="document.getElementById('profilePicInput').click();" style="cursor: pointer; position: relative;">
+                <div class="avatar-img" style="width: 80px; height: 80px; border-radius: 50%; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #064e3b; color: #10b981; font-size: 32px; font-weight: bold;">
+                    <?php if (!empty($user['profile_pic'])): ?>
+                        <img src="uploads/profiles/<?php echo htmlspecialchars($user['profile_pic']); ?>" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">
+                    <?php else: ?>
+                        <?php echo $initial; ?>
+                    <?php endif; ?>
+                </div>
+                <div class="edit-avatar" style="position: absolute; bottom: -5px; right: -5px; background: #10b981; color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid #1f2937;">
+                    <i class="bi bi-camera-fill" style="font-size: 14px;"></i>
+                </div>
             </div>
+
+            <form id="avatarForm" method="POST" enctype="multipart/form-data" style="display: none;">
+                <input type="file" id="profilePicInput" name="profile_pic" accept="image/*" onchange="document.getElementById('avatarForm').submit();">
+            </form>
             
             <div class="profile-info">
                 <h2><?php echo htmlspecialchars($user['fullname']); ?></h2>
