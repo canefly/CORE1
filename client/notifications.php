@@ -1,3 +1,95 @@
+<?php
+session_start();
+require_once __DIR__ . "/include/config.php"; 
+
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit;
+}
+
+$user_id = (int)$_SESSION['user_id'];
+$notifications = [];
+
+// 1. KUNIN ANG MGA DUE DATES (Mula sa active loans)
+$loan_q = $conn->prepare("SELECT id, monthly_due, next_payment FROM loans WHERE user_id = ? AND status = 'ACTIVE'");
+$loan_q->bind_param("i", $user_id);
+$loan_q->execute();
+$loan_res = $loan_q->get_result();
+while ($loan = $loan_res->fetch_assoc()) {
+    $notifications[] = [
+        'type' => 'warning',
+        'icon' => 'bi-alarm-fill',
+        'title' => 'Upcoming Due Date',
+        'sort_date' => $loan['next_payment'] . ' 00:00:00', 
+        'display_time' => date('M d, Y', strtotime($loan['next_payment'])),
+        'message' => "Friendly reminder: Your monthly amortization of <strong>₱ " . number_format($loan['monthly_due'], 2) . "</strong> is due on <strong>" . date('M d, Y', strtotime($loan['next_payment'])) . "</strong>. Please pay on time to avoid penalties.",
+        'action_link' => 'transactions.php',
+        'action_text' => 'Pay Now',
+        'unread' => true
+    ];
+}
+$loan_q->close();
+
+// 2. KUNIN ANG LOAN APPLICATION STATUS (Approved o Returned)
+$app_q = $conn->prepare("SELECT id, status, updated_at, remarks FROM loan_applications WHERE user_id = ? ORDER BY updated_at DESC LIMIT 5");
+$app_q->bind_param("i", $user_id);
+$app_q->execute();
+$app_res = $app_q->get_result();
+while ($app = $app_res->fetch_assoc()) {
+    if ($app['status'] == 'APPROVED') {
+        $notifications[] = [
+            'type' => 'info',
+            'icon' => 'bi-file-earmark-text-fill',
+            'title' => 'Loan Application Approved',
+            'sort_date' => $app['updated_at'],
+            'display_time' => date('M d, Y h:i A', strtotime($app['updated_at'])),
+            'message' => "Congratulations! Your loan application #LA-" . $app['id'] . " has been approved. The funds have been queued for disbursement.",
+            'action_link' => 'myloans.php',
+            'action_text' => 'View Contract',
+            'unread' => false
+        ];
+    } elseif ($app['status'] == 'REJECTED') {
+        $notifications[] = [
+            'type' => 'danger',
+            'icon' => 'bi-exclamation-triangle-fill',
+            'title' => 'Application Returned',
+            'sort_date' => $app['updated_at'],
+            'display_time' => date('M d, Y h:i A', strtotime($app['updated_at'])),
+            'message' => "Your application #LA-" . $app['id'] . " was returned. Reason: " . htmlspecialchars($app['remarks']),
+            'action_link' => 'apply_loan.php',
+            'action_text' => 'Review Application',
+            'unread' => true
+        ];
+    }
+}
+$app_q->close();
+
+// 3. KUNIN ANG SUCCESSFUL PAYMENTS (Mula sa transactions)
+$txn_q = $conn->prepare("SELECT id, amount, status, trans_date FROM transactions WHERE user_id = ? AND status = 'SUCCESS' ORDER BY trans_date DESC LIMIT 5");
+$txn_q->bind_param("i", $user_id);
+$txn_q->execute();
+$txn_res = $txn_q->get_result();
+while ($txn = $txn_res->fetch_assoc()) {
+    $notifications[] = [
+        'type' => 'success',
+        'icon' => 'bi-patch-check-fill',
+        'title' => 'Payment Verified',
+        'sort_date' => $txn['trans_date'],
+        'display_time' => date('M d, Y h:i A', strtotime($txn['trans_date'])),
+        'message' => "Your payment of <strong>₱ " . number_format($txn['amount'], 2) . "</strong> has been successfully verified and posted to your account.",
+        'action_link' => 'transactions.php',
+        'action_text' => 'View Receipt',
+        'unread' => false
+    ];
+}
+$txn_q->close();
+
+// I-sort ang lahat ng notifications mula sa pinakabago pababa
+usort($notifications, function($a, $b) {
+    return strtotime($b['sort_date']) - strtotime($a['sort_date']);
+});
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -29,81 +121,44 @@
 
         <div class="notif-container">
             
-            <div class="notif-item unread">
-                <div class="notif-icon-box type-success">
-                    <i class="bi bi-patch-check-fill"></i>
+            <?php if (empty($notifications)): ?>
+                <div style="text-align: center; color: #9ca3af; padding: 40px; background: #1f2937; border-radius: 12px; border: 1px solid #374151;">
+                    <i class="bi bi-bell-slash" style="font-size: 30px; margin-bottom: 10px; display: block;"></i>
+                    No new notifications at the moment.
                 </div>
-                <div class="notif-content">
-                    <div class="notif-header">
-                        <span class="notif-title">Payment Verified</span>
-                        <span class="notif-time">2 hours ago</span>
+            <?php else: ?>
+                <?php foreach ($notifications as $notif): ?>
+                    <div class="notif-item <?php echo $notif['unread'] ? 'unread' : ''; ?>">
+                        <div class="notif-icon-box type-<?php echo $notif['type']; ?>">
+                            <i class="bi <?php echo $notif['icon']; ?>"></i>
+                        </div>
+                        <div class="notif-content">
+                            <div class="notif-header">
+                                <span class="notif-title"><?php echo $notif['title']; ?></span>
+                                <span class="notif-time"><?php echo $notif['display_time']; ?></span>
+                            </div>
+                            <div class="notif-body">
+                                <?php echo $notif['message']; ?>
+                            </div>
+                            <?php if (!empty($notif['action_link'])): ?>
+                                <a href="<?php echo $notif['action_link']; ?>" class="notif-action">
+                                    <?php echo $notif['action_text']; ?> <i class="bi bi-arrow-right"></i>
+                                </a>
+                            <?php endif; ?>
+                        </div>
                     </div>
-                    <div class="notif-body">
-                        Your payment of <strong>₱ 3,500.00</strong> via GCash has been successfully verified and posted to your account.
-                    </div>
-                    <a href="transactions.php" class="notif-action">View Receipt <i class="bi bi-arrow-right"></i></a>
-                </div>
-            </div>
-
-            <div class="notif-item unread">
-                <div class="notif-icon-box type-warning">
-                    <i class="bi bi-alarm-fill"></i>
-                </div>
-                <div class="notif-content">
-                    <div class="notif-header">
-                        <span class="notif-title">Upcoming Due Date</span>
-                        <span class="notif-time">Yesterday</span>
-                    </div>
-                    <div class="notif-body">
-                        Friendly reminder: Your monthly amortization of <strong>₱ 3,500.00</strong> is due on <strong>Oct 25, 2025</strong>. Please pay on time to avoid penalties.
-                    </div>
-                    <a href="transactions.php" class="notif-action">Pay Now <i class="bi bi-arrow-right"></i></a>
-                </div>
-            </div>
-
-            <div class="notif-item">
-                <div class="notif-icon-box type-info">
-                    <i class="bi bi-file-earmark-text-fill"></i>
-                </div>
-                <div class="notif-content">
-                    <div class="notif-header">
-                        <span class="notif-title">Loan Application Approved</span>
-                        <span class="notif-time">Oct 20, 2025</span>
-                    </div>
-                    <div class="notif-body">
-                        Congratulations! Your loan application #LN-1025 has been approved. The funds have been queued for disbursement.
-                    </div>
-                    <a href="my_loans.php" class="notif-action">View Contract <i class="bi bi-arrow-right"></i></a>
-                </div>
-            </div>
-
-            <div class="notif-item">
-                <div class="notif-icon-box type-danger">
-                    <i class="bi bi-exclamation-triangle-fill"></i>
-                </div>
-                <div class="notif-content">
-                    <div class="notif-header">
-                        <span class="notif-title">Penalty Applied</span>
-                        <span class="notif-time">Sep 26, 2025</span>
-                    </div>
-                    <div class="notif-body">
-                        A late payment penalty of <strong>₱ 250.00</strong> has been added to your account balance due to missed payment deadline.
-                    </div>
-                </div>
-            </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
 
         </div>
-
     </div>
 
     <script>
         function markAllRead() {
-            // Visual logic: Remove 'unread' class from all items
             const items = document.querySelectorAll('.notif-item');
             items.forEach(item => {
                 item.classList.remove('unread');
             });
-            alert('All notifications marked as read.');
         }
     </script>
 

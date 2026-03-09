@@ -128,7 +128,7 @@ if (isset($_SESSION['user_id']) && isset($conn)) {
             <?php else: ?>
                 <div class="dropdown-item" style="text-align:center; color:#6b7280;">No new alerts.</div>
             <?php endif; ?>
-            <a href="#" class="btn-see-all">See All</a>
+            <a href="notifications.php" class="btn-see-all">See All</a>
         </div>
     </div>
 
