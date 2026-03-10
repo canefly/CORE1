@@ -163,7 +163,10 @@ if ($loan) {
   }
 
   $start_date = $loan['start_date'] ?? date("Y-m-d");
-  $total_payable = $monthly_due * $term;
+
+  // OFFICIAL BALANCE FROM DB
+  $outstanding = (float)($loan['outstanding'] ?? 0);
+  if ($outstanding < 0) $outstanding = 0;
 
   $tx = [];
   $tstmt = $conn->prepare("
@@ -182,14 +185,24 @@ if ($loan) {
   $tstmt->close();
 
   $total_paid_verified = 0.0;
+  $total_paid_pending  = 0.0;
+
   foreach ($tx as $t) {
-    if (($t['status'] ?? '') === 'SUCCESS') {
-      $total_paid_verified += (float)$t['amount'];
+    $amt = (float)($t['amount'] ?? 0);
+    $status = strtoupper((string)($t['status'] ?? ''));
+
+    if ($status === 'SUCCESS') {
+      $total_paid_verified += $amt;
+    } elseif ($status === 'PAID_PENDING') {
+      $total_paid_pending += $amt;
     }
   }
 
-  $outstanding = max(0, $total_payable - $total_paid_verified);
+  // For display only
+  $projected_outstanding = max(0, $outstanding - $total_paid_pending);
 
+  // Progress is based only on verified payments
+  $total_payable = $monthly_due * $term;
   $progress = ($total_payable > 0) ? ($total_paid_verified / $total_payable) * 100 : 0;
   $progress = max(0, min(100, $progress));
   $progressText = number_format($progress, 0) . "% Paid";
@@ -202,7 +215,7 @@ if ($loan) {
 
   foreach ($tx as $t) {
     $amt = (float)($t['amount'] ?? 0);
-    $status = $t['status'] ?? '';
+    $status = strtoupper((string)($t['status'] ?? ''));
     $date = $t['trans_date'] ?? null;
 
     $running_all += $amt;
@@ -246,6 +259,9 @@ if ($loan) {
     'contract' => "#LN-" . str_pad((string)$loan_id, 4, "0", STR_PAD_LEFT),
     'principal' => $principal,
     'outstanding' => $outstanding,
+    'pending_verification' => $total_paid_pending,
+    'projected_outstanding' => $projected_outstanding,
+    'total_paid_verified' => $total_paid_verified,
     'monthly_due' => $monthly_due,
     'next_deadline' => $nextDeadline,
     'progress' => $progress,
@@ -333,6 +349,22 @@ if ($loan) {
       font-size:1rem;
       font-weight:700;
     }
+
+    .loan-note{
+      margin-top:16px;
+      padding:14px 16px;
+      border-radius:12px;
+      background:rgba(56,189,248,.08);
+      border:1px solid rgba(56,189,248,.18);
+      color:#cbd5e1;
+      line-height:1.6;
+      font-size:.95rem;
+    }
+
+    .loan-note strong{
+      color:#38bdf8;
+    }
+
     .status-message{
       color:#cbd5e1;
       line-height:1.6;
@@ -465,6 +497,31 @@ if ($loan) {
             <div class="val" style="color:#fbbf24;"><?= fmtDate($view['next_deadline']) ?></div>
           </div>
         </div>
+
+        <div class="stats-grid" style="margin-top:14px;">
+          <div class="stat-item">
+            <h4>Verified Payments</h4>
+            <div class="val" style="color:#10b981;"><?= peso($view['total_paid_verified']) ?></div>
+          </div>
+          <div class="stat-item">
+            <h4>Pending Verification</h4>
+            <div class="val" style="color:#38bdf8;"><?= peso($view['pending_verification']) ?></div>
+          </div>
+          <div class="stat-item">
+            <h4>Projected Balance</h4>
+            <div class="val" style="color:#c084fc;"><?= peso($view['projected_outstanding']) ?></div>
+          </div>
+          <div class="stat-item">
+            <h4>Installments Paid</h4>
+            <div class="val"><?= (int)$view['paidInstallments'] ?> / <?= (int)$view['term'] ?></div>
+          </div>
+        </div>
+
+        <?php if ((float)$view['pending_verification'] > 0): ?>
+          <div class="loan-note">
+            <strong>Notice:</strong> You have payment(s) under verification. These are not yet deducted from your official remaining balance until confirmed by Collections.
+          </div>
+        <?php endif; ?>
 
         <div class="progress-container">
           <div class="progress-labels">
