@@ -10,6 +10,20 @@ if (!isset($_SESSION['user_id'])) {
 $user_id = (int)$_SESSION['user_id'];
 
 // ==============================
+// FETCH SYSTEM SETTINGS (Dynamic Rates)
+// ==============================
+$sysSettings = [];
+$sysStmt = $conn->query("SELECT setting_key, setting_value FROM system_settings");
+if ($sysStmt) {
+    while ($row = $sysStmt->fetch_assoc()) {
+        $sysSettings[$row['setting_key']] = $row['setting_value'];
+    }
+}
+// Fallback sa 3.5 at FLAT kung sakaling walang laman ang table
+$current_interest_rate = (float)($sysSettings['default_interest_rate'] ?? 3.5);
+$current_interest_method = $sysSettings['interest_method'] ?? 'FLAT';
+
+// ==============================
 // BLOCK CHECK: existing application / disbursement / active loan
 // ==============================
 $blockLoanApplication = false;
@@ -116,9 +130,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $source_of_income = trim($_POST['source_of_income'] ?? '');
   $estimated_monthly_income = (float)($_POST['estimated_monthly_income'] ?? 0);
 
-  $interest_rate = 3.5;
+  // GAGAMITIN NATIN DITO ANG DYNAMIC RATE MULA SA DATABASE
+  $interest_rate = $current_interest_rate;
   $interest_type = 'MONTHLY';
-  $interest_method = 'FLAT';
+  $interest_method = $current_interest_method;
 
   $rateDecimal = $interest_rate / 100;
   $total_interest = $principal_amount * $rateDecimal * $term_months;
@@ -300,21 +315,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
       <div style="font-size:12px; color:#64748b; margin-top:20px; line-height:1.5;">
         <i class="bi bi-info-circle"></i>
-        Note: Interest rate is fixed at <strong>3.5% per month</strong>.
+        Note: Interest rate is currently set at <strong><?= htmlspecialchars($current_interest_rate) ?>% per month</strong>.
       </div>
     </div>
 
     <div class="calc-result">
       <span class="monthly-label">Monthly Payment</span>
-      <div class="monthly-val" id="monthly-pay">₱ 1,816.67</div>
+      <div class="monthly-val" id="monthly-pay">₱ 0.00</div>
 
       <div class="breakdown-row">
         <span>Principal</span>
-        <span id="bd-principal">₱ 10,000</span>
+        <span id="bd-principal">₱ 0</span>
       </div>
       <div class="breakdown-row">
         <span>Total Interest</span>
-        <span id="bd-interest" style="color:#fbbf24;">₱ 900</span>
+        <span id="bd-interest" style="color:#fbbf24;">₱ 0</span>
       </div>
 
       <button class="btn-next" type="button" onclick="goToStep(2)">Proceed Application</button>
@@ -325,9 +340,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <input type="hidden" name="principal_amount" id="principal_amount" value="10000">
     <input type="hidden" name="term_months" id="term_months" value="6">
 
-    <input type="hidden" name="interest_rate" value="3.5">
+    <input type="hidden" name="interest_rate" value="<?= htmlspecialchars($current_interest_rate) ?>">
     <input type="hidden" name="interest_type" value="MONTHLY">
-    <input type="hidden" name="interest_method" value="FLAT">
+    <input type="hidden" name="interest_method" value="<?= htmlspecialchars($current_interest_method) ?>">
 
     <div id="step2" class="form-card" style="display:none;">
       <h3 style="color:#fff; margin-bottom:20px;">Purpose & Income</h3>
@@ -463,7 +478,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   function calculate() {
     let amount = parseInt(document.getElementById('manual-amt')?.value || 0) || 0;
     let months = parseInt(document.getElementById('manual-term')?.value || 1) || 1;
-    let rate = 0.035;
+    
+    // DYNAMIC RATE COMPUTATION GUMAGAMIT NG PHP VARIABLE MULA SA DATABASE
+    let rate = <?= $current_interest_rate / 100 ?>; 
 
     let totalInterest = amount * rate * months;
     let total = amount + totalInterest;
@@ -561,7 +578,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     });
 
     checkRules();
-    calculate();
+    calculate(); // Tatawagin agad ang calculate() pagka-load para mag-apply yung dynamic rate
   });
 </script>
 
