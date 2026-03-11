@@ -1,11 +1,27 @@
-
 <?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 $current_page = basename($_SERVER['PHP_SELF']);
-?>
 
+// 1. Kunin ang Session Info ni LO
+$admin_id = $_SESSION['admin_id'] ?? 0;
+$admin_name = $_SESSION['admin_name'] ?? 'Loan Officer';
+$admin_role = $_SESSION['admin_role'] ?? 'Loan Officer';
 
-<?php
-$currentPage = basename($_SERVER['PHP_SELF']);
+// Default picture
+$profile_img = 'default_avatar.png';
+
+// 2. Kunin ang Profile Picture sa lo_users table
+if (isset($pdo) && $admin_id > 0) {
+    $stmt = $pdo->prepare("SELECT profile_pic FROM lo_users WHERE id = ?");
+    $stmt->execute([$admin_id]);
+    $user_data = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if ($user_data && !empty($user_data['profile_pic'])) {
+        $profile_img = $user_data['profile_pic'];
+    }
+}
 ?>
 
 <style>
@@ -20,14 +36,14 @@ $currentPage = basename($_SERVER['PHP_SELF']);
         left: 0;
         display: flex;
         flex-direction: column;
-        padding: 24px; /* Increased padding for better spacing */
+        padding: 24px; 
         z-index: 1000;
     }
 
     /* --- BRAND HEADER --- */
     .brand {
         display: flex;
-        align-items: flex-start; /* Aligns icon with the top of text */
+        align-items: flex-start; 
         gap: 12px;
         padding-bottom: 24px;
         border-bottom: 1px solid #374151;
@@ -37,7 +53,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
     .brand i {
         font-size: 28px;
         color: #10b981;
-        line-height: 1; /* Fixes vertical alignment issues */
+        line-height: 1; 
         margin-top: 2px;
     }
 
@@ -58,7 +74,6 @@ $currentPage = basename($_SERVER['PHP_SELF']);
         color: #9ca3af;
         font-size: 11px;
         margin-top: 4px;
-        /* REMOVED margin-left: 36px (This was causing the misalignment) */
     }
 
     /* --- USER PROFILE CARD --- */
@@ -85,6 +100,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
         font-weight: 700;
         font-size: 14px;
         flex-shrink: 0;
+        object-fit: cover; /* Para hindi ma-stretch ang image */
     }
 
     .user-info {
@@ -111,7 +127,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
         list-style: none;
         display: flex;
         flex-direction: column;
-        gap: 8px; /* Spacing between links */
+        gap: 8px; 
         padding: 0;
         margin: 0;
         flex-grow: 1;
@@ -135,24 +151,21 @@ $currentPage = basename($_SERVER['PHP_SELF']);
         color: #fff;
     }
 
-    /* Active State - Matches your reference image (Green Button Style) */
     .nav-item.active {
-        background-color: #064e3b; /* Dark Green Background */
-        color: #fff; /* White Text */
-        border: 1px solid #059669; /* Subtle border definition */
+        background-color: #064e3b; 
+        color: #fff; 
+        border: 1px solid #059669; 
     }
     
-    /* Highlight the icon in active state */
     .nav-item.active i {
         color: #34d399; 
     }
 
     .nav-item i {
         font-size: 18px;
-        color: #6b7280; /* Default Icon Color */
+        color: #6b7280; 
     }
     
-    /* Badge Style */
     .nav-badge {
         margin-left: auto;
         background: #ef4444;
@@ -191,42 +204,42 @@ $currentPage = basename($_SERVER['PHP_SELF']);
     </div>
 
     <div class="user-profile">
-        <div class="avatar" style="background-color:#4338ca; color:#fff;">LO</div>
+        <img src="../client/uploads/profiles/<?= htmlspecialchars($profile_img) ?>" alt="Profile" class="avatar" onerror="this.src='../client/uploads/profiles/default_avatar.png';">
         <div class="user-info">
-            <h4>Sarah Connor</h4>
-            <span>Senior Approver</span>
+            <h4><?= htmlspecialchars($admin_name) ?></h4>
+            <span><?= htmlspecialchars($admin_role) ?></span>
         </div>
     </div>
 
     <ul class="nav-links">
         
         <li>
-            <a href="dashboard.php" class="nav-item <?php echo ($current_page == 'dashboard.php') ? 'active' : ''; ?>">
+            <a href="dashboard.php" class="nav-item <?= ($current_page == 'dashboard.php') ? 'active' : '' ?>">
                 <i class="bi bi-speedometer2"></i> LO Dashboard
             </a>
         </li>
 
         <li>
-            <a href="approvals.php" class="nav-item <?php echo ($current_page == 'approvals.php') ? 'active' : ''; ?>">
+            <a href="approvals.php" class="nav-item <?= ($current_page == 'approvals.php') ? 'active' : '' ?>">
                 <i class="bi bi-check-square-fill"></i> For Approval
                 <span class="nav-badge" style="background:#8b5cf6;">5</span>
             </a>
         </li>
 
         <li>
-            <a href="approved.php" class="nav-item <?php echo ($current_page == 'approved.php') ? 'active' : ''; ?>">
+            <a href="approved.php" class="nav-item <?= ($current_page == 'approved.php') ? 'active' : '' ?>">
                 <i class="bi bi-file-earmark-check"></i> Approved Loans
             </a>
         </li>
 
         <li>
-            <a href="rejected.php" class="nav-item <?php echo ($current_page == 'rejected.php') ? 'active' : ''; ?>">
+            <a href="rejected.php" class="nav-item <?= ($current_page == 'rejected.php') ? 'active' : '' ?>">
                 <i class="bi bi-file-earmark-x"></i> Rejected Loans
             </a>
         </li>
         
         <li>
-            <a href="restructure.php" class="nav-item <?php echo ($current_page == 'restructure.php') ? 'active' : ''; ?>">
+            <a href="restructure.php" class="nav-item <?= ($current_page == 'restructure.php') ? 'active' : '' ?>">
                 <i class="bi bi-arrow-repeat"></i> Restructure Req.
             </a>
         </li>
@@ -234,7 +247,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
     </ul>
 
     <div class="logout-btn">
-        <a href="../index.php" class="nav-item logout-link">
+        <a href="../logout.php" class="nav-item logout-link">
             <i class="bi bi-box-arrow-right"></i> Sign Out
         </a>
     </div>

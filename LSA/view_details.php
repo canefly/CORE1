@@ -1,5 +1,6 @@
 <?php 
 include 'includes/db_connect.php'; 
+require_once __DIR__ . '/includes/session_checker.php';
 
 if (!isset($_GET['id'])) {
     header("Location: returned.php");

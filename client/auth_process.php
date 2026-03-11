@@ -1,29 +1,50 @@
 <?php
 session_start();
-include __DIR__ . "/include/config.php"; 
+require_once __DIR__ . '/include/config.php';
 
-$action = $_POST['action'] ?? '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'] ?? '';
 
-if ($action == "signup") {
+    if ($action === 'login') {
+        $email = trim($_POST['email']);
+        $password = trim($_POST['password']);
 
-    $fullname = trim($_POST['fullname']);
-    $phone    = trim($_POST['phone']);
-    $email    = trim($_POST['email']);
-    $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
+        // Gamitin ang MADIIN na Prepared Statement
+        $stmt = $conn->prepare("SELECT id, password, account_status FROM users WHERE email = ? LIMIT 1");
+        $stmt->bind_param("s", $email);
+        $stmt->execute();
+        $res = $stmt->get_result();
 
-    // Check if email OR phone exists
-    $check = $conn->prepare("SELECT id FROM users WHERE email = ? OR phone = ?");
-    $check->bind_param("ss", $email, $phone);
-    $check->execute();
-    $check->store_result();
+        if ($res->num_rows === 1) {
+            $user = $res->fetch_assoc();
 
-    if ($check->num_rows > 0) {
-        // Already registered
-        echo "<script>
-                alert('Email or Mobile Number already registered!');
-                window.history.back();
-              </script>";
-        exit();
+            // Check kung tama ang password
+            if (password_verify($password, $user['password'])) {
+                
+                // === ITO YUNG SUSPENSION CHECKER ===
+                if (isset($user['account_status']) && $user['account_status'] === 'SUSPENDED') {
+                    // Kick out pabalik sa login na may error message
+                    header("Location: login.php?msg=suspended");
+                    exit;
+                }
+
+                // Kung ACTIVE, papasukin sa dashboard!
+                $_SESSION['user_id'] = $user['id'];
+                
+                // Para sa Session Fixation protection (ginawa natin sa session_checker.php)
+                $_SESSION['created_at'] = time();
+                $_SESSION['last_activity'] = time();
+
+                header("Location: dashboard.php");
+                exit;
+            } else {
+                header("Location: login.php?msg=invalid"); // Mali ang password
+                exit;
+            }
+        } else {
+            header("Location: login.php?msg=invalid"); // Walang ganyang email
+            exit;
+        }
     }
 
     // Insert new user

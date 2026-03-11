@@ -1,19 +1,56 @@
 <?php
-
-
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 $currentPage = basename($_SERVER['PHP_SELF']);
 
-$pendingQuery = "SELECT COUNT(*) as total FROM loan_applications WHERE status = 'PENDING'";
-$pendingResult = $conn->query($pendingQuery);
-$newAppCount = ($pendingResult) ? $pendingResult->fetch_assoc()['total'] : 0;
+// 1. Kunin ang Session Info ni LSA
+$admin_id = $_SESSION['admin_id'] ?? 0;
+$admin_name = $_SESSION['admin_name'] ?? 'LSA Officer';
+$admin_role = $_SESSION['admin_role'] ?? 'LSA';
 
+// Default profile picture
+$profile_img = 'default_avatar.png';
 
-$restructureQuery = "SELECT COUNT(*) as total FROM loan_applications 
-                     WHERE (loan_purpose LIKE '%Restructure%' OR loan_purpose LIKE '%Extension%')
-                     AND status = 'PENDING'";
-$restructureResult = $conn->query($restructureQuery);
-$restructureCount = ($restructureResult) ? $restructureResult->fetch_assoc()['total'] : 0;
+// 2. Kunin ang Profile Picture sa lsa_users table
+if (isset($pdo) && $admin_id > 0) {
+    $stmt = $pdo->prepare("SELECT profile_pic FROM lsa_users WHERE id = ?");
+    $stmt->execute([$admin_id]);
+    $user_data = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($user_data && !empty($user_data['profile_pic'])) {
+        $profile_img = $user_data['profile_pic'];
+    }
+} elseif (isset($conn) && $admin_id > 0) {
+    $stmt = $conn->prepare("SELECT profile_pic FROM lsa_users WHERE id = ?");
+    $stmt->bind_param("i", $admin_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($row = $result->fetch_assoc()) {
+        if (!empty($row['profile_pic'])) {
+            $profile_img = $row['profile_pic'];
+        }
+    }
+}
 
+// 3. Kunin ang Badge Counts (Hybrid PDO & MySQLi para iwas error)
+$newAppCount = 0;
+$restructureCount = 0;
+
+if (isset($pdo)) {
+    $pendingResult = $pdo->query("SELECT COUNT(*) as total FROM loan_applications WHERE status = 'PENDING'");
+    $newAppCount = $pendingResult ? $pendingResult->fetch(PDO::FETCH_ASSOC)['total'] : 0;
+
+    $restructureResult = $pdo->query("SELECT COUNT(*) as total FROM loan_applications WHERE (loan_purpose LIKE '%Restructure%' OR loan_purpose LIKE '%Extension%') AND status = 'PENDING'");
+    $restructureCount = $restructureResult ? $restructureResult->fetch(PDO::FETCH_ASSOC)['total'] : 0;
+} elseif (isset($conn)) {
+    $pendingQuery = "SELECT COUNT(*) as total FROM loan_applications WHERE status = 'PENDING'";
+    $pendingResult = $conn->query($pendingQuery);
+    $newAppCount = ($pendingResult) ? $pendingResult->fetch_assoc()['total'] : 0;
+
+    $restructureQuery = "SELECT COUNT(*) as total FROM loan_applications WHERE (loan_purpose LIKE '%Restructure%' OR loan_purpose LIKE '%Extension%') AND status = 'PENDING'";
+    $restructureResult = $conn->query($restructureQuery);
+    $restructureCount = ($restructureResult) ? $restructureResult->fetch_assoc()['total'] : 0;
+}
 ?>
 
 <style>
@@ -92,6 +129,7 @@ $restructureCount = ($restructureResult) ? $restructureResult->fetch_assoc()['to
         font-weight: 700;
         font-size: 14px;
         flex-shrink: 0;
+        object-fit: cover; /* Iwas stretch sa picture */
     }
 
     .user-info {
@@ -161,7 +199,7 @@ $restructureCount = ($restructureResult) ? $restructureResult->fetch_assoc()['to
     /* Badge Styles */
     .nav-badge {
         margin-left: auto;
-        background: #ef4444; /* Default Red */
+        background: #ef4444; 
         color: #fff;
         font-size: 10px;
         padding: 2px 8px;
@@ -169,7 +207,6 @@ $restructureCount = ($restructureResult) ? $restructureResult->fetch_assoc()['to
         font-weight: 700;
     }
 
-    /* Amber Badge for Restructure/Warnings */
     .nav-badge.amber {
         background-color: #f59e0b;
         color: #0f172a;
@@ -206,24 +243,22 @@ $restructureCount = ($restructureResult) ? $restructureResult->fetch_assoc()['to
     </div>
 
     <div class="user-profile">
-        <div class="avatar">MA</div>
+        <img src="../client/uploads/profiles/<?= htmlspecialchars($profile_img) ?>" alt="Profile" class="avatar" onerror="this.src='../client/uploads/profiles/default_avatar.png';">
         <div class="user-info">
-            <h4>Mike Allen Dabu</h4>
-            <span>LSA Associate</span>
+            <h4><?= htmlspecialchars($admin_name) ?></h4>
+            <span><?= htmlspecialchars($admin_role) ?></span>
         </div>
     </div>
 
     <ul class="nav-links">
         <li>
-            <a href="dashboard.php" 
-               class="nav-item <?= ($currentPage == 'dashboard.php') ? 'active' : '' ?>">
+            <a href="dashboard.php" class="nav-item <?= ($currentPage == 'dashboard.php') ? 'active' : '' ?>">
                 <i class="bi bi-grid-1x2-fill"></i> Dashboard
             </a>
         </li>
 
         <li>
-            <a href="application.php" 
-               class="nav-item <?= ($currentPage == 'application.php') ? 'active' : '' ?>">
+            <a href="application.php" class="nav-item <?= ($currentPage == 'application.php') ? 'active' : '' ?>">
                 <i class="bi bi-file-earmark-plus-fill"></i> New Applications
                 <?php if($newAppCount > 0): ?>
                     <span class="nav-badge" data-count="<?= $newAppCount ?>"><?= $newAppCount ?></span>
@@ -232,22 +267,19 @@ $restructureCount = ($restructureResult) ? $restructureResult->fetch_assoc()['to
         </li>
 
         <li>
-            <a href="forwarded.php" 
-               class="nav-item <?= ($currentPage == 'forwarded.php') ? 'active' : '' ?>">
+            <a href="forwarded.php" class="nav-item <?= ($currentPage == 'forwarded.php') ? 'active' : '' ?>">
                 <i class="bi bi-arrow-up-short"></i> Forwarded Applications
             </a>
         </li>
 
         <li>
-            <a href="returned.php" 
-               class="nav-item <?= ($currentPage == 'returned.php') ? 'active' : '' ?>">
+            <a href="returned.php" class="nav-item <?= ($currentPage == 'returned.php') ? 'active' : '' ?>">
                 <i class="bi bi-arrow-counterclockwise"></i> Returned Applications
             </a>
         </li>
 
         <li>
-            <a href="restructure.php" 
-               class="nav-item <?= ($currentPage == 'restructure.php') ? 'active' : '' ?>">
+            <a href="restructure.php" class="nav-item <?= ($currentPage == 'restructure.php') ? 'active' : '' ?>">
                 <i class="bi bi-arrow-repeat"></i> Restructure Requests
                 <?php if($restructureCount > 0): ?>
                     <span class="nav-badge amber" data-count="<?= $restructureCount ?>"><?= $restructureCount ?></span>
@@ -257,7 +289,7 @@ $restructureCount = ($restructureResult) ? $restructureResult->fetch_assoc()['to
     </ul>
 
     <div class="logout-btn">
-        <a href="../index.php" class="nav-item logout-link">
+        <a href="../logout.php" class="nav-item logout-link">
             <i class="bi bi-box-arrow-right"></i> Sign Out
         </a>
     </div>
@@ -277,26 +309,27 @@ $restructureCount = ($restructureResult) ? $restructureResult->fetch_assoc()['to
     setInterval(updateDateTime, 1000);
 
     // Function to update badges without refreshing
-function refreshBadges() {
-    fetch('get_badge_counts.php')
-        .then(response => response.json())
-        .then(data => {
-            // Update New Applications Badge
-            const appBadge = document.querySelector('a[href="application.php"] .nav-badge');
-            if (appBadge) {
-                appBadge.textContent = data.new_apps;
-                appBadge.style.display = data.new_apps > 0 ? 'inline-block' : 'none';
-            }
+    function refreshBadges() {
+        fetch('get_badge_counts.php')
+            .then(response => response.json())
+            .then(data => {
+                // Update New Applications Badge
+                const appBadge = document.querySelector('a[href="application.php"] .nav-badge');
+                if (appBadge) {
+                    appBadge.textContent = data.new_apps;
+                    appBadge.style.display = data.new_apps > 0 ? 'inline-block' : 'none';
+                }
 
-            // Update Restructure Badge
-            const restBadge = document.querySelector('a[href="restructure.php"] .nav-badge');
-            if (restBadge) {
-                restBadge.textContent = data.restructure;
-                restBadge.style.display = data.restructure > 0 ? 'inline-block' : 'none';
-            }
-        });
-}
+                // Update Restructure Badge
+                const restBadge = document.querySelector('a[href="restructure.php"] .nav-badge');
+                if (restBadge) {
+                    restBadge.textContent = data.restructure;
+                    restBadge.style.display = data.restructure > 0 ? 'inline-block' : 'none';
+                }
+            })
+            .catch(error => console.error("Error fetching badges:", error));
+    }
 
-// Refresh every 30 seconds
-setInterval(refreshBadges, 30000);
+    // Refresh every 30 seconds
+    setInterval(refreshBadges, 30000);
 </script>

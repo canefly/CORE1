@@ -1,6 +1,7 @@
 <?php 
 // Standard database include from your LSA/includes folder
 include 'includes/db_connect.php'; 
+require_once __DIR__ . '/includes/session_checker.php';
 
 /** * FETCH RETURNED APPLICATIONS
  * We query for 'REJECTED' status to see what needs client attention.

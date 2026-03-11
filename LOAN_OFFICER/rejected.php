@@ -1,5 +1,6 @@
 <?php
 $connection_file = __DIR__ . '/includes/db_connect.php';
+require_once __DIR__ . '/includes/session_checker.php';
 if (file_exists($connection_file)) { require_once $connection_file; } 
 else { die("Error: Connection file not found."); }
 

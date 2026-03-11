@@ -1,6 +1,7 @@
 <?php 
 // Standard database include
-include 'includes/db_connect.php'; 
+include 'includes/db_connect.php';
+require_once __DIR__ . '/includes/session_checker.php'; 
 
 /** * FETCH FORWARDED APPLICATIONS
  * Kinukuha natin ang mga 'APPROVED' status.

@@ -1,5 +1,6 @@
 <?php 
 include 'includes/db_connect.php'; 
+require_once __DIR__ . '/includes/session_checker.php';
 
 /** * FETCH RESTRUCTURE REQUESTS
  * Queries the database for applications with restructure keywords.

@@ -1,6 +1,7 @@
 <?php
 // Using your existing connection file
 include 'includes/db_connect.php'; 
+require_once __DIR__ . '/includes/session_checker.php';
 
 if (isset($_GET['id'])) {
     // Sanitize input to prevent SQL injection
