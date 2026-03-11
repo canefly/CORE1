@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once __DIR__ . "/include/config.php";
+require_once __DIR__ . "/include/session_checker.php";
 
 // Kick out if not logged in
 if (!isset($_SESSION['user_id'])) {
@@ -29,8 +30,6 @@ function getValidTermOptions(int $oldTerm, string $type): array
             break;
 
         case 'Holiday':
-            // Payment holiday usually means the loan continues later,
-            // so term is extended a bit.
             $candidates = [$oldTerm + 1, $oldTerm + 2, $oldTerm + 3, $oldTerm + 6];
             foreach ($candidates as $term) {
                 if ($term > $oldTerm && $term <= 60) {
@@ -53,35 +52,89 @@ function getValidTermOptions(int $oldTerm, string $type): array
 }
 
 /**
- * Estimate monthly payment using simple flat style estimate.
- * Since your existing page preview is already estimation-based,
- * this keeps the behavior consistent.
+ * Estimate monthly payment based on OUTSTANDING only.
  */
 function estimateMonthly(float $principal, float $ratePercent, int $termMonths): float
 {
     if ($termMonths <= 0) return 0;
+
     $rateDecimal = $ratePercent / 100;
     $totalInterest = $principal * $rateDecimal * $termMonths;
+
     return ($principal + $totalInterest) / $termMonths;
+}
+
+/**
+ * Check if the loan has a payment that is still awaiting collection verification.
+ */
+function hasPendingPayment(mysqli $conn, int $loanId, int $userId): bool
+{
+    $stmt = $conn->prepare("
+        SELECT id
+        FROM transactions
+        WHERE loan_id = ? 
+          AND user_id = ? 
+          AND status = 'PAID_PENDING'
+        LIMIT 1
+    ");
+    $stmt->bind_param("ii", $loanId, $userId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $hasPending = $result->num_rows > 0;
+    $stmt->close();
+
+    return $hasPending;
+}
+
+/**
+ * Only allow one pending restructure request per loan.
+ */
+function hasPendingRestructureRequest(mysqli $conn, int $loanId, int $userId): bool
+{
+    $stmt = $conn->prepare("
+        SELECT id
+        FROM loan_restructure_requests
+        WHERE loan_id = ?
+          AND user_id = ?
+          AND status = 'PENDING'
+        LIMIT 1
+    ");
+    $stmt->bind_param("ii", $loanId, $userId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $hasPending = $result->num_rows > 0;
+    $stmt->close();
+
+    return $hasPending;
 }
 
 // --- 1. HANDLE FORM SUBMISSION ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $target_loan_id    = (int)($_POST['loan_id'] ?? 0);
-    $restructure_type  = trim($_POST['restructure_type'] ?? '');
-    $new_term          = (int)($_POST['new_term'] ?? 0);
-    $reason            = trim($_POST['reason'] ?? '');
+    $target_loan_id   = (int)($_POST['loan_id'] ?? 0);
+    $restructure_type = trim($_POST['restructure_type'] ?? '');
+    $new_term         = (int)($_POST['new_term'] ?? 0);
+    $reason           = trim($_POST['reason'] ?? '');
 
     $allowedTypes = ['Extension', 'Holiday', 'Shorten'];
 
     if (!in_array($restructure_type, $allowedTypes, true)) {
         $message = "<div style='background:#ef4444;color:white;padding:10px;border-radius:8px;margin-bottom:20px;'>Invalid restructure type selected.</div>";
     } else {
-        // Fetch the target loan to get the outstanding balance
+        // IMPORTANT:
+        // Restructuring is based on OUTSTANDING, not loan_amount.
         $loanQuery = $conn->prepare("
-            SELECT id, loan_amount, outstanding, interest_rate, term_months, monthly_due, status
+            SELECT 
+                id,
+                outstanding,
+                interest_rate,
+                interest_method,
+                term_months,
+                monthly_due,
+                status
             FROM loans
-            WHERE id = ? AND user_id = ? AND status = 'ACTIVE'
+            WHERE id = ?
+              AND user_id = ?
+              AND status = 'ACTIVE'
             LIMIT 1
         ");
         $loanQuery->bind_param("ii", $target_loan_id, $user_id);
@@ -92,42 +145,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (!$targetLoan) {
             $message = "<div style='background:#ef4444;color:white;padding:10px;border-radius:8px;margin-bottom:20px;'>Error: Active loan not found.</div>";
-        } elseif (empty($reason)) {
+        } elseif ((float)$targetLoan['outstanding'] <= 0) {
+            $message = "<div style='background:#ef4444;color:white;padding:10px;border-radius:8px;margin-bottom:20px;'>This loan has no outstanding balance to restructure.</div>";
+        } elseif (hasPendingPayment($conn, $target_loan_id, $user_id)) {
+            $message = "<div style='background:#f59e0b;color:white;padding:10px;border-radius:8px;margin-bottom:20px;'>You cannot request restructuring yet because you still have a payment pending verification. Please wait until collections verifies your payment so the outstanding balance is accurate.</div>";
+        } elseif (hasPendingRestructureRequest($conn, $target_loan_id, $user_id)) {
+            $message = "<div style='background:#f59e0b;color:white;padding:10px;border-radius:8px;margin-bottom:20px;'>You already have a pending restructure request for this loan.</div>";
+        } elseif ($reason === '') {
             $message = "<div style='background:#ef4444;color:white;padding:10px;border-radius:8px;margin-bottom:20px;'>Please provide a reason for your restructure request.</div>";
         } elseif (empty($_FILES['proof_doc']['name'])) {
             $message = "<div style='background:#ef4444;color:white;padding:10px;border-radius:8px;margin-bottom:20px;'>Please upload a proof document.</div>";
         } else {
-            $oldTerm      = (int)$targetLoan['term_months'];
-            $outstanding  = (float)$targetLoan['outstanding'];
-            $rate         = (float)$targetLoan['interest_rate'];
-            $oldMonthly   = (float)$targetLoan['monthly_due'];
+            $oldTerm        = (int)$targetLoan['term_months'];
+            $outstanding    = (float)$targetLoan['outstanding']; // THIS is the restructuring basis
+            $rate           = (float)$targetLoan['interest_rate'];
+            $interestMethod = (string)$targetLoan['interest_method'];
+            $oldMonthly     = (float)$targetLoan['monthly_due'];
 
             $validTerms = getValidTermOptions($oldTerm, $restructure_type);
 
             if ($new_term <= 0 || !in_array($new_term, $validTerms, true)) {
                 $message = "<div style='background:#ef4444;color:white;padding:10px;border-radius:8px;margin-bottom:20px;'>Invalid proposed term selected for the chosen restructure type.</div>";
             } else {
-                // Estimate new monthly for record text
                 $estimatedNewMonthly = estimateMonthly($outstanding, $rate, $new_term);
-
-                // Make the purpose more descriptive for reviewer
-                $loan_purpose = "RESTRUCTURE REQUEST | Type: {$restructure_type} | Loan ID: {$target_loan_id} | Old Term: {$oldTerm} | New Term: {$new_term} | Old Monthly: {$oldMonthly} | Est New Monthly: {$estimatedNewMonthly} | Reason: {$reason}";
 
                 $conn->begin_transaction();
 
                 try {
-                    // Insert into loan_applications
-                    $sql = "INSERT INTO loan_applications 
-                            (user_id, principal_amount, term_months, loan_purpose, source_of_income, estimated_monthly_income, interest_rate, interest_type, interest_method, status) 
-                            VALUES (?, ?, ?, ?, 'Restructure Request', 0, ?, 'MONTHLY', 'FLAT', 'PENDING')";
-
-                    $stmt = $conn->prepare($sql);
-                    $stmt->bind_param("idisd", $user_id, $outstanding, $new_term, $loan_purpose, $rate);
-                    $stmt->execute();
-                    $application_id = $conn->insert_id;
-                    $stmt->close();
-
-                    // Handle file upload
+                    // Upload proof document
                     $uploadDir = __DIR__ . "/uploads/loan_docs/";
                     if (!is_dir($uploadDir)) {
                         mkdir($uploadDir, 0775, true);
@@ -145,7 +190,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         throw new Exception("Uploaded file is invalid.");
                     }
 
-                    $safeName = "RESTRUCTURE_PROOF_" . $application_id . "_" . bin2hex(random_bytes(8)) . "." . $ext;
+                    $safeName = "RESTRUCTURE_PROOF_" . $target_loan_id . "_" . bin2hex(random_bytes(8)) . "." . $ext;
                     $target = $uploadDir . $safeName;
 
                     if (!move_uploaded_file($f['tmp_name'], $target)) {
@@ -154,14 +199,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     $relativePath = "uploads/loan_docs/" . $safeName;
 
-                    // Using existing enum-compatible document type
-                    $docStmt = $conn->prepare("
-                        INSERT INTO loan_documents (loan_application_id, doc_type, file_path)
-                        VALUES (?, 'PROOF_OF_INCOME', ?)
-                    ");
-                    $docStmt->bind_param("is", $application_id, $relativePath);
-                    $docStmt->execute();
-                    $docStmt->close();
+                    // Save restructure request to dedicated table
+                    $sql = "INSERT INTO loan_restructure_requests (
+                                loan_id,
+                                user_id,
+                                restructure_type,
+                                outstanding_snapshot,
+                                current_term_months,
+                                requested_term_months,
+                                current_monthly_due,
+                                estimated_monthly_due,
+                                interest_rate_snapshot,
+                                interest_method_snapshot,
+                                reason,
+                                proof_doc_path,
+                                status
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')";
+
+                    $stmt = $conn->prepare($sql);
+                    $stmt->bind_param(
+                        "iisdiidddsss",
+                        $target_loan_id,
+                        $user_id,
+                        $restructure_type,
+                        $outstanding,
+                        $oldTerm,
+                        $new_term,
+                        $oldMonthly,
+                        $estimatedNewMonthly,
+                        $rate,
+                        $interestMethod,
+                        $reason,
+                        $relativePath
+                    );
+
+                    if (!$stmt->execute()) {
+                        throw new Exception("Failed to save restructure request: " . $stmt->error);
+                    }
+
+                    $stmt->close();
 
                     $conn->commit();
 
@@ -180,11 +256,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // --- 2. FETCH ACTIVE LOANS FOR DROPDOWN ---
+// Show only loans that are ACTIVE and still have OUTSTANDING balance.
 $active_loans = [];
 $stmt = $conn->prepare("
     SELECT id, loan_amount, outstanding, term_months, monthly_due, interest_rate
     FROM loans
-    WHERE user_id = ? AND status = 'ACTIVE'
+    WHERE user_id = ?
+      AND status = 'ACTIVE'
+      AND outstanding > 0
 ");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();

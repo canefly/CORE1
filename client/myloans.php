@@ -1,6 +1,8 @@
 <?php
 session_start();
 require_once __DIR__ . "/include/config.php";
+require_once __DIR__ . "/include/check_penalties.php";
+require_once __DIR__ . "/include/session_checker.php";
 
 if (!isset($_SESSION['user_id'])) {
   header("Location: login.php");
@@ -254,6 +256,27 @@ if ($loan) {
   $nextInstallment = min($term, max(1, $firstActionable));
   $nextDeadline = addMonths($start_date, $nextInstallment);
 
+  // Grace Period Check for Restructuring Offer
+  $grace_period = 3;
+  $gpQ = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key='grace_period'");
+  if ($gpQ && $r = $gpQ->fetch_assoc()) {
+      $grace_period = (int)$r['setting_value'];
+  }
+
+  $is_overdue_for_restructure = false;
+  $overdue_days = 0;
+  
+  if ($nextDeadline) {
+      $todayDate = new DateTime();
+      $dueDateObj = new DateTime($nextDeadline);
+      $diffDays = (int)$todayDate->diff($dueDateObj)->format("%r%a"); // Negative if overdue
+      
+      if ($diffDays < 0 && abs($diffDays) > $grace_period && $outstanding > 0) {
+          $is_overdue_for_restructure = true;
+          $overdue_days = abs($diffDays);
+      }
+  }
+
   $view = [
     'loan_id' => $loan_id,
     'contract' => "#LN-" . str_pad((string)$loan_id, 4, "0", STR_PAD_LEFT),
@@ -484,6 +507,21 @@ if ($loan) {
             <h4>Principal Amount</h4>
             <div class="val"><?= peso($view['principal']) ?></div>
           </div>
+
+          <?php if (!empty($view['is_overdue_for_restructure'])): ?>
+          <div class="loan-note" style="background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3); margin-bottom: 20px;">
+            <div style="display:flex; align-items:flex-start; gap: 12px;">
+                <i class="bi bi-shield-exclamation" style="font-size: 24px; color: #ef4444;"></i>
+                <div>
+                    <strong style="color: #ef4444; display:block; margin-bottom: 4px; font-size: 15px;">Overdue Notice (<?= $view['overdue_days'] ?> days late)</strong>
+                    <span style="color: #cbd5e1; font-size: 14px; line-height: 1.5; display:block;">
+                        You have exceeded the allowed <?= $view['grace_period'] ?>-day grace period. If you cannot make the payment, you can request a <a href="restructure.php" style="color:#38bdf8; text-decoration:underline; font-weight:bold;">Loan Restructuring</a> to adjust your terms and avoid heavier penalties.
+                    </span>
+                </div>
+            </div>
+          </div>
+        <?php endif; ?>
+        
           <div class="stat-item">
             <h4>Remaining Balance</h4>
             <div class="val text-gold"><?= peso($view['outstanding']) ?></div>
