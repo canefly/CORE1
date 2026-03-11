@@ -1,6 +1,7 @@
 <?php
 session_start();
 include __DIR__ . "/include/config.php";
+require_once __DIR__ . "/include/session_checker.php";
 
 // Redirect if not logged in
 if (!isset($_SESSION['user_email'])) {
@@ -204,6 +205,18 @@ if ($days !== null) {
 }
 
 // ==============================
+// Grace Period & Restructure Check
+// ==============================
+$grace_period = 3; // Fallback default
+$gpQuery = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'grace_period'");
+if ($gpQuery && $gpRow = $gpQuery->fetch_assoc()) {
+  $grace_period = (int)$gpRow['setting_value'];
+}
+
+// True if loan is active, overdue days > grace period, and balance is not fully paid
+$offerRestructure = ($hasLoan && $days !== null && $days < 0 && abs($days) > $grace_period && $outstanding > 0);
+
+// ==============================
 // Hero text
 // ==============================
 $heroTitle = "No Loan Yet";
@@ -300,6 +313,23 @@ if ($hasLoan) {
       </a>
     </div>
   </div>
+
+
+  <?php if ($offerRestructure): ?>
+  <div class="alert-restructure" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.4); padding: 18px 24px; border-radius: 12px; margin-bottom: 24px; display: flex; align-items: center; gap: 16px;">
+      <i class="bi bi-exclamation-octagon-fill" style="color: #ef4444; font-size: 32px;"></i>
+      <div>
+          <h3 style="margin: 0 0 6px 0; color: #ef4444; font-size: 18px;">Account Overdue Past Grace Period</h3>
+          <p style="margin: 0; color: #e2e8f0; font-size: 14px; line-height: 1.5;">
+              Your payment is overdue by <strong><?= abs($days) ?> days</strong>, exceeding the <?= $grace_period ?>-day grace period. If you are experiencing financial hardship, we can help.
+          </p>
+          <a href="restructure.php" style="display: inline-block; margin-top: 10px; background: #ef4444; color: #fff; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 13px;">
+              Apply for Loan Restructure <i class="bi bi-arrow-right"></i>
+          </a>
+      </div>
+  </div>
+  <?php endif; ?>
+  
 
   <?php if ($heroBadge && !$hasLoan): ?>
     <div class="stats-grid">

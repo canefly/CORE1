@@ -1,3 +1,18 @@
+<?php
+// Saluhin ang mga error messages galing sa auth_process.php
+$msg = $_GET['msg'] ?? '';
+$alertBox = '';
+
+if ($msg === 'suspended') {
+    $alertBox = '<div style="background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #f87171; padding: 12px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; text-align: center;"><i class="bi bi-exclamation-triangle-fill"></i> Your account has been SUSPENDED. Please contact management.</div>';
+} elseif ($msg === 'invalid') {
+    $alertBox = '<div style="background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #f87171; padding: 12px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; text-align: center;"><i class="bi bi-x-circle-fill"></i> Invalid email or password.</div>';
+} elseif ($msg === 'logged_out') {
+    $alertBox = '<div style="background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; color: #34d399; padding: 12px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; text-align: center;"><i class="bi bi-check-circle-fill"></i> Successfully logged out.</div>';
+} elseif ($msg === 'account_invalid') {
+    $alertBox = '<div style="background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #f87171; padding: 12px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; text-align: center;"><i class="bi bi-x-octagon-fill"></i> Session invalid. Please log in again.</div>';
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,7 +21,6 @@
     <title>MicroFinance - Portal</title>
     
     <link rel="stylesheet" href="assets/css/login.css">
-    
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 </head>
 <body>
@@ -26,6 +40,8 @@
                 <h2 id="pageTitle">Let's Get Started!</h2>
                 <p id="pageSubTitle">Create an account to join our community.</p>
             </div>
+
+            <?= $alertBox ?>
 
             <form action="auth_process.php" method="POST" id="authForm" autocomplete="off">
                 
@@ -83,7 +99,6 @@
         function toggleMode() {
             isSignup = !isSignup;
 
-            // Elements
             const brandTitle = document.getElementById('brandTitle');
             const brandDesc = document.getElementById('brandDesc');
             const pageTitle = document.getElementById('pageTitle');
@@ -97,42 +112,29 @@
             const leftPanel = document.getElementById('leftPanel');
 
             if (isSignup) {
-                // SIGNUP STATE
                 brandTitle.innerHTML = "Financial Growth,<br>Simplified.";
                 brandDesc.innerHTML = "We are thrilled to have you here. Join our secure platform to manage loans and achieve your dreams.";
-                
-                // Keep background color static as requested
                 leftPanel.style.background = "#10b981"; 
-
                 pageTitle.innerText = "Let's Get Started!";
                 pageSubTitle.innerText = "Create an account to join our community.";
-                
                 signupFields.classList.remove('hidden');
                 submitBtn.innerText = "Join the Family";
                 footerText.innerText = "Already have an account?";
                 toggleLink.innerText = "Sign In Here";
                 formAction.value = "signup";
-                
                 headerIcon.className = "bi bi-person-heart header-icon";
                 headerIcon.style.color = "#10b981";
-
             } else {
-                // LOGIN STATE
                 brandTitle.innerHTML = "Glad to See You<br>Again, Partner.";
                 brandDesc.innerHTML = "Welcome back! Log in to check your loan status, make payments, and stay on track.";
-                
-                // Keep background color static as requested
                 leftPanel.style.background = "#10b981"; 
-
                 pageTitle.innerText = "Welcome Back!";
                 pageSubTitle.innerText = "Enter your credentials to access your dashboard.";
-                
                 signupFields.classList.add('hidden');
                 submitBtn.innerText = "Access Dashboard";
                 footerText.innerText = "New to MicroFinance?";
                 toggleLink.innerText = "Create Account";
                 formAction.value = "login";
-                
                 headerIcon.className = "bi bi-shield-lock-fill header-icon";
                 headerIcon.style.color = "#34d399";
             }

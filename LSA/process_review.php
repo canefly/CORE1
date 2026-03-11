@@ -1,6 +1,7 @@
 <?php
 // CORE1/LSA/process_review.php
 include 'includes/db_connect.php'; 
+require_once __DIR__ . '/includes/session_checker.php';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $application_id = (int)$_POST['application_id'];

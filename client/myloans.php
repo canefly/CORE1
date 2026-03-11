@@ -1,6 +1,8 @@
 <?php
 session_start();
 require_once __DIR__ . "/include/config.php";
+require_once __DIR__ . "/include/check_penalties.php";
+require_once __DIR__ . "/include/session_checker.php";
 
 if (!isset($_SESSION['user_id'])) {
   header("Location: login.php");
@@ -163,7 +165,10 @@ if ($loan) {
   }
 
   $start_date = $loan['start_date'] ?? date("Y-m-d");
-  $total_payable = $monthly_due * $term;
+
+  // OFFICIAL BALANCE FROM DB
+  $outstanding = (float)($loan['outstanding'] ?? 0);
+  if ($outstanding < 0) $outstanding = 0;
 
   $tx = [];
   $tstmt = $conn->prepare("
@@ -182,14 +187,24 @@ if ($loan) {
   $tstmt->close();
 
   $total_paid_verified = 0.0;
+  $total_paid_pending  = 0.0;
+
   foreach ($tx as $t) {
-    if (($t['status'] ?? '') === 'SUCCESS') {
-      $total_paid_verified += (float)$t['amount'];
+    $amt = (float)($t['amount'] ?? 0);
+    $status = strtoupper((string)($t['status'] ?? ''));
+
+    if ($status === 'SUCCESS') {
+      $total_paid_verified += $amt;
+    } elseif ($status === 'PAID_PENDING') {
+      $total_paid_pending += $amt;
     }
   }
 
-  $outstanding = max(0, $total_payable - $total_paid_verified);
+  // For display only
+  $projected_outstanding = max(0, $outstanding - $total_paid_pending);
 
+  // Progress is based only on verified payments
+  $total_payable = $monthly_due * $term;
   $progress = ($total_payable > 0) ? ($total_paid_verified / $total_payable) * 100 : 0;
   $progress = max(0, min(100, $progress));
   $progressText = number_format($progress, 0) . "% Paid";
@@ -202,7 +217,7 @@ if ($loan) {
 
   foreach ($tx as $t) {
     $amt = (float)($t['amount'] ?? 0);
-    $status = $t['status'] ?? '';
+    $status = strtoupper((string)($t['status'] ?? ''));
     $date = $t['trans_date'] ?? null;
 
     $running_all += $amt;
@@ -241,11 +256,35 @@ if ($loan) {
   $nextInstallment = min($term, max(1, $firstActionable));
   $nextDeadline = addMonths($start_date, $nextInstallment);
 
+  // Grace Period Check for Restructuring Offer
+  $grace_period = 3;
+  $gpQ = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key='grace_period'");
+  if ($gpQ && $r = $gpQ->fetch_assoc()) {
+      $grace_period = (int)$r['setting_value'];
+  }
+
+  $is_overdue_for_restructure = false;
+  $overdue_days = 0;
+  
+  if ($nextDeadline) {
+      $todayDate = new DateTime();
+      $dueDateObj = new DateTime($nextDeadline);
+      $diffDays = (int)$todayDate->diff($dueDateObj)->format("%r%a"); // Negative if overdue
+      
+      if ($diffDays < 0 && abs($diffDays) > $grace_period && $outstanding > 0) {
+          $is_overdue_for_restructure = true;
+          $overdue_days = abs($diffDays);
+      }
+  }
+
   $view = [
     'loan_id' => $loan_id,
     'contract' => "#LN-" . str_pad((string)$loan_id, 4, "0", STR_PAD_LEFT),
     'principal' => $principal,
     'outstanding' => $outstanding,
+    'pending_verification' => $total_paid_pending,
+    'projected_outstanding' => $projected_outstanding,
+    'total_paid_verified' => $total_paid_verified,
     'monthly_due' => $monthly_due,
     'next_deadline' => $nextDeadline,
     'progress' => $progress,
@@ -333,6 +372,22 @@ if ($loan) {
       font-size:1rem;
       font-weight:700;
     }
+
+    .loan-note{
+      margin-top:16px;
+      padding:14px 16px;
+      border-radius:12px;
+      background:rgba(56,189,248,.08);
+      border:1px solid rgba(56,189,248,.18);
+      color:#cbd5e1;
+      line-height:1.6;
+      font-size:.95rem;
+    }
+
+    .loan-note strong{
+      color:#38bdf8;
+    }
+
     .status-message{
       color:#cbd5e1;
       line-height:1.6;
@@ -452,6 +507,21 @@ if ($loan) {
             <h4>Principal Amount</h4>
             <div class="val"><?= peso($view['principal']) ?></div>
           </div>
+
+          <?php if (!empty($view['is_overdue_for_restructure'])): ?>
+          <div class="loan-note" style="background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3); margin-bottom: 20px;">
+            <div style="display:flex; align-items:flex-start; gap: 12px;">
+                <i class="bi bi-shield-exclamation" style="font-size: 24px; color: #ef4444;"></i>
+                <div>
+                    <strong style="color: #ef4444; display:block; margin-bottom: 4px; font-size: 15px;">Overdue Notice (<?= $view['overdue_days'] ?> days late)</strong>
+                    <span style="color: #cbd5e1; font-size: 14px; line-height: 1.5; display:block;">
+                        You have exceeded the allowed <?= $view['grace_period'] ?>-day grace period. If you cannot make the payment, you can request a <a href="restructure.php" style="color:#38bdf8; text-decoration:underline; font-weight:bold;">Loan Restructuring</a> to adjust your terms and avoid heavier penalties.
+                    </span>
+                </div>
+            </div>
+          </div>
+        <?php endif; ?>
+        
           <div class="stat-item">
             <h4>Remaining Balance</h4>
             <div class="val text-gold"><?= peso($view['outstanding']) ?></div>
@@ -465,6 +535,31 @@ if ($loan) {
             <div class="val" style="color:#fbbf24;"><?= fmtDate($view['next_deadline']) ?></div>
           </div>
         </div>
+
+        <div class="stats-grid" style="margin-top:14px;">
+          <div class="stat-item">
+            <h4>Verified Payments</h4>
+            <div class="val" style="color:#10b981;"><?= peso($view['total_paid_verified']) ?></div>
+          </div>
+          <div class="stat-item">
+            <h4>Pending Verification</h4>
+            <div class="val" style="color:#38bdf8;"><?= peso($view['pending_verification']) ?></div>
+          </div>
+          <div class="stat-item">
+            <h4>Projected Balance</h4>
+            <div class="val" style="color:#c084fc;"><?= peso($view['projected_outstanding']) ?></div>
+          </div>
+          <div class="stat-item">
+            <h4>Installments Paid</h4>
+            <div class="val"><?= (int)$view['paidInstallments'] ?> / <?= (int)$view['term'] ?></div>
+          </div>
+        </div>
+
+        <?php if ((float)$view['pending_verification'] > 0): ?>
+          <div class="loan-note">
+            <strong>Notice:</strong> You have payment(s) under verification. These are not yet deducted from your official remaining balance until confirmed by Collections.
+          </div>
+        <?php endif; ?>
 
         <div class="progress-container">
           <div class="progress-labels">
