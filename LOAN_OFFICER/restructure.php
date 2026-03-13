@@ -6,14 +6,14 @@ if (file_exists($connection_file)) { require_once $connection_file; }
 else { die("Error: Connection file not found."); }
 
 try {
-    // 2. Fetch pending restructure requests, linking them to the loan and user
+    // 2. FIXED: Ginamit ang loan_restructure_requests at status na 'VERIFIED'
     $stmt = $pdo->query("
-        SELECT r.*, l.application_id, u.fullname 
-        FROM loan_restructures r
-        JOIN loans l ON r.loan_id = l.id
-        JOIN users u ON l.user_id = u.id
-        WHERE r.status = 'PENDING'
-        ORDER BY r.request_date ASC
+        SELECT r.*, l.application_id, COALESCE(u.fullname, 'Unknown') as fullname 
+        FROM loan_restructure_requests r
+        LEFT JOIN loans l ON r.loan_id = l.id
+        LEFT JOIN users u ON r.user_id = u.id
+        WHERE r.status = 'VERIFIED'
+        ORDER BY r.created_at ASC
     ");
     $restructureRequests = $stmt->fetchAll();
 } catch (PDOException $e) {
@@ -26,10 +26,8 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Loan Officer | Restructure Requests</title>
-    
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    
     <link rel="stylesheet" href="assets/css/Restructure.css">
 </head>
 <body>
@@ -37,19 +35,12 @@ try {
     <?php include 'includes/sidebar.php'; ?>
 
     <div class="main-content">
-        
         <div class="page-header">
             <h1>Restructure Requests</h1>
-            <p>Manage loan modification proposals and negotiations.</p>
+            <p>Manage loan modification proposals and negotiations (Verified by LSA).</p>
         </div>
 
         <div class="filter-bar">
-            <div class="filter-group">
-                <button class="btn-filter active">All Pending (<?php echo count($restructureRequests); ?>)</button>
-                <button class="btn-filter">Client Requested</button>
-                <button class="btn-filter">Counter-Offers</button>
-            </div>
-            
             <div class="search-wrapper">
                 <i class="bi bi-search search-icon"></i>
                 <input type="text" id="searchInput" class="search-input" placeholder="Search by name..." onkeyup="filterTable()">
@@ -63,7 +54,7 @@ try {
                         <th style="padding: 15px;">App ID</th>
                         <th>Borrower</th>
                         <th>Type</th>
-                        <th>Proposed Changes</th>
+                        <th>Proposed Terms</th>
                         <th>Date Requested</th>
                         <th>Status</th>
                         <th style="text-align:center;">Action</th>
@@ -74,7 +65,6 @@ try {
                         <tr><td colspan="7" style="text-align:center; padding:20px; color:#94a3b8;">No pending restructure requests.</td></tr>
                     <?php else: ?>
                         <?php foreach($restructureRequests as $req): 
-                            // Extract initials for the mini-avatar
                             $words = explode(" ", $req['fullname']);
                             $initials = strtoupper(substr($words[0], 0, 1) . (isset($words[1]) ? substr($words[1], 0, 1) : ''));
                         ?>
@@ -89,15 +79,15 @@ try {
                             <td><span style="font-size:12px; color:#cbd5e1; font-weight: bold;"><?php echo htmlspecialchars($req['restructure_type']); ?></span></td>
                             <td>
                                 <div style="background: rgba(15, 23, 42, 0.5); padding: 6px 10px; border-radius: 6px; display: inline-flex; align-items: center; gap: 10px; border: 1px solid #334155;">
-                                    <span style="color: #94a3b8; text-decoration: line-through; font-size: 12px;"><?php echo htmlspecialchars($req['old_value']); ?></span>
+                                    <span style="color: #94a3b8; text-decoration: line-through; font-size: 12px;"><?php echo $req['current_term_months']; ?> MOS</span>
                                     <i class="bi bi-arrow-right" style="color: #60a5fa; font-size: 12px;"></i>
-                                    <span style="color: #34d399; font-weight: bold; font-size: 13px;"><?php echo htmlspecialchars($req['new_value']); ?></span>
+                                    <span style="color: #34d399; font-weight: bold; font-size: 13px;"><?php echo $req['requested_term_months']; ?> MOS</span>
                                 </div>
                             </td>
-                            <td style="color:#94a3b8;"><?php echo date("M d, Y", strtotime($req['request_date'])); ?></td>
-                            <td><span style="background: rgba(245, 158, 11, 0.1); color: #fbbf24; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: bold;">Approval Required</span></td>
+                            <td style="color:#94a3b8;"><?php echo date("M d, Y", strtotime($req['created_at'])); ?></td>
+                            <td><span style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: bold;">Verified by LSA</span></td>
                             <td style="text-align:center;">
-                                <a href="review_loan.php?id=<?php echo $req['application_id'] ?? $req['loan_id']; ?>&restructure_id=<?php echo $req['id']; ?>" style="color:#fbbf24; border:1px solid #fbbf24; padding: 6px 12px; border-radius:6px; text-decoration:none; font-size:12px; font-weight:bold;">
+                                <a href="review_restructure.php?id=<?php echo $req['id']; ?>" style="color:#fbbf24; border:1px solid #fbbf24; padding: 6px 12px; border-radius:6px; text-decoration:none; font-size:12px; font-weight:bold;">
                                     Decide <i class="bi bi-check-circle"></i>
                                 </a>
                             </td>
@@ -107,11 +97,9 @@ try {
                 </tbody>
             </table>
         </div>
-        
     </div>
 
     <script>
-        // Simple search filter for the table
         function filterTable() {
             let input = document.getElementById("searchInput").value.toLowerCase();
             let rows = document.querySelectorAll(".data-row");

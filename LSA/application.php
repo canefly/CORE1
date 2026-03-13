@@ -1,7 +1,7 @@
 <?php 
 // Standard include for your existing database connection
 include 'includes/db_connect.php'; 
-require_once __DIR__ . '/includes/session_checker.php';
+
 
 /** * FETCH PENDING APPLICATIONS
  * Joins loan_applications and users to get real client names.
