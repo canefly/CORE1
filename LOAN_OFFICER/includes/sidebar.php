@@ -12,6 +12,13 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+
+// DYNAMIC SIDEBAR ROUTING FOR FINANCE ADMIN
+if (isset($_SESSION['admin_role']) && $_SESSION['admin_role'] === 'FINANCE_ADMIN') {
+    include '../FINANCE/includes/sidebar.php';
+    return; // Stop rendering the rest of the LO sidebar
+}
+
 $current_page = basename($_SERVER['PHP_SELF']);
 
 // Kunin ang Session Info ni LO
