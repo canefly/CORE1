@@ -7,7 +7,6 @@ if (session_status() == PHP_SESSION_NONE) {
 }
 
 require_once '../assets/includes/config.php';
-header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // By default, let's assume the action is 'login' for this file
@@ -16,8 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'] ?? '';
     
     if (empty($username) || empty($password)) {
-        ob_clean();
-        echo json_encode(['success' => false, 'message' => 'Please enter username and password']);
+        header("Location: login.php?error=invalid");
         exit;
     }
 
@@ -35,8 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['admin_id'] = $user['id'];
             $_SESSION['admin_name'] = $user['full_name'];
             
-            ob_clean();
-            echo json_encode(['success' => true, 'redirect' => '../FINANCE/dashboard.php']);
+            header("Location: ../FINANCE/dashboard.php");
             exit;
         }
     }
@@ -51,8 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($res->num_rows === 1) {
         $user = $res->fetch_assoc();
         if ($user['status'] !== 'ACTIVE') {
-            ob_clean();
-            echo json_encode(['success' => false, 'message' => 'Account suspended. Contact Admin.']);
+            header("Location: login.php?error=suspended");
             exit;
         }
         if (password_verify($password, $user['password'])) {
@@ -61,8 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['admin_id'] = $user['id'];
             $_SESSION['admin_name'] = $user['full_name'];
             
-            ob_clean();
-            echo json_encode(['success' => true, 'redirect' => '../LOAN_OFFICER/dashboard.php']);
+            header("Location: ../LOAN_OFFICER/dashboard.php");
             exit;
         }
     }
@@ -77,8 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($res->num_rows === 1) {
         $user = $res->fetch_assoc();
         if ($user['status'] !== 'ACTIVE') {
-            ob_clean();
-            echo json_encode(['success' => false, 'message' => 'Account suspended. Contact Admin.']);
+            header("Location: login.php?error=suspended");
             exit;
         }
         if (password_verify($password, $user['password'])) {
@@ -87,20 +81,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['admin_id'] = $user['id'];
             $_SESSION['admin_name'] = $user['full_name'];
             
-            ob_clean();
-            echo json_encode(['success' => true, 'redirect' => '../LSA/dashboard.php']);
+            header("Location: ../LSA/dashboard.php");
             exit;
         }
     }
     $stmt->close();
 
     // IF NO MATCH FOUND IN ALL 3 TABLES
-    ob_clean();
-    echo json_encode(['success' => false, 'message' => 'Invalid username or password']);
+    header("Location: login.php?error=invalid");
     exit;
 }
 
-ob_clean();
-echo json_encode(['success' => false, 'message' => 'Invalid request']);
+header("Location: login.php?error=invalid");
 exit;
 ?>

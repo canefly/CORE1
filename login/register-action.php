@@ -4,7 +4,6 @@ ob_start();
 session_start();
 
 require_once '../assets/includes/config.php';
-header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $fullname = trim($_POST['fullname'] ?? '');
@@ -14,8 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // 1. Check for empty fields
     if (empty($fullname) || empty($phone) || empty($email) || empty($password)) {
-        ob_clean();
-        echo json_encode(['success' => false, 'message' => 'Please fill in all the required fields.']);
+        header("Location: register.php?error=missing_fields");
         exit;
     }
 
@@ -26,8 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $checkRes = $checkStmt->get_result();
 
     if ($checkRes->num_rows > 0) {
-        ob_clean();
-        echo json_encode(['success' => false, 'message' => 'This email is already registered. Please log in instead.']);
+        header("Location: register.php?error=email_exists");
         exit;
     }
     $checkStmt->close();
@@ -40,21 +37,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $insertStmt->bind_param("ssss", $fullname, $phone, $email, $hashed_password);
 
     if ($insertStmt->execute()) {
-        ob_clean();
-        echo json_encode([
-            'success' => true, 
-            'message' => 'Welcome to the family! Redirecting...',
-            'redirect' => 'login-client.php?success=registered'
-        ]);
+        header("Location: login-client.php?success=registered");
         exit;
     } else {
-        ob_clean();
-        echo json_encode(['success' => false, 'message' => 'Registration failed. Please try again.']);
+        header("Location: register.php?error=failed");
         exit;
     }
 }
 
-ob_clean();
-echo json_encode(['success' => false, 'message' => 'Invalid request']);
+header("Location: register.php?error=failed");
 exit;
 ?>
