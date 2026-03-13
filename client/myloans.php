@@ -2,7 +2,7 @@
 session_start();
 require_once __DIR__ . "/include/config.php";
 require_once __DIR__ . "/include/check_penalties.php";
-require_once __DIR__ . "/include/session_checker.php";
+include __DIR__ . "/include/session_checker.php";
 
 if (!isset($_SESSION['user_id'])) {
   header("Location: login.php");
@@ -10,6 +10,9 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $user_id = (int)$_SESSION['user_id'];
+$loan = null;
+$loanSource = 'original'; // original | restructured
+$originalArchivedLoan = null;
 
 function peso($n) {
   return "₱ " . number_format((float)$n, 2);
@@ -89,26 +92,78 @@ if ($appId > 0) {
 $disbStatus = strtoupper((string)($disbursement['status'] ?? 'NONE'));
 
 // ==============================
-// Active loan only if disbursed na
+// Active loan priority:
+// 1) ACTIVE restructured loan
+// 2) fallback to original ACTIVE disbursed loan
 // ==============================
 $loan = null;
-$stmt = $conn->prepare("
-  SELECT l.*
-  FROM loans l
-  INNER JOIN loan_disbursement ld ON ld.application_id = l.application_id
-  WHERE l.user_id = ?
-    AND l.status = 'ACTIVE'
-    AND ld.status = 'DISBURSED'
-  ORDER BY l.id DESC
+$loanSource = 'original';
+$originalArchivedLoan = null;
+
+// 1. Try active restructured loan first
+$rstmt = $conn->prepare("
+  SELECT rl.*
+  FROM restructured_loans rl
+  WHERE rl.user_id = ?
+    AND rl.status = 'ACTIVE'
+  ORDER BY rl.id DESC
   LIMIT 1
 ");
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$res = $stmt->get_result();
-if ($res && $res->num_rows === 1) {
-  $loan = $res->fetch_assoc();
+$rstmt->bind_param("i", $user_id);
+$rstmt->execute();
+$rres = $rstmt->get_result();
+
+if ($rres && $rres->num_rows === 1) {
+  $loan = $rres->fetch_assoc();
+  $loanSource = 'restructured';
+
+  // Fetch original archived loan for history/view only
+  if (!empty($loan['original_loan_id'])) {
+    $origLoanId = (int)$loan['original_loan_id'];
+
+    $oldStmt = $conn->prepare("
+      SELECT *
+      FROM loans
+      WHERE id = ?
+        AND user_id = ?
+      LIMIT 1
+    ");
+    $oldStmt->bind_param("ii", $origLoanId, $user_id);
+    $oldStmt->execute();
+    $oldRes = $oldStmt->get_result();
+
+    if ($oldRes && $oldRes->num_rows === 1) {
+      $originalArchivedLoan = $oldRes->fetch_assoc();
+    }
+
+    $oldStmt->close();
+  }
 }
-$stmt->close();
+$rstmt->close();
+
+// 2. Fallback to original active disbursed loan
+if (!$loan) {
+  $stmt = $conn->prepare("
+    SELECT l.*
+    FROM loans l
+    INNER JOIN loan_disbursement ld ON ld.application_id = l.application_id
+    WHERE l.user_id = ?
+      AND l.status = 'ACTIVE'
+      AND ld.status = 'DISBURSED'
+    ORDER BY l.id DESC
+    LIMIT 1
+  ");
+  $stmt->bind_param("i", $user_id);
+  $stmt->execute();
+  $res = $stmt->get_result();
+
+  if ($res && $res->num_rows === 1) {
+    $loan = $res->fetch_assoc();
+    $loanSource = 'original';
+  }
+
+  $stmt->close();
+}
 
 // ==============================
 // Status container display
@@ -155,7 +210,12 @@ $view = null;
 if ($loan) {
   $loan_id = (int)$loan['id'];
 
-  $principal = (float)($loan['loan_amount'] ?? 0);
+  if ($loanSource === 'restructured') {
+    $principal = (float)($loan['principal_amount'] ?? 0);
+  } else {
+    $principal = (float)($loan['loan_amount'] ?? 0);
+  }
+
   $term = (int)($loan['term_months'] ?? 0);
   if ($term <= 0) $term = 1;
 
@@ -166,19 +226,32 @@ if ($loan) {
 
   $start_date = $loan['start_date'] ?? date("Y-m-d");
 
-  // OFFICIAL BALANCE FROM DB
+  // Official balance from DB
   $outstanding = (float)($loan['outstanding'] ?? 0);
   if ($outstanding < 0) $outstanding = 0;
 
   $tx = [];
-  $tstmt = $conn->prepare("
-    SELECT id, amount, trans_date, status
-    FROM transactions
-    WHERE loan_id = ?
-      AND status IN ('SUCCESS','PAID_PENDING')
-    ORDER BY trans_date ASC, id ASC
-  ");
-  $tstmt->bind_param("i", $loan_id);
+
+  if ($loanSource === 'restructured') {
+    $tstmt = $conn->prepare("
+      SELECT id, amount, trans_date, status
+      FROM transactions
+      WHERE restructured_loan_id = ?
+        AND status IN ('SUCCESS','PAID_PENDING')
+      ORDER BY trans_date ASC, id ASC
+    ");
+    $tstmt->bind_param("i", $loan_id);
+  } else {
+    $tstmt = $conn->prepare("
+      SELECT id, amount, trans_date, status
+      FROM transactions
+      WHERE loan_id = ?
+        AND status IN ('SUCCESS','PAID_PENDING')
+      ORDER BY trans_date ASC, id ASC
+    ");
+    $tstmt->bind_param("i", $loan_id);
+  }
+
   $tstmt->execute();
   $tres = $tstmt->get_result();
   while ($tres && ($row = $tres->fetch_assoc())) {
@@ -256,30 +329,12 @@ if ($loan) {
   $nextInstallment = min($term, max(1, $firstActionable));
   $nextDeadline = addMonths($start_date, $nextInstallment);
 
-  // Grace Period Check for Restructuring Offer
-  $grace_period = 3;
-  $gpQ = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key='grace_period'");
-  if ($gpQ && $r = $gpQ->fetch_assoc()) {
-      $grace_period = (int)$r['setting_value'];
-  }
-
-  $is_overdue_for_restructure = false;
-  $overdue_days = 0;
-  
-  if ($nextDeadline) {
-      $todayDate = new DateTime();
-      $dueDateObj = new DateTime($nextDeadline);
-      $diffDays = (int)$todayDate->diff($dueDateObj)->format("%r%a"); // Negative if overdue
-      
-      if ($diffDays < 0 && abs($diffDays) > $grace_period && $outstanding > 0) {
-          $is_overdue_for_restructure = true;
-          $overdue_days = abs($diffDays);
-      }
-  }
-
   $view = [
     'loan_id' => $loan_id,
-    'contract' => "#LN-" . str_pad((string)$loan_id, 4, "0", STR_PAD_LEFT),
+    'loan_source' => $loanSource,
+    'contract' => ($loanSource === 'restructured'
+      ? "#RL-" . str_pad((string)$loan_id, 4, "0", STR_PAD_LEFT)
+      : "#LN-" . str_pad((string)$loan_id, 4, "0", STR_PAD_LEFT)),
     'principal' => $principal,
     'outstanding' => $outstanding,
     'pending_verification' => $total_paid_pending,
@@ -430,6 +485,7 @@ if ($loan) {
 <?php include 'include/sidebar.php'; ?>
 <?php include 'include/theme_toggle.php'; ?>
 
+
 <div class="main-content">
   <div class="page-header">
     <h1>My Loans</h1>
@@ -507,21 +563,6 @@ if ($loan) {
             <h4>Principal Amount</h4>
             <div class="val"><?= peso($view['principal']) ?></div>
           </div>
-
-          <?php if (!empty($view['is_overdue_for_restructure'])): ?>
-          <div class="loan-note" style="background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3); margin-bottom: 20px;">
-            <div style="display:flex; align-items:flex-start; gap: 12px;">
-                <i class="bi bi-shield-exclamation" style="font-size: 24px; color: #ef4444;"></i>
-                <div>
-                    <strong style="color: #ef4444; display:block; margin-bottom: 4px; font-size: 15px;">Overdue Notice (<?= $view['overdue_days'] ?> days late)</strong>
-                    <span style="color: #cbd5e1; font-size: 14px; line-height: 1.5; display:block;">
-                        You have exceeded the allowed <?= $view['grace_period'] ?>-day grace period. If you cannot make the payment, you can request a <a href="restructure.php" style="color:#38bdf8; text-decoration:underline; font-weight:bold;">Loan Restructuring</a> to adjust your terms and avoid heavier penalties.
-                    </span>
-                </div>
-            </div>
-          </div>
-        <?php endif; ?>
-        
           <div class="stat-item">
             <h4>Remaining Balance</h4>
             <div class="val text-gold"><?= peso($view['outstanding']) ?></div>
@@ -628,14 +669,61 @@ if ($loan) {
               Fully Paid
             </span>
           <?php else: ?>
-            <a href="create_checkout.php?loan_id=<?= (int)$view['loan_id'] ?>"
-               style="background:#10b981; color:#064e3b; padding:10px 20px; border-radius:8px; text-decoration:none; font-weight:700; font-size:14px;">
-              Pay Next Due
-            </a>
+            <?php if ($view['loan_source'] === 'restructured'): ?>
+              <a href="create_checkout.php?source=restructured&restructured_loan_id=<?= (int)$view['loan_id'] ?>"
+                style="background:#10b981; color:#064e3b; padding:10px 20px; border-radius:8px; text-decoration:none; font-weight:700; font-size:14px;">
+                Pay Next Due
+              </a>
+            <?php else: ?>
+              <a href="create_checkout.php?source=original&loan_id=<?= (int)$view['loan_id'] ?>"
+                style="background:#10b981; color:#064e3b; padding:10px 20px; border-radius:8px; text-decoration:none; font-weight:700; font-size:14px;">
+                Pay Next Due
+              </a>
+            <?php endif; ?>
           <?php endif; ?>
         </div>
       </div>
-    </div>
+        </div>
+
+    <?php if ($loanSource === 'restructured' && $originalArchivedLoan): ?>
+      <div class="active-loan-card" style="margin-top:18px;">
+        <div class="card-header">
+          <div class="loan-ref">
+            Original Loan (Archived)
+            <span>#LN-<?= str_pad((string)$originalArchivedLoan['id'], 4, "0", STR_PAD_LEFT) ?></span>
+          </div>
+          <span class="status-badge" style="background:#334155;color:#e2e8f0;">RESTRUCTURED</span>
+        </div>
+
+        <div class="loan-body">
+          <details>
+            <summary style="cursor:pointer; color:#cbd5e1; font-weight:700; margin-bottom:12px;">
+              View original loan details
+            </summary>
+
+            <div class="stats-grid">
+              <div class="stat-item">
+                <h4>Original Loan Amount</h4>
+                <div class="val"><?= peso($originalArchivedLoan['loan_amount'] ?? 0) ?></div>
+              </div>
+              <div class="stat-item">
+                <h4>Old Remaining Balance</h4>
+                <div class="val text-gold"><?= peso($originalArchivedLoan['outstanding'] ?? 0) ?></div>
+              </div>
+              <div class="stat-item">
+                <h4>Old Monthly Due</h4>
+                <div class="val"><?= peso($originalArchivedLoan['monthly_due'] ?? 0) ?></div>
+              </div>
+              <div class="stat-item">
+                <h4>Old Term</h4>
+                <div class="val"><?= (int)($originalArchivedLoan['term_months'] ?? 0) ?> Months</div>
+              </div>
+            </div>
+          </details>
+        </div>
+      </div>
+    <?php endif; ?>
+
   <?php elseif ($disbStatus !== 'DISBURSED'): ?>
     <div class="active-loan-card">
       <div class="loan-body">

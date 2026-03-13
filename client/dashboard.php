@@ -4,9 +4,9 @@ include __DIR__ . "/include/config.php";
 require_once __DIR__ . "/include/session_checker.php";
 
 // Redirect if not logged in
-if (!isset($_SESSION['user_email'])) {
-  header("Location: index.html");
-  exit();
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php?msg=account_invalid"); 
+    exit;
 }
 
 function peso($n) { return "₱ " . number_format((float)$n, 2); }
@@ -32,9 +32,10 @@ function daysLeft($dateYmd) {
 }
 
 // Fetch user info
-$email = $_SESSION['user_email'];
-$userQuery = $conn->prepare("SELECT * FROM users WHERE email = ? LIMIT 1");
-$userQuery->bind_param("s", $email);
+// Fetch user info gamit ang user_id (Mas secured!)
+$current_user_id = $_SESSION['user_id'];
+$userQuery = $conn->prepare("SELECT * FROM users WHERE id = ? LIMIT 1");
+$userQuery->bind_param("i", $current_user_id);
 $userQuery->execute();
 $userResult = $userQuery->get_result();
 $user = $userResult ? $userResult->fetch_assoc() : null;
@@ -42,7 +43,8 @@ $userQuery->close();
 
 if (!$user) {
   session_destroy();
-  header("Location: index.html");
+  
+  header("Location: login.php?msg=account_invalid"); 
   exit();
 }
 
@@ -94,26 +96,43 @@ if ($appId > 0) {
 $disbStatus = strtoupper((string)($disbursement['status'] ?? 'NONE'));
 
 // ==============================
-// Active loan: only show if DISBURSED na
+// THE FIX: ACTIVE LOAN CHECKER (Prioritize Restructured Loans)
 // ==============================
 $loan = null;
-$loanQuery = $conn->prepare("
-  SELECT l.*
-  FROM loans l
-  INNER JOIN loan_disbursement ld ON ld.application_id = l.application_id
-  WHERE l.user_id = ?
-    AND l.status = 'ACTIVE'
-    AND ld.status = 'DISBURSED'
-  ORDER BY l.id DESC
-  LIMIT 1
-");
-$loanQuery->bind_param("i", $user_id);
-$loanQuery->execute();
-$loanResult = $loanQuery->get_result();
-if ($loanResult && $loanResult->num_rows === 1) {
-  $loan = $loanResult->fetch_assoc();
+$is_restructured = false;
+
+// CHECK 1: May active ba siya na Restructured Loan?
+$restructureQuery = $conn->prepare("SELECT * FROM restructured_loans WHERE user_id = ? AND status = 'ACTIVE' ORDER BY id DESC LIMIT 1");
+$restructureQuery->bind_param("i", $user_id);
+$restructureQuery->execute();
+$restructureResult = $restructureQuery->get_result();
+
+if ($restructureResult && $restructureResult->num_rows === 1) {
+    $loan = $restructureResult->fetch_assoc();
+    $is_restructured = true; // Flag for transaction checking later
+} 
+$restructureQuery->close();
+
+// CHECK 2: Kung walang Restructured, i-check ang normal na Loans table
+if (!$loan) {
+    $loanQuery = $conn->prepare("
+      SELECT l.*
+      FROM loans l
+      INNER JOIN loan_disbursement ld ON ld.application_id = l.application_id
+      WHERE l.user_id = ?
+        AND l.status = 'ACTIVE'
+        AND ld.status = 'DISBURSED'
+      ORDER BY l.id DESC
+      LIMIT 1
+    ");
+    $loanQuery->bind_param("i", $user_id);
+    $loanQuery->execute();
+    $loanResult = $loanQuery->get_result();
+    if ($loanResult && $loanResult->num_rows === 1) {
+      $loan = $loanResult->fetch_assoc();
+    }
+    $loanQuery->close();
 }
-$loanQuery->close();
 
 $hasLoan = (bool)$loan;
 $loan_id = $hasLoan ? (int)$loan['id'] : 0;
@@ -131,7 +150,7 @@ $canApplyLoan = !($hasOngoingApplication || $waitingDisbursement || $hasActiveLo
 // ==============================
 // Active loan calculations
 // ==============================
-$principal = $hasLoan ? (float)($loan['loan_amount'] ?? 0) : 0;
+$principal = $hasLoan ? (float)($loan['loan_amount'] ?? $loan['principal_amount'] ?? 0) : 0;
 $term = $hasLoan ? (int)($loan['term_months'] ?? 0) : 0;
 if ($term <= 0) $term = 1;
 
@@ -141,12 +160,15 @@ if ($hasLoan && $monthly_due <= 0) $monthly_due = $principal / $term;
 $start_date = $hasLoan ? ($loan['start_date'] ?? date("Y-m-d")) : date("Y-m-d");
 $total_payable = $monthly_due * $term;
 
+// Transaction Query Fix: Where to look based on loan type
 $total_paid_verified = 0.0;
 if ($hasLoan) {
+  $target_column = $is_restructured ? 'restructured_loan_id' : 'loan_id'; // Smart routing
+  
   $sumQ = $conn->prepare("
     SELECT COALESCE(SUM(amount),0) AS paid
     FROM transactions
-    WHERE loan_id = ? AND status = 'SUCCESS'
+    WHERE $target_column = ? AND status = 'SUCCESS'
   ");
   $sumQ->bind_param("i", $loan_id);
   $sumQ->execute();
@@ -155,7 +177,12 @@ if ($hasLoan) {
   $total_paid_verified = (float)($sumRow['paid'] ?? 0);
 }
 
-$outstanding = $hasLoan ? max(0, $total_payable - $total_paid_verified) : 0;
+// Outstanding Calculation
+if ($hasLoan && isset($loan['outstanding'])) {
+    $outstanding = (float)$loan['outstanding']; // Pwede mong gamitin agad yung nasa table
+} else {
+    $outstanding = $hasLoan ? max(0, $total_payable - $total_paid_verified) : 0;
+}
 
 $next_payment = $hasLoan ? ($loan['next_payment'] ?? null) : null;
 if ($hasLoan && !$next_payment) {
@@ -176,10 +203,12 @@ if ($hasLoan && $outstanding <= 0.00001) {
 // ==============================
 $recentTx = [];
 if ($hasLoan) {
+  $target_column = $is_restructured ? 'restructured_loan_id' : 'loan_id';
+  
   $transQuery = $conn->prepare("
     SELECT *
     FROM transactions
-    WHERE loan_id = ?
+    WHERE $target_column = ?
     ORDER BY trans_date DESC, id DESC
     LIMIT 5
   ");
@@ -207,14 +236,14 @@ if ($days !== null) {
 // ==============================
 // Grace Period & Restructure Check
 // ==============================
-$grace_period = 3; // Fallback default
+$grace_period = 3; 
 $gpQuery = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'grace_period'");
 if ($gpQuery && $gpRow = $gpQuery->fetch_assoc()) {
   $grace_period = (int)$gpRow['setting_value'];
 }
 
-// True if loan is active, overdue days > grace period, and balance is not fully paid
-$offerRestructure = ($hasLoan && $days !== null && $days < 0 && abs($days) > $grace_period && $outstanding > 0);
+// True if loan is active, not restructured yet, overdue days > grace period, and balance is not fully paid
+$offerRestructure = ($hasLoan && !$is_restructured && $days !== null && $days < 0 && abs($days) > $grace_period && $outstanding > 0);
 
 // ==============================
 // Hero text
@@ -225,7 +254,7 @@ $heroText = "Apply for a loan to see your repayment summary here.";
 $heroBadge = null;
 
 if ($hasLoan) {
-  $heroTitle = "Next Payment Due";
+  $heroTitle = $is_restructured ? "Next Payment Due (Restructured)" : "Next Payment Due";
   $heroAmount = peso($monthly_due);
   $heroText = "Due on " . fmtDatePretty($next_payment) . ($daysLabel ? " " . $daysLabel : "");
   $heroBadge = $loanStatus;
@@ -294,7 +323,7 @@ if ($hasLoan) {
             <i class="bi bi-check2-circle"></i> Loan Completed
           </a>
         <?php else: ?>
-          <a href="create_checkout.php?loan_id=<?= (int)$loan_id ?>" class="btn-pay">
+          <a href="create_checkout.php?loan_id=<?= (int)$loan_id ?>&is_restructured=<?= $is_restructured ? 1 : 0 ?>" class="btn-pay">
             <i class="bi bi-qr-code-scan"></i> Pay Now
           </a>
         <?php endif; ?>

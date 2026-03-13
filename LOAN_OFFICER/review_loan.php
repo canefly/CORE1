@@ -1,7 +1,8 @@
 <?php
-// 1. Establish Database Connection
 $connection_file = __DIR__ . '/includes/db_connect.php';
 require_once __DIR__ . '/includes/session_checker.php';
+require_once __DIR__ . '/send_to_financial.php';
+
 if (file_exists($connection_file)) {
     require_once $connection_file;
 } else {
@@ -14,14 +15,12 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
 
 $app_id = intval($_GET['id']);
 
-// 2. Handle Decision Submissions (POST Requests)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     try {
         if ($_POST['action'] === 'approve') {
 
             $pdo->beginTransaction();
 
-            // Lock + fetch application details
             $stmtApp = $pdo->prepare("
                 SELECT *
                 FROM loan_applications
@@ -35,12 +34,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 throw new Exception("Application not found.");
             }
 
-            // VERIFIED lang dapat ang pwede i-approve ni LO
             if (($appRow['status'] ?? '') !== 'VERIFIED') {
                 throw new Exception("Only VERIFIED applications can be approved.");
             }
 
-            // 1) Update application status
             $stmtUpd = $pdo->prepare("
                 UPDATE loan_applications
                 SET status = 'APPROVED', updated_at = NOW()
@@ -48,7 +45,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             ");
             $stmtUpd->execute([$app_id]);
 
-            // 2) Insert into loan_disbursement if not exists
             $stmtCheckDisb = $pdo->prepare("
                 SELECT id
                 FROM loan_disbursement
@@ -111,87 +107,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 ]);
             }
 
-            // 3) Insert into loans if not exists
-            $stmtCheckLoan = $pdo->prepare("
+            $stmtGetUser = $pdo->prepare("
+                SELECT u.fullname
+                FROM loan_applications la
+                JOIN users u ON la.user_id = u.id
+                WHERE la.id = ?
+                LIMIT 1
+            ");
+            $stmtGetUser->execute([$appRow['id']]);
+            $userRow = $stmtGetUser->fetch(PDO::FETCH_ASSOC);
+
+            $stmtLocalDisb = $pdo->prepare("
                 SELECT id
-                FROM loans
+                FROM loan_disbursement
                 WHERE application_id = ?
                 LIMIT 1
             ");
-            $stmtCheckLoan->execute([$app_id]);
-            $existingLoanId = $stmtCheckLoan->fetchColumn();
+            $stmtLocalDisb->execute([$appRow['id']]);
+            $localDisb = $stmtLocalDisb->fetch(PDO::FETCH_ASSOC);
 
-            if (!$existingLoanId) {
-                $principal      = (float)($appRow['principal_amount'] ?? 0);
-                $termMonths     = (int)($appRow['term_months'] ?? 0);
-                $monthlyDue     = (float)($appRow['monthly_due'] ?? 0);
-                $totalPayable   = (float)($appRow['total_payable'] ?? 0);
-
-                if ($termMonths <= 0) {
-                    throw new Exception("Invalid loan term.");
-                }
-
-                if ($monthlyDue <= 0 && $totalPayable > 0) {
-                    $monthlyDue = $totalPayable / $termMonths;
-                }
-
-                if ($monthlyDue <= 0) {
-                    $monthlyDue = $principal / $termMonths;
-                }
-
-                $outstanding = $totalPayable > 0 ? $totalPayable : $principal;
-
-                $startDate   = date('Y-m-d');
-                $nextPayment = date('Y-m-d', strtotime('+1 month'));
-                $dueDate     = date('Y-m-d', strtotime("+{$termMonths} months"));
-
-                $stmtInsertLoan = $pdo->prepare("
-                    INSERT INTO loans (
-                        user_id,
-                        application_id,
-                        loan_amount,
-                        term_months,
-                        monthly_due,
-                        interest_rate,
-                        interest_method,
-                        outstanding,
-                        next_payment,
-                        due_date,
-                        start_date,
-                        status
-                    )
-                    VALUES (
-                        :user_id,
-                        :application_id,
-                        :loan_amount,
-                        :term_months,
-                        :monthly_due,
-                        :interest_rate,
-                        :interest_method,
-                        :outstanding,
-                        :next_payment,
-                        :due_date,
-                        :start_date,
-                        'ACTIVE'
-                    )
-                ");
-
-                $stmtInsertLoan->execute([
-                    ':user_id'         => $appRow['user_id'],
-                    ':application_id'  => $appRow['id'],
-                    ':loan_amount'     => $principal,
-                    ':term_months'     => $termMonths,
-                    ':monthly_due'     => $monthlyDue,
-                    ':interest_rate'   => $appRow['interest_rate'],
-                    ':interest_method' => $appRow['interest_method'] ?? 'FLAT',
-                    ':outstanding'     => $outstanding,
-                    ':next_payment'    => $nextPayment,
-                    ':due_date'        => $dueDate,
-                    ':start_date'      => $startDate
-                ]);
-            }
+            $payload = [
+                "application_id"        => (int)$appRow['id'],
+                "core1_disbursement_id" => (int)($localDisb['id'] ?? 0),
+                "user_id"               => (int)$appRow['user_id'],
+                "client_name"           => $userRow['fullname'] ?? '',
+                "amount"                => (float)$appRow['principal_amount'],
+                "term_months"           => (int)($appRow['term_months'] ?? 0),
+                "interest_rate"         => (float)($appRow['interest_rate'] ?? 0),
+                "interest_method"       => $appRow['interest_method'] ?? 'FLAT',
+                "monthly_due"           => (float)($appRow['monthly_due'] ?? 0),
+                "total_payable"         => (float)($appRow['total_payable'] ?? 0),
+                "status"                => "WAITING FOR DISBURSEMENT"
+            ];
 
             $pdo->commit();
+
+            $syncResult = sendApprovedLoanToFinancial($payload);
+
+            if (empty($syncResult['success'])) {
+                header("Location: dashboard.php?msg=approved_local_only");
+                exit;
+            }
 
             header("Location: dashboard.php?msg=approved");
             exit;
@@ -219,7 +175,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
 }
 
-// 3. Fetch Application Data
 try {
     $stmt = $pdo->prepare("
         SELECT la.*, u.fullname, u.phone, u.email 
@@ -234,12 +189,10 @@ try {
         die("Application not found.");
     }
 
-    // Fetch Documents
     $stmtDocs = $pdo->prepare("SELECT * FROM loan_documents WHERE loan_application_id = ?");
     $stmtDocs->execute([$app_id]);
     $documents = $stmtDocs->fetchAll(PDO::FETCH_ASSOC);
 
-    // 4. Calculate Risk Metrics
     $principal = (float)($app['principal_amount'] ?? 0);
     $income = (float)($app['estimated_monthly_income'] ?? 1);
     if ($income <= 0) $income = 1;
@@ -386,7 +339,7 @@ try {
                 <div class="panel" style="border-color: #3b82f6;">
                     <div class="panel-title" style="color: #60a5fa;"><i class="bi bi-hammer"></i> Official Decision</div>
                     
-                    <form method="POST" onsubmit="return confirm('Are you sure you want to APPROVE this loan? This action will move it to the Disbursement Queue and create the loan record.');">
+                    <form method="POST" onsubmit="return confirm('Are you sure you want to APPROVE this loan? This action will move it to the Financial disbursement queue.');">
                         <input type="hidden" name="action" value="approve">
                         <button type="submit" class="btn-approve">
                             <i class="bi bi-check-circle-fill"></i> Approve Application
