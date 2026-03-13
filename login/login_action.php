@@ -36,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['admin_name'] = $user['full_name'];
             
             ob_clean();
-            echo json_encode(['success' => true, 'redirect' => '../finance/dashboard.php']);
+            echo json_encode(['success' => true, 'redirect' => '../FINANCE/dashboard.php']);
             exit;
         }
     }
@@ -62,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['admin_name'] = $user['full_name'];
             
             ob_clean();
-            echo json_encode(['success' => true, 'redirect' => '../LO/dashboard.php']);
+            echo json_encode(['success' => true, 'redirect' => '../LOAN_OFFICER/dashboard.php']);
             exit;
         }
     }
@@ -88,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['admin_name'] = $user['full_name'];
             
             ob_clean();
-            echo json_encode(['success' => true, 'redirect' => '../lsa/dashboard.php']);
+            echo json_encode(['success' => true, 'redirect' => '../LSA/dashboard.php']);
             exit;
         }
     }
