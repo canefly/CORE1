@@ -14,6 +14,6 @@ if (ini_get("session.use_cookies")) {
 session_unset();
 session_destroy();
 
-header("Location: index.php?status=logged_out");
+header("Location: login.php?status=logged_out");
 exit;
 ?>

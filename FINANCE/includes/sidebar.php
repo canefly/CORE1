@@ -5,10 +5,7 @@
     $cp = basename($_SERVER['PHP_SELF']); 
     $current_dir = basename(dirname($_SERVER['SCRIPT_NAME']));
 
-    // 2. Determine base path
-    $base_path = ($current_dir === 'LOAN_OFFICER' || $current_dir === 'LSA') ? '../' : './';
-
-    // 3. Smart Flags: Para malaman ng system kung anong dropdown ang dapat nakabuka (open) by default
+    // 2. Smart Flags: Para malaman ng system kung anong dropdown ang dapat nakabuka (open) by default
     $is_lo = ($current_dir === 'LOAN_OFFICER');
     $is_lsa = ($current_dir === 'LSA');
     $is_admin = ($current_dir !== 'LOAN_OFFICER' && $current_dir !== 'LSA' && $cp === 'settings.php');
@@ -111,23 +108,23 @@
             </div>
             <ul class="submenu <?= $is_finance_ops ? 'open' : '' ?>">
                 <li>
-                    <a href="<?= $base_path ?>dashboard.php" class="nav-item <?= ($is_finance_ops && $cp == 'dashboard.php') ? 'active' : '' ?>">
+                    <a href="../FINANCE/dashboard.php" class="nav-item <?= ($is_finance_ops && $cp == 'dashboard.php') ? 'active' : '' ?>">
                         <i class="bi bi-grid-1x2-fill"></i> Dashboard
                     </a>
                 </li>
                 <li>
-                    <a href="<?= $base_path ?>ledger.php" class="nav-item <?= ($is_finance_ops && $cp == 'ledger.php') ? 'active' : '' ?>">
+                    <a href="../FINANCE/ledger.php" class="nav-item <?= ($is_finance_ops && $cp == 'ledger.php') ? 'active' : '' ?>">
                         <i class="bi bi-journal-text"></i> Loan Ledger
                     </a>
                 </li>
                 <li>
-                    <a href="<?= $base_path ?>payments.php" class="nav-item <?= ($is_finance_ops && $cp == 'payments.php') ? 'active' : '' ?>">
+                    <a href="../FINANCE/payments.php" class="nav-item <?= ($is_finance_ops && $cp == 'payments.php') ? 'active' : '' ?>">
                         <i class="bi bi-cash-coin"></i> Payments
                         <span class="nav-badge amber">5</span> 
                     </a>
                 </li>
                 <li>
-                    <a href="<?= $base_path ?>disbursement.php" class="nav-item <?= ($is_finance_ops && $cp == 'disbursement.php') ? 'active' : '' ?>">
+                    <a href="../FINANCE/disbursement.php" class="nav-item <?= ($is_finance_ops && $cp == 'disbursement.php') ? 'active' : '' ?>">
                         <i class="bi bi-box-arrow-right"></i> Disbursement
                     </a>
                 </li>
@@ -141,27 +138,27 @@
             </div>
             <ul class="submenu <?= $is_lo ? 'open' : '' ?>">
                 <li>
-                    <a href="<?= $base_path ?>LOAN_OFFICER/dashboard.php" class="nav-item <?= ($is_lo && $cp == 'dashboard.php') ? 'active' : '' ?>">
+                    <a href="../LOAN_OFFICER/dashboard.php" class="nav-item <?= ($is_lo && $cp == 'dashboard.php') ? 'active' : '' ?>">
                         <i class="bi bi-speedometer2"></i> LO Dashboard
                     </a>
                 </li>
                 <li>
-                    <a href="<?= $base_path ?>LOAN_OFFICER/approvals.php" class="nav-item <?= ($is_lo && $cp == 'approvals.php') ? 'active' : '' ?>">
+                    <a href="../LOAN_OFFICER/approvals.php" class="nav-item <?= ($is_lo && $cp == 'approvals.php') ? 'active' : '' ?>">
                         <i class="bi bi-check-square-fill"></i> For Approval
                     </a>
                 </li>
                 <li>
-                    <a href="<?= $base_path ?>LOAN_OFFICER/approved.php" class="nav-item <?= ($is_lo && $cp == 'approved.php') ? 'active' : '' ?>">
+                    <a href="../LOAN_OFFICER/approved.php" class="nav-item <?= ($is_lo && $cp == 'approved.php') ? 'active' : '' ?>">
                         <i class="bi bi-file-earmark-check"></i> Approved Loans
                     </a>
                 </li>
                 <li>
-                    <a href="<?= $base_path ?>LOAN_OFFICER/rejected.php" class="nav-item <?= ($is_lo && $cp == 'rejected.php') ? 'active' : '' ?>">
+                    <a href="../LOAN_OFFICER/rejected.php" class="nav-item <?= ($is_lo && $cp == 'rejected.php') ? 'active' : '' ?>">
                         <i class="bi bi-file-earmark-x"></i> Rejected Loans
                     </a>
                 </li>
                 <li>
-                    <a href="<?= $base_path ?>LOAN_OFFICER/restructure.php" class="nav-item <?= ($is_lo && $cp == 'restructure.php') ? 'active' : '' ?>">
+                    <a href="../LOAN_OFFICER/restructure.php" class="nav-item <?= ($is_lo && $cp == 'restructure.php') ? 'active' : '' ?>">
                         <i class="bi bi-arrow-repeat"></i> Restructure Req.
                     </a>
                 </li>
@@ -175,27 +172,27 @@
             </div>
             <ul class="submenu <?= $is_lsa ? 'open' : '' ?>">
                 <li>
-                    <a href="<?= $base_path ?>LSA/dashboard.php" class="nav-item <?= ($is_lsa && $cp == 'dashboard.php') ? 'active' : '' ?>">
+                    <a href="../LSA/dashboard.php" class="nav-item <?= ($is_lsa && $cp == 'dashboard.php') ? 'active' : '' ?>">
                         <i class="bi bi-grid-1x2-fill"></i> LSA Dashboard
                     </a>
                 </li>
                 <li>
-                    <a href="<?= $base_path ?>LSA/application.php" class="nav-item <?= ($is_lsa && $cp == 'application.php') ? 'active' : '' ?>">
+                    <a href="../LSA/application.php" class="nav-item <?= ($is_lsa && $cp == 'application.php') ? 'active' : '' ?>">
                         <i class="bi bi-file-earmark-plus-fill"></i> New Apps
                     </a>
                 </li>
                 <li>
-                    <a href="<?= $base_path ?>LSA/forwarded.php" class="nav-item <?= ($is_lsa && $cp == 'forwarded.php') ? 'active' : '' ?>">
+                    <a href="../LSA/forwarded.php" class="nav-item <?= ($is_lsa && $cp == 'forwarded.php') ? 'active' : '' ?>">
                         <i class="bi bi-arrow-up-short"></i> Forwarded Apps
                     </a>
                 </li>
                 <li>
-                    <a href="<?= $base_path ?>LSA/returned.php" class="nav-item <?= ($is_lsa && $cp == 'returned.php') ? 'active' : '' ?>">
+                    <a href="../LSA/returned.php" class="nav-item <?= ($is_lsa && $cp == 'returned.php') ? 'active' : '' ?>">
                         <i class="bi bi-arrow-counterclockwise"></i> Returned Apps
                     </a>
                 </li>
                 <li>
-                    <a href="<?= $base_path ?>LSA/restructure.php" class="nav-item <?= ($is_lsa && $cp == 'restructure.php') ? 'active' : '' ?>">
+                    <a href="../LSA/restructure.php" class="nav-item <?= ($is_lsa && $cp == 'restructure.php') ? 'active' : '' ?>">
                         <i class="bi bi-arrow-repeat"></i> Restructure
                     </a>
                 </li>
@@ -209,7 +206,7 @@
             </div>
             <ul class="submenu <?= $is_admin ? 'open' : '' ?>">
                 <li>
-                    <a href="<?= $base_path ?>settings.php" class="nav-item <?= ($is_admin && $cp == 'settings.php') ? 'active' : '' ?>">
+                    <a href="../FINANCE/settings.php" class="nav-item <?= ($is_admin && $cp == 'settings.php') ? 'active' : '' ?>">
                         <i class="bi bi-sliders"></i> Interest & Rates
                     </a>
                 </li>
@@ -218,7 +215,7 @@
     </ul>
 
     <div class="logout-btn">
-        <a href="<?= $base_path ?>../index.php" class="nav-item logout-link">
+        <a href="../logout.php" class="nav-item logout-link">
             <i class="bi bi-box-arrow-right"></i> Sign Out
         </a>
     </div>

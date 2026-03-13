@@ -1,32 +1,37 @@
 /* =========================================
-   APPROVED LOANS PAGE STYLES
+   3. MAIN CONTENT LAYOUT 
    ========================================= */
-
-/* Base Reset */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: 'Google Sans', sans-serif;
-}
-
-body {
-    background-color: #0f172a; /* Dark Slate LO Theme */
-    color: #e2e8f0;
-    display: flex;
-    min-height: 100vh;
-}
-
-/* Main Layout */
 .main-content {
-    margin-left: 260px;
     padding: 30px;
-    width: calc(100% - 260px);
+    position: relative; 
+    display: flex;
+    flex-direction: column;
 }
 
-.page-header { margin-bottom: 25px; }
-.page-header h1 { font-size: 24px; color: #fff; margin-bottom: 5px; }
-.page-header p { color: #94a3b8; font-size: 14px; }
+.page-header {
+    margin: -30px -30px 30px -30px !important; 
+    padding: 24px 30px !important;
+    background-color: var(--surface) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    display: block !important; 
+    width: auto !important;
+    min-width: 100% !important;
+    transition: all 0.3s ease;
+}
+
+.page-header h1 {
+    font-size: 24px !important;
+    color: var(--text-primary) !important;
+    margin-bottom: 4px !important;
+    text-align: left !important;
+}
+
+.page-header p {
+    color: var(--text-tertiary) !important;
+    font-size: 14px !important;
+    margin: 0 !important;
+    text-align: left !important;
+}
 
 /* --- FILTER BAR --- */
 .filter-bar {
@@ -43,13 +48,14 @@ body {
 }
 
 .date-input {
-    background: #1e293b;
-    border: 1px solid #334155;
-    color: #cbd5e1;
+    background: var(--background);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
     padding: 8px 12px;
     border-radius: 8px;
     font-size: 13px;
     outline: none;
+    transition: all 0.3s ease;
 }
 
 /* Search */
@@ -59,38 +65,39 @@ body {
     left: 12px;
     top: 50%;
     transform: translateY(-50%);
-    color: #94a3b8;
+    color: var(--text-tertiary);
     font-size: 14px;
 }
 .search-input {
     width: 100%;
     padding: 10px 10px 10px 38px;
     border-radius: 8px;
-    border: 1px solid #334155;
-    background: #1e293b;
-    color: #fff;
+    border: 1px solid var(--border-color);
+    background: var(--background);
+    color: var(--text-primary);
     outline: none;
     font-size: 13px;
-    transition: border-color 0.2s;
+    transition: all 0.3s ease;
 }
-.search-input:focus { border-color: #10b981; } /* Green focus for Approved page */
+.search-input:focus { border-color: #10b981; } /* Green focus */
 
 /* --- TABLE STYLES --- */
 .content-card {
-    background-color: #1e293b;
-    border: 1px solid #334155;
+    background-color: var(--surface);
+    border: 1px solid var(--border-color);
     border-radius: 12px;
     padding: 20px;
     overflow-x: auto;
+    transition: all 0.3s ease;
 }
 
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
 
 thead th {
     text-align: left;
-    color: #94a3b8;
+    color: var(--text-tertiary);
     padding: 15px 10px;
-    border-bottom: 1px solid #334155;
+    border-bottom: 1px solid var(--border-color);
     text-transform: uppercase;
     font-size: 11px;
     letter-spacing: 0.5px;
@@ -99,8 +106,8 @@ thead th {
 
 tbody td {
     padding: 15px 10px;
-    border-bottom: 1px solid #334155;
-    color: #cbd5e1;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-secondary);
     vertical-align: middle;
 }
 tbody tr:last-child td { border-bottom: none; }
@@ -110,8 +117,8 @@ tbody tr:last-child td { border-bottom: none; }
 .mini-avatar {
     width: 32px;
     height: 32px;
-    background-color: #334155;
-    color: #f1f5f9;
+    background-color: var(--border-color);
+    color: var(--text-primary);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -123,7 +130,7 @@ tbody tr:last-child td { border-bottom: none; }
 /* --- APPROVED STATUS BADGE --- */
 .badge-approved {
     background: rgba(16, 185, 129, 0.15);
-    color: #34d399;
+    color: #10b981; /* Adjusted for dual-mode contrast */
     padding: 4px 10px;
     border-radius: 20px;
     font-size: 11px;
@@ -150,18 +157,19 @@ tbody tr:last-child td { border-bottom: none; }
     align-items: center;
     justify-content: center;
     background: transparent;
-    color: #94a3b8;
+    color: var(--text-tertiary);
     cursor: pointer;
     transition: 0.2s;
     font-size: 14px;
 }
 
 .btn-icon:hover {
-    background-color: #334155;
-    color: #fff;
+    background-color: var(--surface-hover);
+    color: var(--text-primary);
 }
 
 .btn-print:hover {
-    color: #60a5fa; /* Blue hover for print */
-    border-color: #60a5fa;
+    color: #3b82f6; 
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.1);
 }

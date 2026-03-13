@@ -275,6 +275,16 @@ $hasPendingPayment = (bool)$stmtPendingView->fetch();
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 
     <link rel="stylesheet" href="assets/css/review_restructure.css?v=<?php echo time(); ?>">
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem("theme");
+            if (savedTheme === "dark" || savedTheme === null) {
+                document.documentElement.classList.add("dark-mode");
+                localStorage.setItem("theme", "dark");
+            }
+        })();
+    </script>
+    <link rel="stylesheet" href="assets/css/base-style.css">
 </head>
 <body>
     <?php include 'includes/sidebar.php'; ?>
