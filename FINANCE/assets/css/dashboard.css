@@ -2,7 +2,11 @@
    FINANCE DASHBOARD STYLES
    ========================================= */
 
-/* --- GLOBAL RESET --- */
+/* =========================================
+   APPROVALS PAGE STYLES
+   ========================================= */
+
+/* Base Layout */
 * {
     margin: 0;
     padding: 0;
@@ -11,13 +15,14 @@
 }
 
 body {
-    background-color: #0f172a; /* Dark Slate (Rich Professional Look) */
+    background-color: #0f172a;
+    /* LO Theme: Slate-900 */
     color: #e2e8f0;
     display: flex;
     min-height: 100vh;
 }
 
-/* --- MAIN LAYOUT --- */
+/* Content Offset */
 .main-content {
     margin-left: 260px;
     padding: 30px;
@@ -25,20 +30,25 @@ body {
 }
 
 .page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    margin-bottom: 30px;
+    margin-bottom: 25px;
 }
 
-.page-header h1 { font-size: 26px; color: #fff; font-weight: 700; margin-bottom: 5px; }
-.page-header p { color: #94a3b8; font-size: 14px; }
+.page-header h1 {
+    font-size: 24px;
+    color: #fff;
+    margin-bottom: 5px;
+}
+
+.page-header p {
+    color: #94a3b8;
+    font-size: 14px;
+}
 
 /* Date Display in Header */
 .current-date {
     text-align: right;
     font-size: 13px;
-    color: #f59e0b; /* Gold */
+    color: var(--brand-gold);
     font-weight: 600;
     background: rgba(245, 158, 11, 0.1);
     padding: 6px 12px;
@@ -55,8 +65,8 @@ body {
 }
 
 .kpi-card {
-    background-color: #1e293b;
-    border: 1px solid #334155;
+    background-color: var(--surface);
+    border: 1px solid var(--border);
     padding: 24px;
     border-radius: 12px;
     display: flex;
@@ -64,7 +74,11 @@ body {
     position: relative;
     transition: transform 0.2s;
 }
-.kpi-card:hover { transform: translateY(-3px); border-color: #f59e0b; }
+
+.kpi-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--brand-gold);
+}
 
 .kpi-icon {
     width: 45px;
@@ -78,13 +92,45 @@ body {
 }
 
 /* Card Colors */
-.card-gold .kpi-icon { background: rgba(245, 158, 11, 0.15); color: #fbbf24; } /* Profit/Admin */
-.card-green .kpi-icon { background: rgba(16, 185, 129, 0.15); color: #34d399; } /* Collections */
-.card-blue .kpi-icon { background: rgba(59, 130, 246, 0.15); color: #60a5fa; } /* Disbursed */
-.card-red .kpi-icon { background: rgba(239, 68, 68, 0.15); color: #f87171; } /* Receivables */
+.card-gold .kpi-icon {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--brand-gold);
+}
 
-.kpi-value { font-size: 32px; font-weight: 700; color: #fff; margin-bottom: 4px; letter-spacing: 0.5px; }
-.kpi-label { font-size: 13px; color: #94a3b8; font-weight: 500; text-transform: uppercase; }
+/* Profit/Admin */
+.card-green .kpi-icon {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success);
+}
+
+/* Collections */
+.card-blue .kpi-icon {
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--info);
+}
+
+/* Disbursed */
+.card-red .kpi-icon {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--danger);
+}
+
+/* Receivables */
+
+.kpi-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+    letter-spacing: 0.5px;
+}
+
+.kpi-label {
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-weight: 500;
+    text-transform: uppercase;
+}
 
 /* --- MIDDLE SECTION: Chart & Interest Rate --- */
 .mid-section {
@@ -94,9 +140,10 @@ body {
     margin-bottom: 30px;
 }
 
-.chart-container, .rate-card {
-    background-color: #1e293b;
-    border: 1px solid #334155;
+.chart-container,
+.rate-card {
+    background-color: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 12px;
     padding: 20px;
 }
@@ -107,26 +154,35 @@ body {
     align-items: center;
     margin-bottom: 20px;
 }
-.section-head h3 { font-size: 16px; color: #fff; }
+
+.section-head h3 {
+    font-size: 16px;
+    color: var(--text-primary);
+}
 
 /* Rate Card Specifics */
 .current-rate-box {
     text-align: center;
     padding: 20px 0;
 }
+
 .rate-big {
     font-size: 48px;
     font-weight: 800;
-    color: #fbbf24; /* Gold */
+    color: var(--brand-gold);
 }
-.rate-sub { font-size: 13px; color: #94a3b8; }
+
+.rate-sub {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
 
 .btn-config {
     display: block;
     width: 100%;
     background: transparent;
-    border: 1px solid #fbbf24;
-    color: #fbbf24;
+    border: 1px solid var(--brand-gold);
+    color: var(--brand-gold);
     padding: 10px;
     border-radius: 8px;
     cursor: pointer;
@@ -134,24 +190,31 @@ body {
     margin-top: 15px;
     transition: 0.2s;
 }
-.btn-config:hover { background: rgba(245, 158, 11, 0.1); }
+
+.btn-config:hover {
+    background: rgba(245, 158, 11, 0.1);
+}
 
 /* --- RECENT TRANSACTIONS TABLE --- */
 .table-container {
-    background-color: #1e293b;
-    border: 1px solid #334155;
+    background-color: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 12px;
     padding: 20px;
     overflow-x: auto;
 }
 
-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
 
 thead th {
     text-align: left;
-    color: #94a3b8;
+    color: var(--text-secondary);
     padding: 15px 10px;
-    border-bottom: 1px solid #334155;
+    border-bottom: 1px solid var(--border);
     text-transform: uppercase;
     font-size: 11px;
     font-weight: 700;
@@ -159,21 +222,46 @@ thead th {
 
 tbody td {
     padding: 15px 10px;
-    border-bottom: 1px solid #334155;
-    color: #cbd5e1;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-muted);
     vertical-align: middle;
 }
-tbody tr:last-child td { border-bottom: none; }
+
+tbody tr:last-child td {
+    border-bottom: none;
+}
 
 /* Transaction Type Badges */
-.badge-in { color: #34d399; font-weight: 600; background: rgba(16, 185, 129, 0.1); padding: 4px 8px; border-radius: 4px; font-size: 11px;}
-.badge-out { color: #f87171; font-weight: 600; background: rgba(239, 68, 68, 0.1); padding: 4px 8px; border-radius: 4px; font-size: 11px;}
+.badge-in {
+    color: var(--success);
+    font-weight: 600;
+    background: rgba(16, 185, 129, 0.1);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+}
 
-.amount-positive { color: #34d399; font-weight: 700; }
-.amount-negative { color: #fff; font-weight: 700; }
+.badge-out {
+    color: var(--danger);
+    font-weight: 600;
+    background: rgba(239, 68, 68, 0.1);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+}
+
+.amount-positive {
+    color: var(--success);
+    font-weight: 700;
+}
+
+.amount-negative {
+    color: var(--text-primary);
+    font-weight: 700;
+}
 
 .btn-view-all {
-    color: #60a5fa;
+    color: var(--info);
     text-decoration: none;
     font-size: 13px;
     font-weight: 600;

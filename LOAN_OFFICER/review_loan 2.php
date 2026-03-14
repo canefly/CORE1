@@ -1,7 +1,6 @@
 <?php
 // 1. Establish Database Connection
 $connection_file = __DIR__ . '/includes/db_connect.php';
-require_once __DIR__ . '/includes/session_checker.php';
 if (file_exists($connection_file)) {
     require_once $connection_file;
 } else {
@@ -15,6 +14,7 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
 }
 
 $app_id = intval($_GET['id']);
+$error_message = '';
 
 // 2. Handle Decision Submissions (POST Requests)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
@@ -342,16 +342,6 @@ try {
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="assets/css/Review_loan.css">
-    <script>
-        (function() {
-            const savedTheme = localStorage.getItem("theme");
-            if (savedTheme === "dark" || savedTheme === null) {
-                document.documentElement.classList.add("dark-mode");
-                localStorage.setItem("theme", "dark");
-            }
-        })();
-    </script>
-    <link rel="stylesheet" href="assets/css/base-style.css">
 </head>
 <body>
 
@@ -367,7 +357,7 @@ try {
             <a href="dashboard.php" class="btn-back"><i class="bi bi-arrow-left"></i> Back to Queue</a>
         </div>
 
-        <?php if(isset($error_message)): ?>
+        <?php if (!empty(trim($error_message))): ?>
             <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #f87171; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
                 <i class="bi bi-exclamation-triangle-fill"></i> <?php echo htmlspecialchars($error_message); ?>
             </div>
@@ -462,7 +452,7 @@ try {
                 <div class="panel" style="border-color: #3b82f6;">
                     <div class="panel-title" style="color: #60a5fa;"><i class="bi bi-hammer"></i> Official Decision</div>
                     
-                    <form method="POST" onsubmit="return confirm('Are you sure you want to APPROVE this loan? This action will move it to the Financial disbursement queue.');">
+                    <form method="POST" onsubmit="return confirm('Are you sure you want to APPROVE this loan? This action will move it to the Disbursement Queue.');">
                         <input type="hidden" name="action" value="approve">
                         <button type="submit" class="btn-approve">
                             <i class="bi bi-check-circle-fill"></i> Approve Application
@@ -511,7 +501,9 @@ try {
         const modal = document.getElementById('rejectModal');
         function openRejectModal() { modal.style.display = 'flex'; }
         function closeRejectModal() { modal.style.display = 'none'; }
-        window.onclick = function(e) { if (e.target == modal) closeRejectModal(); }
+        window.onclick = function(event) {
+            if (event.target == modal) closeRejectModal();
+        }
     </script>
 
 </body>

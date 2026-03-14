@@ -5,7 +5,8 @@ require_once __DIR__ . '/includes/session_checker.php';
 
 if (file_exists($connection_file)) {
     require_once $connection_file;
-} else {
+}
+else {
     die("Error: Connection file not found at " . $connection_file);
 }
 
@@ -30,11 +31,12 @@ try {
         LEFT JOIN loan_applications la ON l.application_id = la.id
         ORDER BY l.id DESC
     ";
-    
+
     $stmt = $pdo->query($query);
     $loans = $stmt->fetchAll();
 
-} catch (PDOException $e) {
+}
+catch (PDOException $e) {
     die("Query Failed: " . $e->getMessage());
 }
 ?>
@@ -46,12 +48,21 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Finance | Master Ledger</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    
+        <script>
+        // THE ANTI-FLASHBANG PROTOCOL 
+        if (localStorage.getItem('theme') === null) {
+            localStorage.setItem('theme', 'dark'); 
+        }
+        if (localStorage.getItem('theme') === 'dark') {
+            document.documentElement.classList.add('dark-mode');
+        }
+    </script>
+    <link rel="stylesheet" href="assets/css/global.css"> 
     <link rel="stylesheet" href="assets/css/ledger.css">
 </head>
 <body>
+
 
     <?php include 'includes/sidebar.php'; ?>
 
@@ -104,38 +115,45 @@ try {
                     <tbody>
                         <?php if (empty($loans)): ?>
                             <tr><td colspan="10" style="text-align:center; padding: 20px;">No loan records found.</td></tr>
-                        <?php else: ?>
-                            <?php foreach ($loans as $row): 
-                                // Math logic for the row
-                                $principal = $row['principal'];
-                                $interest = $row['total_interest'];
-                                $total_payable = $principal + $interest;
-                                $balance = $row['outstanding'];
-                                
-                                // Total Paid = Total Payable minus current Balance
-                                $total_paid = $total_payable - $balance;
-                                if ($total_paid < 0) $total_paid = 0; // Prevent negative values
-                                
-                                // Progress Percentage
-                                $progress = ($total_payable > 0) ? round(($total_paid / $total_payable) * 100) : 0;
-                                if ($progress > 100) $progress = 100;
-                                
-                                // --- AUTOMATIC PAID STATUS FIX ---
-                                $displayStatus = $row['status'];
-                                if ($balance <= 0) {
-                                    $displayStatus = 'PAID';
-                                }
+                        <?php
+else: ?>
+                            <?php foreach ($loans as $row):
+        // Math logic for the row
+        $principal = $row['principal'];
+        $interest = $row['total_interest'];
+        $total_payable = $principal + $interest;
+        $balance = $row['outstanding'];
 
-                                // Determine progress bar color based on status/progress
-                                $progressColor = '#60a5fa'; // Blue default
-                                if ($progress >= 100) $progressColor = '#10b981'; // Green if paid
-                                if ($displayStatus == 'OVERDUE') $progressColor = '#f87171'; // Red if overdue
-                                
-                                // Format Status Badge CSS Class
-                                $statusClass = 'status-active';
-                                if ($displayStatus == 'CLOSED' || $displayStatus == 'PAID') $statusClass = 'status-paid';
-                                if ($displayStatus == 'OVERDUE') $statusClass = 'status-overdue';
-                            ?>
+        // Total Paid = Total Payable minus current Balance
+        $total_paid = $total_payable - $balance;
+        if ($total_paid < 0)
+            $total_paid = 0; // Prevent negative values
+
+        // Progress Percentage
+        $progress = ($total_payable > 0) ? round(($total_paid / $total_payable) * 100) : 0;
+        if ($progress > 100)
+            $progress = 100;
+
+        // --- AUTOMATIC PAID STATUS FIX ---
+        $displayStatus = $row['status'];
+        if ($balance <= 0) {
+            $displayStatus = 'PAID';
+        }
+
+        // Determine progress bar color based on status/progress
+        $progressColor = '#60a5fa'; // Blue default
+        if ($progress >= 100)
+            $progressColor = '#10b981'; // Green if paid
+        if ($displayStatus == 'OVERDUE')
+            $progressColor = '#f87171'; // Red if overdue
+
+        // Format Status Badge CSS Class
+        $statusClass = 'status-active';
+        if ($displayStatus == 'CLOSED' || $displayStatus == 'PAID')
+            $statusClass = 'status-paid';
+        if ($displayStatus == 'OVERDUE')
+            $statusClass = 'status-overdue';
+?>
                             <tr class="ledger-row" data-status="<?php echo strtoupper($displayStatus); ?>">
                                 <td style="color:#fbbf24; font-weight:700;">#LN-<?php echo str_pad($row['loan_id'], 4, '0', STR_PAD_LEFT); ?></td>
                                 <td class="client-name"><?php echo htmlspecialchars($row['fullname'] ?? 'N/A'); ?></td>
@@ -155,8 +173,10 @@ try {
                                     <a href="view_loan.php?id=<?php echo $row['loan_id']; ?>" class="btn-view" style="color: #fbbf24; border: 1px solid #fbbf24; padding: 4px 10px; border-radius: 4px; text-decoration: none; font-size: 11px; font-weight: bold; transition: 0.2s;">OPEN</a>
                                 </td>
                             </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
+                            <?php
+    endforeach; ?>
+                        <?php
+endif; ?>
                     </tbody>
                 </table>
             </div>
