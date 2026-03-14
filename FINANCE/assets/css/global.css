@@ -686,3 +686,26 @@ body {
     padding: 20px;
   }
 }
+
+/* 🚨 THE ACTUAL NO-HTML FIX (REPLACE THE PREVIOUS BLOCK) 🚨 */
+
+/* 1. Main container: 0 padding on top, 32px padding on sides and bottom */
+.main-content {
+  margin-left: var(--sidebar-width) !important;
+  width: calc(100% - var(--sidebar-width)) !important;
+  padding: 0 32px 32px 32px !important;
+  transition: var(--transition-slow) !important;
+}
+
+/* 2. Handle the sidebar fold */
+.sidebar.collapsed~.main-content {
+  margin-left: var(--sidebar-collapsed-width) !important;
+  width: calc(100% - var(--sidebar-collapsed-width)) !important;
+}
+
+/* 3. The Magic Trick: Negative margins pull ONLY the header to the edges */
+.page-header {
+  margin: 0 -32px 30px -32px !important;
+  padding: 20px 32px !important;
+  /* Keeps the text inside aligned with your content below */
+}
