@@ -709,3 +709,19 @@ body {
   padding: 20px 32px !important;
   /* Keeps the text inside aligned with your content below */
 }
+
+/* 🚨 THE 12:40 AM BADGE IMMUNITY FIX 🚨 */
+#sidebar .nav-item .nav-badge {
+  margin-left: auto !important;
+  /* Overrides the bootstrap nuke */
+  padding: 2px 8px !important;
+  border-radius: 12px !important;
+  font-weight: 700 !important;
+  display: inline-block !important;
+  /* Forces it to hold its shape */
+}
+
+#sidebar .nav-item .nav-badge.amber {
+  background-color: #f59e0b !important;
+  color: #0f172a !important;
+}
