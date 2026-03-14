@@ -3,7 +3,8 @@
 $connection_file = __DIR__ . '/includes/db_connect.php';
 if (file_exists($connection_file)) {
     require_once $connection_file;
-} else {
+}
+else {
     die("Error: Connection file not found.");
 }
 
@@ -17,15 +18,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $amount_received = floatval($_POST['amount_received']);
     $reference = trim($_POST['reference_no']);
     $method = $_POST['payment_method'];
-    
+
     try {
         $pdo->beginTransaction();
-        
+
         // Fetch current loan details
         $stmtLoan = $pdo->prepare("SELECT * FROM loans WHERE id = ? AND status = 'ACTIVE'");
         $stmtLoan->execute([$loan_id]);
         $loan = $stmtLoan->fetch();
-        
+
         if ($loan) {
             // Log the transaction
             $insertTx = $pdo->prepare("
@@ -35,16 +36,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             // Generating a simple receipt number for OTC transactions
             $receipt_no = $reference ? $reference : 'OTC-' . date('Ymd-His');
             $insertTx->execute([$loan['user_id'], $loan_id, $amount_received, $method, $receipt_no]);
-            
+
             // Calculate new balance
             $new_outstanding = $loan['outstanding'] - $amount_received;
-            
+
             if ($new_outstanding <= 0) {
                 // Loan is fully paid
                 $updateLoan = $pdo->prepare("UPDATE loans SET outstanding = 0, status = 'PAID' WHERE id = ?");
                 $updateLoan->execute([$loan_id]);
                 $success_message = "Payment received! The loan is now fully paid.";
-            } else {
+            }
+            else {
                 // Loan is still active, advance the next payment date by 1 month
                 $updateLoan = $pdo->prepare("
                     UPDATE loans 
@@ -54,13 +56,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $updateLoan->execute([$new_outstanding, $loan_id]);
                 $success_message = "Payment of ₱" . number_format($amount_received, 2) . " received successfully.";
             }
-            
+
             $pdo->commit();
-        } else {
+        }
+        else {
             $pdo->rollBack();
             $error_message = "Loan not found or already closed.";
         }
-    } catch (PDOException $e) {
+    }
+    catch (PDOException $e) {
         $pdo->rollBack();
         $error_message = "Database Error: " . $e->getMessage();
     }
@@ -100,7 +104,8 @@ try {
     ");
     $overdueList = $stmtOverdueList->fetchAll();
 
-} catch (PDOException $e) {
+}
+catch (PDOException $e) {
     die("Query Failed: " . $e->getMessage());
 }
 ?>
@@ -112,12 +117,21 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Finance | Payment Monitoring</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    
+        <script>
+        // THE ANTI-FLASHBANG PROTOCOL 
+        if (localStorage.getItem('theme') === null) {
+            localStorage.setItem('theme', 'dark'); 
+        }
+        if (localStorage.getItem('theme') === 'dark') {
+            document.documentElement.classList.add('dark-mode');
+        }
+    </script>
+    <link rel="stylesheet" href="assets/css/global.css">
     <link rel="stylesheet" href="assets/css/payments.css">
 </head>
 <body>
+
 
     <?php include 'includes/sidebar.php'; ?>
 
@@ -128,17 +142,19 @@ try {
             <p>Track daily collections and manage overdue accounts.</p>
         </div>
 
-        <?php if(isset($success_message)): ?>
+        <?php if (isset($success_message)): ?>
             <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; color: #34d399; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
                 <i class="bi bi-check-circle-fill"></i> <?php echo $success_message; ?>
             </div>
-        <?php endif; ?>
+        <?php
+endif; ?>
 
-        <?php if(isset($error_message)): ?>
+        <?php if (isset($error_message)): ?>
             <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #f87171; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
                 <i class="bi bi-exclamation-triangle-fill"></i> <?php echo $error_message; ?>
             </div>
-        <?php endif; ?>
+        <?php
+endif; ?>
 
         <div class="summary-grid">
             <div class="summary-card">
@@ -182,13 +198,14 @@ try {
                     </tr>
                 </thead>
                 <tbody>
-                    <?php if(empty($dueTodayList)): ?>
+                    <?php if (empty($dueTodayList)): ?>
                         <tr><td colspan="6" style="text-align:center; padding: 20px;">No payments due exactly today.</td></tr>
-                    <?php else: ?>
-                        <?php foreach($dueTodayList as $due): 
-                            $nameParts = explode(' ', $due['fullname']);
-                            $initials = strtoupper(substr($nameParts[0], 0, 1) . (isset($nameParts[1]) ? substr($nameParts[1], 0, 1) : ''));
-                        ?>
+                    <?php
+else: ?>
+                        <?php foreach ($dueTodayList as $due):
+        $nameParts = explode(' ', $due['fullname']);
+        $initials = strtoupper(substr($nameParts[0], 0, 1) . (isset($nameParts[1]) ? substr($nameParts[1], 0, 1) : ''));
+?>
                         <tr>
                             <td style="color:#60a5fa;">#LN-<?php echo $due['id']; ?></td>
                             <td>
@@ -209,8 +226,10 @@ try {
                                 </button>
                             </td>
                         </tr>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
+                        <?php
+    endforeach; ?>
+                    <?php
+endif; ?>
                 </tbody>
             </table>
         </div>
@@ -228,14 +247,15 @@ try {
                     </tr>
                 </thead>
                 <tbody>
-                    <?php if(empty($overdueList)): ?>
+                    <?php if (empty($overdueList)): ?>
                         <tr><td colspan="6" style="text-align:center; padding: 20px;">No overdue accounts. Great job!</td></tr>
-                    <?php else: ?>
-                        <?php foreach($overdueList as $overdue): 
-                            // Calculate simple 5% flat penalty for display demo purposes
-                            $penalty = $overdue['monthly_due'] * 0.05;
-                            $totalDue = $overdue['monthly_due'] + $penalty;
-                        ?>
+                    <?php
+else: ?>
+                        <?php foreach ($overdueList as $overdue):
+        // Calculate simple 5% flat penalty for display demo purposes
+        $penalty = $overdue['monthly_due'] * 0.05;
+        $totalDue = $overdue['monthly_due'] + $penalty;
+?>
                         <tr>
                             <td style="color:#f87171;">#LN-<?php echo $overdue['id']; ?></td>
                             <td><?php echo htmlspecialchars($overdue['fullname']); ?></td>
@@ -249,8 +269,10 @@ try {
                                 </button>
                             </td>
                         </tr>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
+                        <?php
+    endforeach; ?>
+                    <?php
+endif; ?>
                 </tbody>
             </table>
         </div>

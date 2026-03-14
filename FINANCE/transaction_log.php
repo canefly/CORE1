@@ -1,8 +1,14 @@
 <?php
 // 1. Establish Database Connection
 $connection_file = __DIR__ . '/includes/db_connect.php';
-if (file_exists($connection_file)) { require_once $connection_file; } 
-else { die("Error: Connection file not found."); }
+require_once __DIR__ . '/includes/session_checker.php';
+if (file_exists($connection_file)) {
+    require_once $connection_file;
+}
+
+else {
+    die("Error: Connection file not found.");
+}
 
 // 2. Get Filters from URL
 $start_date = isset($_GET['start_date']) ? $_GET['start_date'] : '';
@@ -54,26 +60,29 @@ try {
             JOIN users u ON l.user_id = u.id
         ) AS master_log 
     ";
-    
+
     $params = [];
-    
+
     // 4. Apply Filters to SQL
     if ($quick_filter === 'today') {
         $query .= " WHERE DATE(tx_date) = CURDATE() ";
-    } elseif (!empty($start_date) && !empty($end_date)) {
+    }
+    elseif (!empty($start_date) && !empty($end_date)) {
         $query .= " WHERE DATE(tx_date) BETWEEN ? AND ? ";
         $params[] = $start_date;
         $params[] = $end_date;
-    } elseif (!empty($start_date)) {
+    }
+    elseif (!empty($start_date)) {
         $query .= " WHERE DATE(tx_date) >= ? ";
         $params[] = $start_date;
-    } elseif (!empty($end_date)) {
+    }
+    elseif (!empty($end_date)) {
         $query .= " WHERE DATE(tx_date) <= ? ";
         $params[] = $end_date;
     }
 
     $query .= " ORDER BY tx_date DESC";
-    
+
     $stmt = $pdo->prepare($query);
     $stmt->execute($params);
     $all_logs = $stmt->fetchAll();
@@ -81,7 +90,7 @@ try {
     // Calculate Dynamic Dashboard Totals
     $total_in = 0;
     $total_out = 0;
-    foreach($all_logs as $log) {
+    foreach ($all_logs as $log) {
         $total_in += $log['cash_in'];
         $total_out += $log['cash_out'];
     }
@@ -91,17 +100,19 @@ try {
         $filename = 'Master_Cashflow_Log';
         if ($quick_filter === 'today') {
             $filename .= '_Today_' . date('Y-m-d');
-        } elseif ($start_date && $end_date) {
+        }
+        elseif ($start_date && $end_date) {
             $filename .= '_' . $start_date . '_to_' . $end_date;
-        } else {
+        }
+        else {
             $filename .= '_All_Time';
         }
-        
+
         header('Content-Type: text/csv; charset=utf-8');
         header('Content-Disposition: attachment; filename=' . $filename . '.csv');
         $output = fopen('php://output', 'w');
         fputcsv($output, array('Date & Time', 'Transaction Type', 'Reference No.', 'Client Name', 'Loan ID', 'Method', 'Cash IN (Received)', 'Cash OUT (Disbursed)', 'Status'));
-        
+
         foreach ($all_logs as $row) {
             fputcsv($output, array(
                 date("M d, Y g:i A", strtotime($row['tx_date'])),
@@ -119,7 +130,8 @@ try {
         exit();
     }
 
-} catch (PDOException $e) {
+}
+catch (PDOException $e) {
     die("Query Failed: " . $e->getMessage());
 }
 ?>
@@ -130,12 +142,22 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Finance | Master Cashflow Log</title>
-    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+        <script>
+        // THE ANTI-FLASHBANG PROTOCOL 
+        if (localStorage.getItem('theme') === null) {
+            localStorage.setItem('theme', 'dark'); 
+        }
+        if (localStorage.getItem('theme') === 'dark') {
+            document.documentElement.classList.add('dark-mode');
+        }
+    </script>
+    <link rel="stylesheet" href="assets/css/global.css">
     <link rel="stylesheet" href="assets/css/transactions.css">
 
 </head>
 <body>
+
 
     <?php include 'includes/sidebar.php'; ?>
 
@@ -147,9 +169,11 @@ try {
                 <p>Complete timeline of all disbursed funds and received collections.</p>
                 <?php if ($quick_filter === 'today'): ?>
                     <p style="color: #60a5fa; margin-top: 5px; font-weight: bold;"><i class="bi bi-calendar-event"></i> Showing records for Today</p>
-                <?php elseif ($start_date && $end_date): ?>
+                <?php
+elseif ($start_date && $end_date): ?>
                     <p style="color: #60a5fa; margin-top: 5px; font-weight: bold;"><i class="bi bi-calendar-range"></i> Showing records from <?php echo date("M d, Y", strtotime($start_date)); ?> to <?php echo date("M d, Y", strtotime($end_date)); ?></p>
-                <?php endif; ?>
+                <?php
+endif; ?>
             </div>
            
         </div>
@@ -168,11 +192,11 @@ try {
             <div class="shortcut-divider">
                 <span style="color: #64748b; font-size: 12px; margin-right: 5px; line-height: 38px;">Quick Filters:</span>
                 
-                <a href="transaction_log.php?filter=today" class="btn-shortcut <?php echo ($quick_filter === 'today') ? 'active' : ''; ?>">
+                <a href="transaction_log.php?filter=today" class="btn-shortcut <?php echo($quick_filter === 'today') ? 'active' : ''; ?>">
                     Today
                 </a>
                 
-                <a href="transaction_log.php?filter=all" class="btn-shortcut <?php echo ($quick_filter === 'all' || (empty($quick_filter) && empty($start_date))) ? 'active' : ''; ?>">
+                <a href="transaction_log.php?filter=all" class="btn-shortcut <?php echo($quick_filter === 'all' || (empty($quick_filter) && empty($start_date))) ? 'active' : ''; ?>">
                     All Time
                 </a>
             </div>
@@ -215,44 +239,53 @@ try {
                     </tr>
                 </thead>
                 <tbody>
-                    <?php if(empty($all_logs)): ?>
+                    <?php if (empty($all_logs)): ?>
                         <tr><td colspan="7" style="text-align:center; padding: 20px;">No records found for this filter.</td></tr>
-                    <?php else: ?>
-                        <?php foreach($all_logs as $row): ?>
+                    <?php
+else: ?>
+                        <?php foreach ($all_logs as $row): ?>
                         <tr class="tx-row">
                             <td style="color:#cbd5e1;"><?php echo date("M d, Y - g:i A", strtotime($row['tx_date'])); ?></td>
                             
                             <td>
-                                <?php if($row['log_type'] == 'DISBURSEMENT'): ?>
+                                <?php if ($row['log_type'] == 'DISBURSEMENT'): ?>
                                     <span class="type-disburse"><i class="bi bi-box-arrow-up-right"></i> Release</span>
-                                <?php else: ?>
+                                <?php
+        else: ?>
                                     <span class="type-collect"><i class="bi bi-box-arrow-in-down-left"></i> Payment</span>
-                                <?php endif; ?>
+                                <?php
+        endif; ?>
                             </td>
                             
                             <td style="color:#94a3b8; font-family: monospace;"><?php echo htmlspecialchars($row['ref_no'] ?? 'N/A'); ?></td>
                             <td class="client-name"><?php echo htmlspecialchars($row['client_name']); ?></td>
                             
                             <td class="text-right">
-                                <?php if($row['cash_out'] > 0): ?>
+                                <?php if ($row['cash_out'] > 0): ?>
                                     <span class="val-out">- ₱ <?php echo number_format($row['cash_out'], 2); ?></span>
-                                <?php else: ?>
+                                <?php
+        else: ?>
                                     <span style="color:#475569;">--</span>
-                                <?php endif; ?>
+                                <?php
+        endif; ?>
                             </td>
                             
                             <td class="text-right">
-                                <?php if($row['cash_in'] > 0): ?>
+                                <?php if ($row['cash_in'] > 0): ?>
                                     <span class="val-in">+ ₱ <?php echo number_format($row['cash_in'], 2); ?></span>
-                                <?php else: ?>
+                                <?php
+        else: ?>
                                     <span style="color:#475569;">--</span>
-                                <?php endif; ?>
+                                <?php
+        endif; ?>
                             </td>
                             
                             <td><span class="badge badge-success"><?php echo htmlspecialchars($row['status']); ?></span></td>
                         </tr>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
+                        <?php
+    endforeach; ?>
+                    <?php
+endif; ?>
                 </tbody>
             </table>
         </div>

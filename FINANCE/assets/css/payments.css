@@ -11,8 +11,8 @@
 }
 
 body {
-    background-color: #0f172a; /* Dark Slate */
-    color: #e2e8f0;
+    background-color: var(--bg-dark); /* Dark Slate */
+    color: var(--text-primary);
     display: flex;
     min-height: 100vh;
 }
@@ -25,8 +25,8 @@ body {
 }
 
 .page-header { margin-bottom: 25px; }
-.page-header h1 { font-size: 24px; color: #fff; margin-bottom: 5px; }
-.page-header p { color: #94a3b8; font-size: 14px; }
+.page-header h1 { font-size: 24px; color: var(--text-primary); margin-bottom: 5px; }
+.page-header p { color: var(--text-secondary); font-size: 14px; }
 
 /* --- DAILY SUMMARY (Mini Dashboard) --- */
 .summary-grid {
@@ -37,8 +37,8 @@ body {
 }
 
 .summary-card {
-    background: #1e293b;
-    border: 1px solid #334155;
+    background: var(--surface);
+    border: 1px solid var(--border);
     padding: 20px;
     border-radius: 12px;
     display: flex;
@@ -56,18 +56,18 @@ body {
     font-size: 20px;
 }
 
-.icon-blue { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
-.icon-green { background: rgba(16, 185, 129, 0.15); color: #34d399; }
-.icon-red { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+.icon-blue { background: rgba(59, 130, 246, 0.15); color: var(--info); }
+.icon-green { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+.icon-red { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
 
-.meta h3 { font-size: 20px; color: #fff; font-weight: 700; margin-bottom: 2px; }
-.meta span { font-size: 12px; color: #94a3b8; text-transform: uppercase; }
+.meta h3 { font-size: 20px; color: var(--text-primary); font-weight: 700; margin-bottom: 2px; }
+.meta span { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; }
 
 /* --- TABS --- */
 .tabs {
     display: flex;
     gap: 20px;
-    border-bottom: 1px solid #334155;
+    border-bottom: 1px solid var(--border);
     margin-bottom: 20px;
 }
 
@@ -75,7 +75,7 @@ body {
     background: transparent;
     border: none;
     padding: 10px 5px;
-    color: #94a3b8;
+    color: var(--text-secondary);
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
@@ -83,10 +83,10 @@ body {
     transition: 0.2s;
 }
 
-.tab-btn:hover { color: #fff; }
+.tab-btn:hover { color: var(--text-primary); }
 
 .tab-btn.active {
-    color: #fbbf24; /* Gold */
+    color: var(--brand-gold); /* Gold */
     font-weight: 700;
 }
 .tab-btn.active::after {
@@ -96,13 +96,13 @@ body {
     left: 0;
     width: 100%;
     height: 2px;
-    background: #fbbf24;
+    background: var(--brand-gold);
 }
 
 /* --- TABLE --- */
 .content-card {
-    background-color: #1e293b;
-    border: 1px solid #334155;
+    background-color: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 12px;
     padding: 20px;
     overflow-x: auto;
@@ -112,9 +112,9 @@ table { width: 100%; border-collapse: collapse; font-size: 14px; }
 
 thead th {
     text-align: left;
-    color: #94a3b8;
+    color: var(--text-secondary);
     padding: 15px 10px;
-    border-bottom: 1px solid #334155;
+    border-bottom: 1px solid var(--border);
     text-transform: uppercase;
     font-size: 11px;
     font-weight: 700;
@@ -122,8 +122,8 @@ thead th {
 
 tbody td {
     padding: 15px 10px;
-    border-bottom: 1px solid #334155;
-    color: #cbd5e1;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-muted);
     vertical-align: middle;
 }
 tbody tr:last-child td { border-bottom: none; }
@@ -133,8 +133,8 @@ tbody tr:last-child td { border-bottom: none; }
 .mini-avatar {
     width: 32px;
     height: 32px;
-    background-color: #334155;
-    color: #fff;
+    background-color: var(--border);
+    color: var(--text-primary);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -144,9 +144,9 @@ tbody tr:last-child td { border-bottom: none; }
 }
 
 /* Status Labels */
-.status-due { color: #60a5fa; font-weight: 600; font-size: 12px; }
-.status-late { color: #f87171; font-weight: 600; font-size: 12px; }
-.status-paid { color: #34d399; font-weight: 600; font-size: 12px; }
+.status-due { color: var(--info); font-weight: 600; font-size: 12px; }
+.status-late { color: var(--danger); font-weight: 600; font-size: 12px; }
+.status-paid { color: var(--success); font-weight: 600; font-size: 12px; }
 
 /* Action Button */
 .btn-receive {
@@ -167,8 +167,8 @@ tbody tr:last-child td { border-bottom: none; }
 
 .btn-notify {
     background: transparent;
-    border: 1px solid #f87171;
-    color: #f87171;
+    border: 1px solid var(--danger);
+    color: var(--danger);
     padding: 6px 14px;
     border-radius: 6px;
     font-size: 12px;
@@ -185,18 +185,18 @@ tbody tr:last-child td { border-bottom: none; }
     backdrop-filter: blur(4px);
 }
 .modal-box {
-    background: #1e293b; width: 400px; padding: 25px; border-radius: 12px;
-    border: 1px solid #334155; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    background: var(--surface); width: 400px; padding: 25px; border-radius: 12px;
+    border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
 .modal-header { display: flex; justify-content: space-between; margin-bottom: 20px; }
-.modal-header h3 { color: #fff; font-size: 18px; }
-.close-modal { background: none; border: none; color: #94a3b8; font-size: 20px; cursor: pointer; }
+.modal-header h3 { color: var(--text-primary); font-size: 18px; }
+.close-modal { background: none; border: none; color: var(--text-secondary); font-size: 20px; cursor: pointer; }
 
 .form-group { margin-bottom: 15px; }
-.form-label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 5px; }
+.form-label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 5px; }
 .form-input {
-    width: 100%; background: #0f172a; border: 1px solid #334155;
-    padding: 10px; border-radius: 6px; color: #fff; outline: none;
+    width: 100%; background: var(--bg-dark); border: 1px solid var(--border);
+    padding: 10px; border-radius: 6px; color: var(--text-primary); outline: none;
 }
-.btn-submit { width: 100%; background: #fbbf24; color: #0f172a; border: none; padding: 12px; border-radius: 6px; font-weight: 700; cursor: pointer; }
+.btn-submit { width: 100%; background: var(--brand-gold); color: var(--bg-dark); border: none; padding: 12px; border-radius: 6px; font-weight: 700; cursor: pointer; }
 .btn-submit:hover { background: #d97706; color: #fff; }
