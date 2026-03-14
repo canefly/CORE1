@@ -210,6 +210,21 @@
                         <i class="bi bi-sliders"></i> Interest & Rates
                     </a>
                 </li>
+                <li>
+                    <a href="../FINANCE/manage_clients.php" class="nav-item <?= ($is_admin && $cp == 'manage_clients.php') ? 'active' : '' ?>">
+                        <i class="bi bi-people-fill"></i> Manage Clients
+                    </a>
+                </li>
+                <li>
+                    <a href="../FINANCE/manage_officers.php" class="nav-item <?= ($is_admin && $cp == 'manage_officers.php') ? 'active' : '' ?>">
+                        <i class="bi bi-person-badge-fill"></i> Manage Officers
+                    </a>
+                </li>
+                <li>
+                    <a href="../FINANCE/logs.php" class="nav-item <?= ($is_admin && $cp == 'logs.php') ? 'active' : '' ?>">
+                        <i class="bi bi-list-columns-reverse"></i> Audit Logs
+                    </a>
+                </li>
             </ul>
         </li>
     </ul>
