@@ -1,0 +1,169 @@
+/* =========================================
+   CLIENT TRANSACTIONS STYLES
+   ========================================= */
+
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Google Sans', sans-serif; }
+body { background-color: #111827; color: #e5e7eb; display: flex; min-height: 100vh; }
+
+.main-content {
+    margin-left: 260px; padding: 30px; width: calc(100% - 260px);
+    transition: 0.3s; /* Added for smooth resizing */
+}
+
+.page-header {
+    display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px;
+}
+.page-header h1 { font-size: 24px; color: #fff; margin-bottom: 5px; }
+.page-header p { color: #9ca3af; font-size: 14px; }
+
+/* Report Button */
+.btn-report {
+    background-color: #10b981;
+    color: #064e3b;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 700;
+    text-decoration: none;
+    display: inline-flex; align-items: center; gap: 8px;
+    transition: 0.2s;
+    border: none; cursor: pointer;
+}
+.btn-report:hover { background-color: #34d399; }
+
+/* --- TRANSACTION LIST --- */
+.history-card {
+    background: #1f2937;
+    border: 1px solid #374151;
+    border-radius: 12px;
+    padding: 20px;
+    overflow-x: auto;
+}
+
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+thead th { text-align: left; color: #9ca3af; padding: 15px; border-bottom: 1px solid #374151; font-size: 12px; text-transform: uppercase; }
+tbody td { padding: 18px 15px; border-bottom: 1px solid #374151; color: #e5e7eb; }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+/* Amount Colors */
+.amount-credit { color: #10b981; font-weight: 700; } /* Payment In */
+.amount-debit { color: #f87171; font-weight: 700; } /* Loan/Penalty Out */
+
+/* Status Badges */
+.status-badge {
+    padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase;
+}
+.status-pending { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+.status-verified { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+.status-posted { background: rgba(99, 102, 241, 0.15); color: #818cf8; } /* Auto System */
+.status-rejected { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+
+/* Reference Code Style */
+.ref-code {
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    color: #94a3b8;
+    background: rgba(0,0,0,0.2);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+/* --- MODAL (Upload Receipt) --- */
+.modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.7);
+    display: none; justify-content: center; align-items: center; z-index: 2000;
+    backdrop-filter: blur(4px);
+}
+.modal-box {
+    background: #1f2937; width: 450px; padding: 30px; border-radius: 12px;
+    border: 1px solid #374151; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+.modal-header { display: flex; justify-content: space-between; margin-bottom: 20px; }
+.modal-header h3 { color: #fff; font-size: 18px; }
+.close-modal { background: none; border: none; color: #94a3b8; font-size: 24px; cursor: pointer; }
+
+/* Form Styles */
+.form-group { margin-bottom: 15px; }
+.form-label { display: block; font-size: 13px; color: #cbd5e1; margin-bottom: 8px; }
+.form-input {
+    width: 100%; background: #111827; border: 1px solid #374151;
+    padding: 12px; border-radius: 8px; color: #fff; outline: none;
+}
+.form-input:focus { border-color: #10b981; }
+
+/* File Upload Box */
+.upload-box {
+    border: 2px dashed #4b5563;
+    background: #111827;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: 0.2s;
+}
+.upload-box:hover { border-color: #10b981; background: rgba(16, 185, 129, 0.05); }
+.upload-box i { font-size: 28px; color: #9ca3af; margin-bottom: 8px; display: block; }
+.upload-text { font-size: 13px; color: #9ca3af; }
+
+.btn-submit {
+    width: 100%; background: #10b981; color: #064e3b; border: none;
+    padding: 12px; border-radius: 8px; font-weight: 700; margin-top: 10px; cursor: pointer;
+}
+.btn-submit:hover { background: #34d399; }
+
+/* =========================================
+   RESPONSIVE ADJUSTMENTS (NEW)
+   ========================================= */
+
+/* Tablet / Laptop (Max Width 1024px) */
+@media (max-width: 1024px) {
+    /* Collapse Sidebar */
+    .main-content {
+        margin-left: 0;
+        width: 100%;
+        padding: 20px;
+    }
+}
+
+/* Mobile (Max Width 600px) */
+@media (max-width: 600px) {
+    /* Stack Header & Button */
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    
+    .btn-report {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Table Adjustments */
+    .history-card {
+        padding: 15px; /* Less padding on mobile */
+    }
+    
+    /* Ensure table forces horizontal scroll so data isn't crushed */
+    table {
+        min-width: 600px;
+    }
+
+    /* Adjust Status Badge in Table */
+    .status-badge {
+        font-size: 10px;
+        padding: 2px 8px;
+    }
+
+    /* Modal Adjustments for Mobile */
+    .modal-box {
+        width: 90%; /* Fluid width */
+        padding: 20px;
+        margin: 0 10px;
+    }
+    
+    .modal-header h3 {
+        font-size: 16px;
+    }
+}
