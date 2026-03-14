@@ -1,0 +1,83 @@
+/* =========================================
+   STATEMENT OF ACCOUNT (SCREEN STYLES)
+   ========================================= */
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Google Sans', sans-serif; }
+body { background-color: #0f172a; color: #e2e8f0; display: flex; min-height: 100vh; }
+.main-content { margin-left: 260px; padding: 30px; width: calc(100% - 260px); }
+
+/* Header & Buttons */
+.page-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px; }
+.page-header h1 { font-size: 26px; color: #fff; font-weight: 700; margin-bottom: 5px; }
+.page-header p { color: #94a3b8; font-size: 14px; }
+.btn-export { background: transparent; border: 1px solid #10b981; color: #10b981; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+.btn-export:hover { background: rgba(16, 185, 129, 0.1); }
+
+/* Top Summary Boxes */
+.soa-header { background: #1e293b; padding: 25px; border-radius: 12px; border: 1px solid #334155; margin-bottom: 25px; display: grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 20px; }
+.soa-box h4 { color: #94a3b8; font-size: 12px; text-transform: uppercase; margin-bottom: 8px; font-weight: 700; letter-spacing: 0.5px; }
+.soa-box p { color: #fff; font-size: 15px; font-weight: 500; margin: 0 0 6px 0; }
+.soa-box .highlight { color: #fbbf24; font-size: 24px; font-weight: 800; margin-bottom: 15px; display: block; }
+.soa-box .good { color: #34d399; font-weight: 700; }
+
+/* Payment History Table */
+.ledger-container { background-color: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px; overflow-x: auto; }
+.section-head h3 { color: #fff; font-size: 18px; margin-bottom: 20px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+thead th { text-align: left; color: #94a3b8; padding: 15px 10px; border-bottom: 1px solid #334155; text-transform: uppercase; font-size: 11px; font-weight: 700; }
+tbody td { padding: 15px 10px; border-bottom: 1px solid #334155; color: #cbd5e1; vertical-align: middle; }
+tbody tr:last-child td { border-bottom: none; }
+.text-right { text-align: right; }
+.font-mono { font-family: monospace; }
+
+/* Badges */
+.status-badge { padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+.status-paid { background: rgba(16, 185, 129, 0.1); color: #34d399; }
+.status-active { background: rgba(96, 165, 250, 0.1); color: #60a5fa; }
+
+
+/* =========================================
+   PRINT MEDIA QUERY (OFFICIAL SOA FORMAT)
+   ========================================= */
+@media print {
+    @page { size: portrait; margin: 1in; }
+
+    /* 1. Hide UI elements */
+    .sidebar, .btn-export, .page-header a, .page-header p { display: none !important; }
+
+    /* 2. Reset Backgrounds to White */
+    body, .main-content, .soa-header, .ledger-container {
+        background: #ffffff !important; color: #000000 !important; margin: 0 !important;
+        padding: 0 !important; border: none !important; box-shadow: none !important;
+    }
+    .main-content { margin-left: 0 !important; padding: 0 !important; width: 100% !important; }
+
+    /* 3. Format the SOA Header Box */
+    .soa-header { border: 2px solid #000000 !important; border-radius: 0 !important; padding: 20px !important; }
+    .soa-box h4, .soa-box p, .soa-box .highlight, .soa-box .good, .soa-box strong { color: #000000 !important; }
+
+    /* 4. Format the Payment Table */
+    .section-head h3 { color: #000000 !important; margin-bottom: 10px; margin-top: 20px; }
+    table { border-collapse: collapse !important; width: 100% !important; margin-top: 15px; }
+    th {
+        background-color: #e2e8f0 !important; -webkit-print-color-adjust: exact; color-adjust: exact;
+        border: 1px solid #000000 !important; color: #000000 !important; padding: 10px !important; text-align: left;
+    }
+    td { border: 1px solid #000000 !important; color: #000000 !important; padding: 8px !important; }
+    td span { color: #000000 !important; background: transparent !important; }
+    
+    /* 5. PREVENT MONEY WRAPPING (The Fix!) */
+    .text-right { text-align: right !important; white-space: nowrap !important; }
+
+    /* 6. Create the Official Document Header */
+    .page-header {
+        text-align: center !important; border-bottom: 2px solid #000000 !important;
+        padding-bottom: 15px !important; margin-bottom: 25px !important; display: block !important;
+    }
+    .page-header div { display: block !important; width: 100% !important; }
+    .page-header h1 { font-size: 16pt !important; color: #000000 !important; text-transform: uppercase; margin: 0 !important; }
+    .page-header h1::before {
+        content: "CORE 1 FINANCE\A"; white-space: pre; font-size: 11pt !important;
+        font-weight: normal !important; display: block; margin-bottom: 5px;
+    }
+    
+}

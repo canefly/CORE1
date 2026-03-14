@@ -1,0 +1,179 @@
+/* =========================================
+   FINANCE SETTINGS STYLES
+   ========================================= */
+
+/* --- GLOBAL RESET --- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Google Sans', sans-serif;
+}
+
+body {
+    background-color: #0f172a; /* Dark Slate */
+    color: #e2e8f0;
+    display: flex;
+    min-height: 100vh;
+}
+
+/* --- MAIN LAYOUT --- */
+.main-content {
+    margin-left: 260px;
+    padding: 30px;
+    width: calc(100% - 260px);
+}
+
+.page-header { margin-bottom: 30px; }
+.page-header h1 { font-size: 24px; color: #fff; margin-bottom: 5px; }
+.page-header p { color: #94a3b8; font-size: 14px; }
+
+/* --- SETTINGS GRID --- */
+.settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 25px;
+}
+
+/* Card Style */
+.config-card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 25px;
+    position: relative;
+    transition: 0.2s;
+}
+.config-card:hover { border-color: #475569; }
+
+/* Card Header */
+.card-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #334155;
+}
+.icon-box {
+    width: 35px; height: 35px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+}
+.icon-gold { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+.icon-red { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+.icon-blue { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+
+.card-title h3 { font-size: 16px; color: #fff; margin: 0; }
+.card-title span { font-size: 12px; color: #94a3b8; }
+
+/* Form Elements */
+.input-group { margin-bottom: 20px; }
+.input-label { display: block; font-size: 13px; color: #cbd5e1; margin-bottom: 8px; font-weight: 500; }
+
+.input-wrapper { position: relative; }
+.input-field {
+    width: 100%;
+    background: #0f172a;
+    border: 1px solid #334155;
+    padding: 12px 15px;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 15px;
+    outline: none;
+    transition: 0.2s;
+}
+.input-field:focus { border-color: #fbbf24; }
+.suffix {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+/* Radio Buttons for Calculation Type */
+.radio-group { display: flex; gap: 15px; }
+.radio-option {
+    flex: 1;
+    cursor: pointer;
+    position: relative;
+}
+.radio-option input { display: none; }
+.radio-box {
+    display: block;
+    text-align: center;
+    padding: 10px;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    color: #94a3b8;
+    font-size: 13px;
+    font-weight: 500;
+    transition: 0.2s;
+}
+.radio-option input:checked + .radio-box {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: #fbbf24;
+    color: #fbbf24;
+    font-weight: 700;
+}
+
+/* Toggle Switch */
+.toggle-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+.toggle-label { font-size: 13px; color: #cbd5e1; }
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 22px;
+}
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #334155;
+    transition: .4s;
+    border-radius: 34px;
+}
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 16px; width: 16px;
+    left: 3px; bottom: 3px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+input:checked + .slider { background-color: #10b981; }
+input:checked + .slider:before { transform: translateX(18px); }
+
+/* Save Button */
+.card-footer {
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 1px solid #334155;
+    text-align: right;
+}
+.btn-save {
+    background: #fbbf24;
+    color: #0f172a;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+.btn-save:hover { background: #d97706; color: #fff; }
