@@ -1,18 +1,16 @@
-<?php 
-// Standard include for your existing database connection
-include 'includes/db_connect.php'; 
+<?php
+require_once __DIR__ . '/includes/db_connect.php';
 
-
-/** * FETCH PENDING APPLICATIONS
- * Joins loan_applications and users to get real client names.
- * The LSA inbox specifically handles 'PENDING' requests.
- */
 $query = "SELECT la.id, la.principal_amount, la.status, u.fullname 
           FROM loan_applications la 
           JOIN users u ON la.user_id = u.id 
           WHERE la.status = 'PENDING' 
           ORDER BY la.created_at DESC";
 $result = $conn->query($query);
+
+if (!$result) {
+    die("Query Error: " . $conn->error);
+}
 ?>
 
 <!DOCTYPE html>
