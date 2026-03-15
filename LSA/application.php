@@ -6,11 +6,9 @@ $query = "SELECT la.id, la.principal_amount, la.status, u.fullname
           JOIN users u ON la.user_id = u.id 
           WHERE la.status = 'PENDING' 
           ORDER BY la.created_at DESC";
-$result = $conn->query($query);
 
-if (!$result) {
-    die("Query Error: " . $conn->error);
-}
+$stmt = $pdo->query($query);
+$result = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -69,8 +67,8 @@ if (!$result) {
                     </tr>
                 </thead>
                 <tbody id="applicationTable">
-                    <?php if ($result && $result->num_rows > 0): ?>
-                        <?php while($row = $result->fetch_assoc()): ?>
+                    <?php if (!empty($result)): ?>
+                        <?php foreach($result as $row): ?>
                         <tr>
                             <td style="color:#10b981; font-weight:700;">#LA-<?php echo $row['id']; ?></td>
                             <td>
@@ -91,7 +89,7 @@ if (!$result) {
                                 </button>
                             </td>
                         </tr>
-                        <?php endwhile; ?>
+                        <?php endforeach; ?>
                     <?php else: ?>
                         <tr><td colspan="5" style="text-align:center; padding: 20px;">No pending applications available.</td></tr>
                     <?php endif; ?>
