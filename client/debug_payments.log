@@ -93,3 +93,6 @@
 [2026-03-15 14:41:29] HIT create_checkout.php
 [2026-03-15 14:41:29] BEFORE INSERT source=restructured loan_id=18 restructured_loan_id=6 user_id=12 amount=1665.11
 [2026-03-15 14:41:29] INSERT OK tx_id=63 source=restructured loan_id=18 restructured_loan_id=6
+[2026-03-15 14:50:16] HIT create_checkout.php
+[2026-03-15 14:50:16] BEFORE INSERT source=restructured loan_id=18 restructured_loan_id=6 user_id=12 amount=1665.11
+[2026-03-15 14:50:16] INSERT OK tx_id=64 source=restructured loan_id=18 restructured_loan_id=6

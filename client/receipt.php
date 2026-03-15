@@ -150,7 +150,7 @@ if ($finalImg !== "")   $finalImg   .= (str_contains($finalImg, '?') ? '&' : '?'
  */
 $displayStatus = $status;
 if ($status === "PAID_PENDING") {
-  $displayStatus = "PENDING";
+  $displayStatus = "PAID_PENDING";
 }
 $badgeClass = status_badge_class($displayStatus);
 ?>
@@ -200,7 +200,7 @@ $badgeClass = status_badge_class($displayStatus);
           <?php if ($pendingImg !== ""): ?>
             <img class="img" src="<?= htmlspecialchars($pendingImg) ?>" alt="Pending Receipt Image">
             <div class="note">
-              This receipt is <b>PENDING</b> until Finance verifies the payment.
+              This receipt is <b>PAID_PENDING</b> until Finance verifies the payment.
             </div>
           <?php else: ?>
             <div class="warn">Pending receipt image not found. (Enable GD + check receipts folder permissions)</div>
