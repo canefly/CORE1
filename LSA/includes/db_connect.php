@@ -1,19 +1,17 @@
 <?php
-// includes/db_connect.php
+$host = "localhost";
+$user = "root";
+$pass = "";
+$db   = "microfinance_db";
 
-$servername = "127.0.0.1"; // Or "localhost"
-$username = "root";        // Default username for XAMPP/WAMP
-$password = "";            // Default password is usually blank for local dev
-$dbname = "microfinance_db"; // The name from your SQL dump
+try {
+    $pdo = new PDO("mysql:host=$host;dbname=$db;charset=utf8mb4", $user, $pass);
+    
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    
+    $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 
-// Create the connection
-$conn = new mysqli($servername, $username, $password, $dbname);
-
-// Check if it actually connected or if it's acting up
-if ($conn->connect_error) {
-    die("Database connection totally bricked: " . $conn->connect_error);
+} catch (PDOException $e) {
+    die("Connection Failed: " . $e->getMessage());
 }
-
-// Optional: Set charset to handle special characters properly
-$conn->set_charset("utf8mb4");
 ?>
