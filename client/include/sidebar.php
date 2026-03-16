@@ -133,6 +133,7 @@ if (isset($_SESSION['user_id']) && isset($conn)) {
 
     <ul class="nav-links">
         <li><a href="dashboard.php" class="nav-item <?= ($currentPage == 'dashboard.php') ? 'active' : '' ?>"><i class="bi bi-grid-fill"></i> Dashboard</a></li>
+        <li><a href="wallet.php" class="nav-item <?= ($currentPage == 'wallet.php') ? 'active' : '' ?>"><i class="bi bi-wallet2"></i> Wallet</a></li>
         <li><a href="apply_loan.php" class="nav-item <?= ($currentPage == 'apply_loan.php') ? 'active' : '' ?>"><i class="bi bi-plus-circle-fill"></i> Apply Loan</a></li>
         <li><a href="myloans.php" class="nav-item <?= ($currentPage == 'myloans.php') ? 'active' : '' ?>"><i class="bi bi-file-earmark-text-fill"></i> My Loans</a></li>
         <li><a href="transactions.php" class="nav-item <?= ($currentPage == 'transactions.php') ? 'active' : '' ?>"><i class="bi bi-clock-history"></i> Transactions</a></li>
