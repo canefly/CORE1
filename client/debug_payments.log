@@ -96,3 +96,60 @@
 [2026-03-15 14:50:16] HIT create_checkout.php
 [2026-03-15 14:50:16] BEFORE INSERT source=restructured loan_id=18 restructured_loan_id=6 user_id=12 amount=1665.11
 [2026-03-15 14:50:16] INSERT OK tx_id=64 source=restructured loan_id=18 restructured_loan_id=6
+[2026-03-16 12:39:08] HIT create_checkout.php
+[2026-03-16 12:39:08] BEFORE INSERT source=restructured loan_id=13 restructured_loan_id=4 user_id=1 amount=1665.11
+[2026-03-16 12:39:08] INSERT OK tx_id=65 source=restructured loan_id=13 restructured_loan_id=4
+[2026-03-16 12:43:11] HIT create_checkout.php
+[2026-03-16 12:43:28] HIT create_checkout.php
+[2026-03-16 12:43:28] BEFORE INSERT source=restructured loan_id=13 restructured_loan_id=4 user_id=1 amount=1665.11
+[2026-03-16 12:43:28] INSERT OK tx_id=66 source=restructured loan_id=13 restructured_loan_id=4
+[2026-03-16 12:50:06] HIT create_checkout.php
+[2026-03-16 12:50:06] BEFORE INSERT source=restructured loan_id=13 restructured_loan_id=4 user_id=1 amount=1665.11
+[2026-03-16 12:50:06] INSERT OK tx_id=67 source=restructured loan_id=13 restructured_loan_id=4
+[2026-03-16 12:50:16] HIT create_checkout.php
+[2026-03-16 12:50:16] BEFORE INSERT source=restructured loan_id=13 restructured_loan_id=4 user_id=1 amount=1665.11
+[2026-03-16 12:50:16] INSERT OK tx_id=68 source=restructured loan_id=13 restructured_loan_id=4
+[2026-03-16 13:35:47] HIT create_checkout.php
+[2026-03-16 13:35:47] BEFORE INSERT source=original loan_id=19 restructured_loan_id=0 user_id=12 amount=2066.67
+[2026-03-16 13:35:47] INSERT OK tx_id=69 source=original loan_id=19 restructured_loan_id=0
+[2026-03-16 13:38:02] HIT create_checkout.php
+[2026-03-16 13:38:02] BEFORE INSERT source=original loan_id=19 restructured_loan_id=0 user_id=12 amount=2066.67
+[2026-03-16 13:38:02] INSERT OK tx_id=70 source=original loan_id=19 restructured_loan_id=0
+[2026-03-16 14:01:44] HIT create_checkout.php
+[2026-03-16 14:01:44] BEFORE INSERT source=original loan_id=19 restructured_loan_id=0 user_id=12 amount=2066.67
+[2026-03-16 14:01:44] INSERT OK tx_id=71 source=original loan_id=19 restructured_loan_id=0
+[2026-03-16 14:06:35] HIT create_checkout.php
+[2026-03-16 14:06:35] BEFORE INSERT source=original loan_id=19 restructured_loan_id=0 user_id=12 amount=2066.67
+[2026-03-16 14:06:35] INSERT OK tx_id=72 source=original loan_id=19 restructured_loan_id=0
+[2026-03-16 14:24:20] HIT create_checkout.php
+[2026-03-16 14:24:20] BEFORE INSERT source=original loan_id=19 restructured_loan_id=0 user_id=12 amount=2066.67
+[2026-03-16 14:24:20] INSERT OK tx_id=73 source=original loan_id=19 restructured_loan_id=0
+[2026-03-16 21:24:48] payment_return sync tx_id=73 payload={"transaction_id":73,"user_id":12,"loan_id":19,"restructured_loan_id":0,"amount":2066.67,"status":"PAID_PENDING","payment_date":"2026-03-16 21:24:48","provider_method":"GCASH","paymongo_payment_id":"pay_eoyLRtkFipcnqqqymdRCSSKX","paymongo_checkout_id":"cs_3a3303036f8a4a73035c42d7","receipt_number":"RCPT-20260316-000073","receipt_image_pending_url":"receipts\/RCPT-20260316-000073-PENDING.png","receipt_image_final_url":""} response={"success":false,"message":"Invalid response from FINANCIAL. HTTP 500. Raw response: {\"success\":false,\"message\":\"SQLSTATE[23000]: Integrity constraint violation: 1452 Cannot add or update a child row: a foreign key constraint fails (`microfinance_db`.`payments`, CONSTRAINT `fk_payments_client` FOREIGN KEY (`client_id`) REFERENCES `clients` (`id`))\"}"}
+[2026-03-16 14:32:10] HIT create_checkout.php
+[2026-03-16 14:32:10] BEFORE INSERT source=original loan_id=19 restructured_loan_id=0 user_id=12 amount=2066.67
+[2026-03-16 14:32:10] INSERT OK tx_id=74 source=original loan_id=19 restructured_loan_id=0
+[2026-03-16 21:32:24] payment_return sync tx_id=74 payload={"transaction_id":74,"user_id":12,"loan_id":19,"restructured_loan_id":0,"amount":2066.67,"status":"PAID_PENDING","payment_date":"2026-03-16 21:32:24","provider_method":"GCASH","paymongo_payment_id":"pay_naJePAuePvxdZfAPw4HbxooQ","paymongo_checkout_id":"cs_70f8060cf598d815350b6902","receipt_number":"RCPT-20260316-000074","receipt_image_pending_url":"receipts\/RCPT-20260316-000074-PENDING.png","receipt_image_final_url":""} response={"success":false,"message":"Invalid response from FINANCIAL. HTTP 500. Raw response: {\"success\":false,\"message\":\"SQLSTATE[23000]: Integrity constraint violation: 1452 Cannot add or update a child row: a foreign key constraint fails (`microfinance_db`.`payments`, CONSTRAINT `fk_payments_client` FOREIGN KEY (`client_id`) REFERENCES `clients` (`id`))\"}"}
+[2026-03-16 15:03:35] HIT create_checkout.php
+[2026-03-16 15:03:35] BEFORE INSERT source=original loan_id=19 restructured_loan_id=0 user_id=12 amount=2066.67
+[2026-03-16 15:03:35] INSERT OK tx_id=75 source=original loan_id=19 restructured_loan_id=0
+[2026-03-16 15:43:55] HIT create_checkout.php
+[2026-03-16 15:43:55] BEFORE INSERT source=original loan_id=19 restructured_loan_id=0 user_id=12 amount=2066.67
+[2026-03-16 15:43:55] INSERT OK tx_id=76 source=original loan_id=19 restructured_loan_id=0
+[2026-03-16 15:56:19] HIT create_checkout.php
+[2026-03-16 15:56:19] BEFORE INSERT source=original loan_id=19 restructured_loan_id=0 user_id=12 amount=2066.67
+[2026-03-16 15:56:19] INSERT OK tx_id=77 source=original loan_id=19 restructured_loan_id=0
+[2026-03-16 16:07:03] HIT create_checkout.php
+[2026-03-16 16:07:03] BEFORE INSERT source=original loan_id=19 restructured_loan_id=0 user_id=12 amount=2066.67
+[2026-03-16 16:07:03] INSERT OK tx_id=78 source=original loan_id=19 restructured_loan_id=0
+[2026-03-16 16:07:14] HIT create_checkout.php
+[2026-03-16 16:07:14] BEFORE INSERT source=original loan_id=19 restructured_loan_id=0 user_id=12 amount=2066.67
+[2026-03-16 16:07:14] INSERT OK tx_id=79 source=original loan_id=19 restructured_loan_id=0
+[2026-03-16 16:09:46] HIT create_checkout.php
+[2026-03-16 16:09:46] BEFORE INSERT source=original loan_id=19 restructured_loan_id=0 user_id=12 amount=2066.67
+[2026-03-16 16:09:46] INSERT OK tx_id=80 source=original loan_id=19 restructured_loan_id=0
+[2026-03-16 16:15:19] HIT create_checkout.php
+[2026-03-16 16:15:19] BEFORE INSERT source=original loan_id=19 restructured_loan_id=0 user_id=12 amount=2066.67
+[2026-03-16 16:15:19] INSERT OK tx_id=81 source=original loan_id=19 restructured_loan_id=0
+[2026-03-16 16:19:18] HIT create_checkout.php
+[2026-03-16 16:19:18] BEFORE INSERT source=original loan_id=19 restructured_loan_id=0 user_id=12 amount=2066.67
+[2026-03-16 16:19:18] INSERT OK tx_id=82 source=original loan_id=19 restructured_loan_id=0
