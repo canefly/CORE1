@@ -1,10 +1,15 @@
 /* =========================================
-   CLIENT DASHBOARD STYLES (ORIGINAL MO 'TO)
+   CLIENT DASHBOARD STYLES (NO ROOT VARIABLES)
    ========================================= */
-* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Google Sans', sans-serif; }
+* { 
+    margin: 0; 
+    padding: 0; 
+    box-sizing: border-box; 
+    font-family: 'Google Sans', sans-serif; 
+}
 
 body {
-    background-color: #0f172a; /* Dark Slate BG */
+    background-color: #0f172a; 
     color: #e2e8f0;
     display: flex;
     min-height: 100vh;
@@ -12,7 +17,7 @@ body {
 
 /* Main Content Wrapper */
 .main-content {
-    margin-left: 260px; /* Width of Sidebar */
+    margin-left: 260px;
     padding: 30px;
     width: calc(100% - 260px);
     transition: 0.3s;
@@ -38,7 +43,6 @@ body {
     overflow: hidden;
 }
 
-/* Background Pattern Decoration */
 .hero-card::before {
     content: "";
     position: absolute; top: -50px; right: -50px;
@@ -90,98 +94,81 @@ tbody tr:last-child td { border-bottom: none; }
 .bg-yellow { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
 .bg-green { background: rgba(16, 185, 129, 0.15); color: #34d399; }
 .text-green { color: #34d399; }
+.text-red { color: #f87171; }
 
 /* =========================================
-   ADDITIONS PARA SA DIGITAL WALLET
+   DIGITAL WALLET & MODAL SPECIFICS
    ========================================= */
-
-/* Activation Screen Specifics */
 .activation-wrapper {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 70vh;
+    display: flex; justify-content: center; align-items: center; min-height: 70vh;
 }
 
 .activation-icon {
     width: 70px; height: 70px;
-    background: rgba(16, 185, 129, 0.15);
-    color: #34d399;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 32px;
-    margin: 0 auto 20px;
+    background: rgba(16, 185, 129, 0.15); color: #34d399;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 32px; margin: 0 auto 20px;
 }
 
 .user-box {
-    background: rgba(15, 23, 42, 0.5);
-    border: 1px solid #334155;
-    padding: 15px;
-    border-radius: 12px;
-    margin-bottom: 25px;
-    text-align: left;
+    background: rgba(15, 23, 42, 0.5); border: 1px solid #334155;
+    padding: 15px; border-radius: 12px; margin-bottom: 25px; text-align: left;
 }
-
 .user-box small { color: #94a3b8; font-size: 12px; }
 .user-box h3 { color: #fff; font-size: 16px; margin-top: 5px; }
 
-.wallet-rules {
-    list-style: none; text-align: left; margin-bottom: 20px;
-}
-
+.wallet-rules { list-style: none; text-align: left; margin-bottom: 20px; }
 .wallet-rules li {
     font-size: 13px; color: #cbd5e1; margin-bottom: 12px;
     display: flex; align-items: flex-start; gap: 10px;
 }
-
 .wallet-rules li i { font-size: 16px; margin-top: 2px; }
 
 .strict-rule {
-    background: rgba(239, 68, 68, 0.1);
-    color: #fca5a5 !important;
-    padding: 12px; border-radius: 8px;
-    border: 1px solid rgba(239, 68, 68, 0.2);
+    background: rgba(239, 68, 68, 0.1); color: #fca5a5 !important;
+    padding: 12px; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.2);
 }
 .strict-rule i { color: #ef4444; }
+
+/* MODALS */
+.modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(4px);
+    display: none; justify-content: center; align-items: center; z-index: 9999;
+}
+.modal-content {
+    background: #1e293b; border: 1px solid #334155; border-radius: 16px;
+    padding: 30px; width: 90%; max-width: 400px; text-align: center;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+}
+.modal-icon {
+    width: 60px; height: 60px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; margin: 0 auto 15px;
+}
+.icon-success { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+.icon-warning { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+.icon-error { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+
+.modal-content h3 { color: #fff; margin-bottom: 10px; font-size: 20px; }
+.modal-content p { color: #94a3b8; font-size: 14px; margin-bottom: 20px; line-height: 1.5; }
+.modal-actions { display: flex; gap: 10px; justify-content: center; }
+.modal-actions button { flex: 1; justify-content: center; }
 
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* =========================================
-   RESPONSIVE ADJUSTMENTS (CELLPHONE VIEW)
-   ========================================= */
 @media (max-width: 1024px) {
     .main-content { margin-left: 0; width: 100%; padding: 20px; }
 }
 
 @media (max-width: 600px) {
-    .hero-card { 
-        flex-direction: column; 
-        text-align: center; 
-        gap: 20px; 
-        padding: 25px 20px;
-    }
-    
+    .hero-card { flex-direction: column; text-align: center; gap: 20px; padding: 25px 20px; }
     .hero-info .amount { font-size: 36px; }
     .hero-info .due-date { justify-content: center; }
-    
-    .hero-actions.wallet-mobile-actions {
-        width: 100%;
-        flex-direction: row; /* Keep side-by-side on mobile for Add/Pay */
-        justify-content: space-between;
-    }
-    
-    .hero-actions.wallet-mobile-actions button {
-        width: 48%; /* Half-half width para sa cellphone */
-        justify-content: center;
-        flex-direction: column;
-        padding: 15px 10px;
-        gap: 5px;
-    }
-    
-    .hero-actions.wallet-mobile-actions button i {
-        font-size: 20px;
-    }
+    .hero-actions.wallet-mobile-actions { width: 100%; flex-direction: row; justify-content: space-between; }
+    .hero-actions.wallet-mobile-actions button { width: 48%; flex-direction: column; padding: 15px 10px; gap: 5px; }
+    .hero-actions.wallet-mobile-actions button i { font-size: 20px; }
 }

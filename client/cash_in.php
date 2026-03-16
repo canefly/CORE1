@@ -7,7 +7,7 @@ include __DIR__ . "/include/session_checker.php";
 // ==========================================
 // PAYMONGO CONFIGURATION
 // ==========================================
-require_once __DIR__ . '/include/API/cash_in_secret_key.php';
+require_once __DIR__ . '/include/API/api_vault.php';
 
 // CORE 2 CONNECTION
 $core2_host = "127.0.0.1";
@@ -68,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['amount'])) {
             ]),
             CURLOPT_HTTPHEADER => [
                 "Accept: application/json",
-                "Authorization: Basic " . base64_encode($paymongo_secret_key),
+                "Authorization: Basic " . $paymongo_auth_base64,
                 "Content-Type: application/json"
             ],
         ]);
