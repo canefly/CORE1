@@ -10,7 +10,8 @@ $query = "SELECT la.id, la.principal_amount, la.updated_at, la.status, u.fullnam
           JOIN users u ON la.user_id = u.id 
           WHERE la.status IN ('VERIFIED', 'APPROVED') 
           ORDER BY la.updated_at DESC";
-$result = $conn->query($query);
+$stmt = $pdo->query($query);
+$results = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
 ?>
 
 <!DOCTYPE html>
@@ -61,8 +62,8 @@ $result = $conn->query($query);
                         </tr>
                 </thead>
                 <tbody id="forwardedTable">
-                    <?php if ($result && $result->num_rows > 0): ?>
-                        <?php while($row = $result->fetch_assoc()): ?>
+                    <?php if ($results && count($results) > 0): ?>
+                        <?php foreach($results as $row): ?>
                         <tr>
                             <td style="color:#a78bfa; font-weight:700;">#LA-<?php echo $row['id']; ?></td>
                             <td>
@@ -81,7 +82,7 @@ $result = $conn->query($query);
                                 </span>
                             </td>
                             </tr>
-                        <?php endwhile; ?>
+                        <?php endforeach; ?>
                     <?php else: ?>
                         <tr><td colspan="5" style="text-align:center; padding: 30px; color: #94a3b8;">No forwarded applications found.</td></tr>
                     <?php endif; ?>

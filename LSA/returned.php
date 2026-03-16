@@ -11,7 +11,8 @@ $query = "SELECT la.id, la.updated_at, la.remarks, u.fullname
           JOIN users u ON la.user_id = u.id 
           WHERE la.status = 'REJECTED' 
           ORDER BY la.updated_at DESC";
-$result = $conn->query($query);
+$stmt = $pdo->query($query);
+$results = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
 ?>
 
 <!DOCTYPE html>
@@ -66,8 +67,8 @@ $result = $conn->query($query);
                     </tr>
                 </thead>
                 <tbody id="returnedTable">
-                    <?php if ($result && $result->num_rows > 0): ?>
-                        <?php while($row = $result->fetch_assoc()): ?>
+                    <?php if ($results && count($results) > 0): ?>
+                        <?php foreach($results as $row): ?>
                         <tr>
                             <td style="color:#ef4444; font-weight:700;">#LA-<?php echo $row['id']; ?></td>
                             <td>
@@ -89,7 +90,7 @@ $result = $conn->query($query);
                                 </a>
                             </td>
                         </tr>
-                        <?php endwhile; ?>
+                        <?php endforeach; ?>
                     <?php else: ?>
                         <tr><td colspan="6" style="text-align:center; padding: 30px; color: #94a3b8;">No returned applications found in the system.</td></tr>
                     <?php endif; ?>
