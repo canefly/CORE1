@@ -137,6 +137,7 @@ if (isset($_SESSION['user_id']) && isset($conn)) {
         <li><a href="myloans.php" class="nav-item <?= ($currentPage == 'myloans.php') ? 'active' : '' ?>"><i class="bi bi-file-earmark-text-fill"></i> My Loans</a></li>
         <li><a href="transactions.php" class="nav-item <?= ($currentPage == 'transactions.php') ? 'active' : '' ?>"><i class="bi bi-clock-history"></i> Transactions</a></li>
         <li><a href="restructure.php" class="nav-item <?= ($currentPage == 'restructure.php') ? 'active' : '' ?>"><i class="bi bi-arrow-repeat"></i> Restructure</a></li>
+        <li><a href="wallet.php" class="nav-item <?= ($currentPage == 'wallet.php') ? 'active' : '' ?>"><i class="bi bi-wallet2"></i> Wallet</a></li>
         <li><a href="profile.php" class="nav-item <?= ($currentPage == 'profile.php') ? 'active' : '' ?>"><i class="bi bi-person-fill"></i> Profile</a></li>
     </ul>
 
