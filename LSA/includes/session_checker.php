@@ -13,8 +13,8 @@ if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== tru
     exit;
 }
 
-// 2. STRICT ROLE CHECK: Kick out kapag hindi LSA ang pumasok
-if ($_SESSION['admin_role'] !== 'LSA') {
+// 2. STRICT ROLE CHECK: Kick out kapag hindi LSA or FINANCE_ADMIN ang pumasok
+if ($_SESSION['admin_role'] !== 'LSA' && $_SESSION['admin_role'] !== 'FINANCE_ADMIN') {
     header("Location: ../index.php?error=invalid");
     exit;
 }

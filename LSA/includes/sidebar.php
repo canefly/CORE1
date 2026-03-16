@@ -1,8 +1,25 @@
+<script>
+    // THE ANTI-FLASHBANG PROTOCOL 
+    if (localStorage.getItem('theme') === null) {
+        localStorage.setItem('theme', 'dark'); 
+    }
+    if (localStorage.getItem('theme') === 'dark') {
+        document.documentElement.classList.add('dark-mode');
+    }
+</script>
+
 <?php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-$currentPage = basename($_SERVER['PHP_SELF']);
+
+// DYNAMIC SIDEBAR ROUTING FOR FINANCE ADMIN
+if (isset($_SESSION['admin_role']) && $_SESSION['admin_role'] === 'FINANCE_ADMIN') {
+    include '../FINANCE/includes/sidebar.php';
+    return; // Stop rendering the rest of the LSA sidebar
+}
+
+$current_page = basename($_SERVER['PHP_SELF']);
 
 // 1. Kunin ang Session Info ni LSA
 $admin_id = $_SESSION['admin_id'] ?? 0;
@@ -37,278 +54,304 @@ $newAppCount = 0;
 $restructureCount = 0;
 
 if (isset($pdo)) {
-    $pendingResult = $pdo->query("SELECT COUNT(*) as total FROM loan_applications WHERE status = 'PENDING'");
+    $pendingResult = $pdo->query("SELECT COUNT(*) as total FROM loan_applications WHERE status = 'PENDING' AND loan_purpose NOT LIKE '%Restructure%' AND loan_purpose NOT LIKE '%Extension%'");
     $newAppCount = $pendingResult ? $pendingResult->fetch(PDO::FETCH_ASSOC)['total'] : 0;
 
-    $restructureResult = $pdo->query("SELECT COUNT(*) as total FROM loan_applications WHERE (loan_purpose LIKE '%Restructure%' OR loan_purpose LIKE '%Extension%') AND status = 'PENDING'");
+    $restructureResult = $pdo->query("SELECT COUNT(*) as total FROM loan_restructure_requests WHERE status = 'PENDING'");
     $restructureCount = $restructureResult ? $restructureResult->fetch(PDO::FETCH_ASSOC)['total'] : 0;
 } elseif (isset($conn)) {
-    $pendingQuery = "SELECT COUNT(*) as total FROM loan_applications WHERE status = 'PENDING'";
+    $pendingQuery = "SELECT COUNT(*) as total FROM loan_applications WHERE status = 'PENDING' AND loan_purpose NOT LIKE '%Restructure%' AND loan_purpose NOT LIKE '%Extension%'";
     $pendingResult = $conn->query($pendingQuery);
     $newAppCount = ($pendingResult) ? $pendingResult->fetch_assoc()['total'] : 0;
 
-    $restructureQuery = "SELECT COUNT(*) as total FROM loan_applications WHERE (loan_purpose LIKE '%Restructure%' OR loan_purpose LIKE '%Extension%') AND status = 'PENDING'";
+    $restructureQuery = "SELECT COUNT(*) as total FROM loan_restructure_requests WHERE status = 'PENDING'";
     $restructureResult = $conn->query($restructureQuery);
     $restructureCount = ($restructureResult) ? $restructureResult->fetch_assoc()['total'] : 0;
 }
 ?>
 
+<link rel="stylesheet" href="assets/css/base-style.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+
 <style>
-    /* --- SIDEBAR CONTAINER --- */
-    .sidebar {
-        width: 260px;
-        height: 100vh;
-        background-color: #1f2937;
-        border-right: 1px solid #374151;
-        position: fixed;
-        top: 0;
-        left: 0;
-        display: flex;
-        flex-direction: column;
-        padding: 24px;
-        z-index: 1000;
+    /* --- THE "ANTI-THICC" & LAYOUT HOTFIX --- */
+    
+    .logo-text {
+        white-space: nowrap;
+        overflow: hidden;
+    }
+    
+    .sidebar.collapsed .logo-text {
+        display: none; 
     }
 
-    /* --- BRAND HEADER --- */
-    .brand {
-        display: flex;
-        align-items: flex-start;
-        gap: 12px;
-        padding-bottom: 24px;
-        border-bottom: 1px solid #374151;
-        margin-bottom: 24px;
-    }
-
-    .brand i {
-        font-size: 28px;
-        color: #10b981;
-        line-height: 1;
-        margin-top: 2px;
-    }
-
-    .brand-text {
-        display: flex;
-        flex-direction: column;
-    }
-
-    .brand h2 {
-        color: #fff;
-        font-size: 20px;
-        font-weight: 700;
-        margin: 0;
-        line-height: 1.2;
-    }
-
-    .datetime {
-        color: #9ca3af;
-        font-size: 11px;
-        margin-top: 4px;
-    }
-
-    /* --- USER PROFILE CARD --- */
-    .user-profile {
+    .header-actions {
         display: flex;
         align-items: center;
-        gap: 12px;
-        padding: 16px;
-        background-color: #111827;
-        border-radius: 12px;
-        margin-bottom: 30px;
-        border: 1px solid #374151;
-    }
-
-    .avatar {
-        width: 40px;
-        height: 40px;
-        background-color: #064e3b;
-        color: #10b981;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 700;
-        font-size: 14px;
-        flex-shrink: 0;
-        object-fit: cover; /* Iwas stretch sa picture */
-    }
-
-    .user-info {
-        display: flex;
-        flex-direction: column;
-    }
-
-    .user-info h4 {
-        color: #fff;
-        font-size: 14px;
-        font-weight: 600;
-        margin: 0;
-    }
-
-    .user-info span {
-        color: #9ca3af;
-        font-size: 11px;
-        text-transform: uppercase;
-        margin-top: 2px;
-    }
-
-    /* --- NAVIGATION --- */
-    .nav-links {
-        list-style: none;
-        display: flex;
-        flex-direction: column;
         gap: 8px;
+    }
+
+    .datetime-display {
+        text-align: center;
+        font-size: 11px;
+        color: var(--text-tertiary);
+        padding-bottom: 12px;
+        white-space: nowrap;
+        transition: all 0.2s ease;
+        overflow: hidden;
+        font-weight: 500;
+    }
+
+    .sidebar.collapsed .datetime-display {
+        opacity: 0;
+        height: 0;
         padding: 0;
         margin: 0;
-        flex-grow: 1;
+        display: none;
     }
 
-    .nav-item {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px 16px;
-        border-radius: 8px;
-        color: #9ca3af;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
+    .nav-badge {
+        margin-left: auto; 
+        background: #8b5cf6; 
+        color: #fff; 
+        font-size: 10px; 
+        padding: 2px 8px; 
+        border-radius: 12px; 
+        font-weight: 700;
         transition: all 0.2s ease;
     }
 
-    .nav-item:hover {
-        background-color: rgba(255, 255, 255, 0.05);
-        color: #fff;
+    .sidebar.collapsed .nav-badge {
+        display: none !important;
+        opacity: 0;
     }
 
-    /* Active State */
-    .nav-item.active {
-        background-color: #064e3b;
-        color: #fff;
-        border: 1px solid #059669;
-    }
-    
-    .nav-item.active i {
-        color: #34d399; 
-    }
-
-    .nav-item i {
-        font-size: 18px;
-        color: #6b7280;
-    }
-    
-    /* Badge Styles */
-    .nav-badge {
-        margin-left: auto;
-        background: #ef4444; 
-        color: #fff;
-        font-size: 10px;
-        padding: 2px 8px;
+    /* --- DROPDOWN TOGGLE SWITCH STYLES --- */
+    .toggle-switch {
+        width: 34px;
+        height: 20px;
+        background: var(--text-tertiary);
         border-radius: 12px;
-        font-weight: 700;
-    }
-
-    .nav-badge.amber {
-        background-color: #f59e0b;
-        color: #0f172a;
-    }
-
-    /* --- LOGOUT --- */
-    .logout-btn {
-        border-top: 1px solid #374151;
-        padding-top: 20px;
-        margin-top: auto;
-    }
-
-    .logout-link {
-        color: #ef4444;
-    }
-
-    .logout-link:hover {
-        background-color: rgba(239, 68, 68, 0.1);
-        color: #fca5a5;
+        position: relative;
+        transition: background 0.3s ease;
+        flex-shrink: 0;
     }
     
-    .logout-link i {
-        color: #ef4444;
+    .toggle-switch::after {
+        content: '';
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 16px;
+        height: 16px;
+        background: #fff;
+        border-radius: 50%;
+        transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+        box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+
+    .dark-mode .toggle-switch {
+        background: #10b981; 
+    }
+    
+    .dark-mode .toggle-switch::after {
+        transform: translateX(14px);
     }
 </style>
 
-<div class="sidebar">
-    <div class="brand">
-        <i class="bi bi-bank2"></i>
-        <div class="brand-text">
-            <h2>MicroFinance</h2>
-            <div class="datetime" id="datetime"></div>
+
+
+<aside class="sidebar" id="sidebar">
+    <script>
+        // THE ANTI-SIDEBAR-DANCE PROTOCOL
+        if (window.innerWidth > 768 && localStorage.getItem("sidebarCollapsed") === "true") {
+            document.getElementById('sidebar').classList.add('collapsed');
+        }
+    </script>
+    <div class="sidebar-header">
+        <div class="logo-container">
+            <div class="logo-wrapper">
+                <img src="../assets/img/logo.png" alt="Logo" class="logo" onerror="this.src='../assets/img/logo.png';">
+            </div>
+            <div class="logo-text">
+                <h2 class="app-name">Microfinance</h2>
+                <span class="app-tagline" style="color: #a78bfa; font-weight: 600;">LSA OFFICER</span>
+            </div>
+        </div>
+        
+        <div class="header-actions">
+            <button class="sidebar-toggle" id="sidebarToggle">
+                <i data-lucide="panel-left-close"></i>
+            </button>
         </div>
     </div>
 
-    <div class="user-profile">
-        <img src="../client/uploads/profiles/<?= htmlspecialchars($profile_img) ?>" alt="Profile" class="avatar" onerror="this.src='../client/uploads/profiles/default_avatar.png';">
-        <div class="user-info">
-            <h4><?= htmlspecialchars($admin_name) ?></h4>
-            <span><?= htmlspecialchars($admin_role) ?></span>
-        </div>
-    </div>
-
-    <ul class="nav-links">
-        <li>
-            <a href="dashboard.php" class="nav-item <?= ($currentPage == 'dashboard.php') ? 'active' : '' ?>">
-                <i class="bi bi-grid-1x2-fill"></i> Dashboard
+    <nav class="sidebar-nav">
+        <div class="nav-section">
+            <span class="nav-section-title">LSA MANAGEMENT</span>
+            
+            <a href="dashboard.php" class="nav-item <?= ($current_page == 'dashboard.php') ? 'active' : '' ?>">
+                <i data-lucide="layout-dashboard"></i>
+                <span>Dashboard</span>
             </a>
-        </li>
 
-        <li>
-            <a href="application.php" class="nav-item <?= ($currentPage == 'application.php') ? 'active' : '' ?>">
-                <i class="bi bi-file-earmark-plus-fill"></i> New Applications
+            <a href="application.php" class="nav-item <?= ($current_page == 'application.php') ? 'active' : '' ?>">
+                <i data-lucide="file-plus-2"></i>
+                <span>New Applications</span>
                 <?php if($newAppCount > 0): ?>
                     <span class="nav-badge" data-count="<?= $newAppCount ?>"><?= $newAppCount ?></span>
                 <?php endif; ?>
             </a>
-        </li>
 
-        <li>
-            <a href="forwarded.php" class="nav-item <?= ($currentPage == 'forwarded.php') ? 'active' : '' ?>">
-                <i class="bi bi-arrow-up-short"></i> Forwarded Applications
+            <a href="forwarded.php" class="nav-item <?= ($current_page == 'forwarded.php') ? 'active' : '' ?>">
+                <i data-lucide="arrow-up-right"></i>
+                <span>Forwarded Apps</span>
             </a>
-        </li>
 
-        <li>
-            <a href="returned.php" class="nav-item <?= ($currentPage == 'returned.php') ? 'active' : '' ?>">
-                <i class="bi bi-arrow-counterclockwise"></i> Returned Applications
+            <a href="returned.php" class="nav-item <?= ($current_page == 'returned.php') ? 'active' : '' ?>">
+                <i data-lucide="rotate-ccw"></i>
+                <span>Returned Apps</span>
             </a>
-        </li>
-
-        <li>
-            <a href="restructure.php" class="nav-item <?= ($currentPage == 'restructure.php') ? 'active' : '' ?>">
-                <i class="bi bi-arrow-repeat"></i> Restructure Requests
+            
+            <a href="restructure.php" class="nav-item <?= ($current_page == 'restructure.php') ? 'active' : '' ?>">
+                <i data-lucide="refresh-cw"></i>
+                <span>Restructure Req.</span>
                 <?php if($restructureCount > 0): ?>
-                    <span class="nav-badge amber" data-count="<?= $restructureCount ?>"><?= $restructureCount ?></span>
+                    <span class="nav-badge" data-count="<?= $restructureCount ?>"><?= $restructureCount ?></span>
                 <?php endif; ?>
             </a>
-        </li>
-    </ul>
+        </div>
+    </nav>
 
-    <div class="logout-btn">
-        <a href="../logout.php" class="nav-item logout-link">
-            <i class="bi bi-box-arrow-right"></i> Sign Out
-        </a>
+    <div class="sidebar-footer">
+        <div id="live-datetime" class="datetime-display"></div>
+        
+        <div class="user-profile">
+            <div class="user-avatar">
+                <img src="../client/uploads/profiles/<?= htmlspecialchars($profile_img) ?>" alt="Profile" onerror="this.src='../client/uploads/profiles/default_avatar.png';">
+            </div>
+            <div class="user-info">
+                <span class="user-name"><?= htmlspecialchars($admin_name) ?></span>
+                <span class="user-role"><?= htmlspecialchars($admin_role) ?></span>
+            </div>
+            <button class="user-menu-btn" id="userMenuBtn">
+                <i data-lucide="more-vertical"></i>
+            </button>
+            
+            <div class="user-menu-dropdown" id="userMenuDropdown">
+                <div class="umd-header">
+                    <div class="umd-avatar" id="umdAvatar"><?= strtoupper(substr($admin_name, 0, 1)) ?></div>
+                    <div class="umd-info">
+                        <span class="umd-signed">Signed in as</span>
+                        <span class="umd-name" id="umdName"><?= htmlspecialchars($admin_name) ?></span>
+                        <span class="umd-role" id="umdRole"><?= htmlspecialchars($admin_role) ?></span>
+                    </div>
+                </div>
+                
+                <div class="umd-divider"></div>
+                
+                <a href="profile.php" class="umd-item"><i data-lucide="user-round"></i><span>Profile</span></a>
+                
+                <button class="umd-item" id="themeToggleBtn" style="width: 100%; border: none; background: transparent; cursor: pointer; font-family: inherit; justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <i data-lucide="moon"></i>
+                        <span>Dark Mode</span>
+                    </div>
+                    <div class="toggle-switch"></div>
+                </button>
+
+                <div class="umd-divider"></div>
+                
+                <a href="../login/logout.php" class="umd-item umd-item-danger umd-sign-out"><i data-lucide="log-out"></i><span>Sign Out</span></a>
+            </div>
+        </div>
     </div>
-</div>
+</aside>
+
+<div class="mobile-overlay" id="mobileOverlay"></div>
 
 <script>
-    // Existing DateTime Script
+document.addEventListener("DOMContentLoaded", () => {
+    // 1. Init Icons
+    if (typeof lucide !== "undefined") lucide.createIcons();
+
+    // 2. Sync body tag with the documentElement theme
+    if (document.documentElement.classList.contains('dark-mode')) {
+        document.body.classList.add('dark-mode');
+    }
+
+    // 3. Theme Toggle Logic
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    if (themeToggleBtn) {
+        themeToggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); 
+            
+            document.documentElement.classList.toggle('dark-mode');
+            document.body.classList.toggle('dark-mode');
+            
+            const isDark = document.documentElement.classList.contains('dark-mode');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        });
+    }
+
+    // 4. Live Time & Date Logic
     function updateDateTime() {
         const now = new Date();
-        const options = { 
-            weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', 
-            hour: '2-digit', minute: '2-digit' 
-        };
-        document.getElementById('datetime').textContent = now.toLocaleDateString('en-US', options);
+        const options = { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+        const timeString = now.toLocaleDateString('en-US', options);
+        const dtElement = document.getElementById('live-datetime');
+        if(dtElement) dtElement.textContent = timeString;
     }
-    updateDateTime();
     setInterval(updateDateTime, 1000);
+    updateDateTime(); 
 
-    // Function to update badges without refreshing
+    // 5. Sidebar Logic
+    const sidebar = document.getElementById("sidebar");
+    const sidebarToggle = document.getElementById("sidebarToggle");
+    const mobileOverlay = document.getElementById("mobileOverlay");
+    const mobileMenuBtn = document.getElementById("mobileMenuBtn");
+
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener("click", () => {
+            sidebar.classList.toggle("collapsed");
+            if (window.innerWidth > 768) {
+                localStorage.setItem("sidebarCollapsed", sidebar.classList.contains("collapsed"));
+            }
+        });
+    }
+
+    if (mobileMenuBtn) {
+        mobileMenuBtn.addEventListener("click", () => {
+            sidebar.classList.add("mobile-open");
+            if (mobileOverlay) mobileOverlay.classList.add("active");
+            document.body.style.overflow = "hidden";
+        });
+    }
+
+    if (mobileOverlay) {
+        mobileOverlay.addEventListener("click", () => {
+            sidebar.classList.remove("mobile-open");
+            mobileOverlay.classList.remove("active");
+            document.body.style.overflow = "";
+        });
+    }
+
+    // 6. User Dropdown Logic
+    const userBtn = document.getElementById('userMenuBtn');
+    const userMenu = document.getElementById('userMenuDropdown');
+    if (userBtn && userMenu) {
+        userBtn.addEventListener('click', e => { 
+            e.stopPropagation(); 
+            userMenu.classList.toggle('umd-open'); 
+        });
+        document.addEventListener('click', e => { 
+            if (!userMenu.contains(e.target) && e.target !== userBtn) {
+                userMenu.classList.remove('umd-open');
+            }
+        });
+    }
+
+    // 7. Function to update badges without refreshing (LSA AJAX)
     function refreshBadges() {
         fetch('get_badge_counts.php')
             .then(response => response.json())
@@ -332,4 +375,5 @@ if (isset($pdo)) {
 
     // Refresh every 30 seconds
     setInterval(refreshBadges, 30000);
+});
 </script>

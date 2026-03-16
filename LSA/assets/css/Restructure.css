@@ -1,32 +1,37 @@
 /* =========================================
-   LSA RESTRUCTURE REQUESTS STYLES
+   3. MAIN CONTENT LAYOUT
    ========================================= */
-
-/* Base Reset */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: 'Google Sans', sans-serif;
-}
-
-body {
-    background-color: #111827; /* LSA Dark Theme */
-    color: #e5e7eb;
-    display: flex;
-    min-height: 100vh;
-}
-
-/* Main Layout */
 .main-content {
-    margin-left: 260px;
     padding: 30px;
-    width: calc(100% - 260px);
+    position: relative; 
+    display: flex;
+    flex-direction: column;
 }
 
-.page-header { margin-bottom: 25px; }
-.page-header h1 { font-size: 24px; color: #fff; margin-bottom: 5px; }
-.page-header p { color: #9ca3af; font-size: 14px; }
+.page-header {
+    margin: -30px -30px 30px -30px !important; 
+    padding: 24px 30px !important;
+    background-color: var(--surface) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    display: block !important; 
+    width: auto !important;
+    min-width: 100% !important;
+    transition: all 0.3s ease;
+}
+
+.page-header h1 {
+    font-size: 24px !important;
+    color: var(--text-primary) !important;
+    margin-bottom: 4px !important;
+    text-align: left !important;
+}
+
+.page-header p {
+    color: var(--text-tertiary) !important;
+    font-size: 14px !important;
+    margin: 0 !important;
+    text-align: left !important;
+}
 
 /* --- FILTER BAR --- */
 .filter-bar {
@@ -40,8 +45,8 @@ body {
 
 .btn-filter {
     background: transparent;
-    border: 1px solid #374151;
-    color: #9ca3af;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
     padding: 8px 18px;
     border-radius: 20px;
     cursor: pointer;
@@ -49,12 +54,12 @@ body {
     font-weight: 500;
     transition: all 0.2s ease;
 }
-.btn-filter:hover { border-color: #f59e0b; color: #fff; } /* Amber Hover */
+.btn-filter:hover { border-color: #f59e0b; color: var(--text-primary); } 
 
 .btn-filter.active {
-    background-color: #f59e0b; /* Amber Active */
+    background-color: #f59e0b; 
     border-color: #f59e0b;
-    color: #0f172a; /* Dark Text */
+    color: #fff; /* Keep white for contrast on amber */
     font-weight: 700;
 }
 
@@ -65,38 +70,39 @@ body {
     left: 12px;
     top: 50%;
     transform: translateY(-50%);
-    color: #9ca3af;
+    color: var(--text-tertiary);
     font-size: 14px;
 }
 .search-input {
     width: 100%;
     padding: 10px 10px 10px 38px;
     border-radius: 8px;
-    border: 1px solid #374151;
-    background: #1f2937;
-    color: #fff;
+    border: 1px solid var(--border-color);
+    background: var(--surface);
+    color: var(--text-primary);
     outline: none;
     font-size: 13px;
-    transition: border-color 0.2s;
+    transition: all 0.3s ease;
 }
 .search-input:focus { border-color: #f59e0b; }
 
 /* --- TABLE STYLES --- */
 .content-card {
-    background-color: #1f2937;
-    border: 1px solid #374151;
+    background-color: var(--surface);
+    border: 1px solid var(--border-color);
     border-radius: 12px;
     padding: 20px;
     overflow-x: auto;
+    transition: all 0.3s ease;
 }
 
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
 
 thead th {
     text-align: left;
-    color: #9ca3af;
+    color: var(--text-tertiary);
     padding: 15px 10px;
-    border-bottom: 1px solid #374151;
+    border-bottom: 1px solid var(--border-color);
     text-transform: uppercase;
     font-size: 11px;
     letter-spacing: 0.5px;
@@ -105,8 +111,8 @@ thead th {
 
 tbody td {
     padding: 15px 10px;
-    border-bottom: 1px solid #374151;
-    color: #e5e7eb;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-secondary);
     vertical-align: middle;
 }
 tbody tr:last-child td { border-bottom: none; }
@@ -116,8 +122,8 @@ tbody tr:last-child td { border-bottom: none; }
 .mini-avatar {
     width: 32px;
     height: 32px;
-    background-color: #374151;
-    color: #fff;
+    background-color: var(--border-color);
+    color: var(--text-primary);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -132,22 +138,22 @@ tbody tr:last-child td { border-bottom: none; }
     align-items: center;
     gap: 8px;
     font-size: 13px;
-    background: rgba(0, 0, 0, 0.2);
+    background: var(--surface-hover);
     padding: 6px 10px;
     border-radius: 6px;
-    border: 1px solid #374151;
+    border: 1px solid var(--border-color);
     width: fit-content;
 }
 .val-old {
-    color: #9ca3af;
+    color: var(--text-tertiary);
     text-decoration: line-through;
     font-size: 12px;
 }
 .val-new {
-    color: #fbbf24; /* Amber */
+    color: #d97706; /* Slightly darker amber to pop on both themes */
     font-weight: 700;
 }
-.arrow-icon { color: #6b7280; font-size: 12px; }
+.arrow-icon { color: var(--text-tertiary); font-size: 12px; }
 
 /* --- BADGES --- */
 .badge {
@@ -158,7 +164,7 @@ tbody tr:last-child td { border-bottom: none; }
     text-transform: uppercase;
     white-space: nowrap;
 }
-.bg-amber { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+.bg-amber { background: rgba(245, 158, 11, 0.15); color: #d97706; }
 
 /* --- ACTION BUTTON --- */
 .btn-assess {
@@ -167,7 +173,7 @@ tbody tr:last-child td { border-bottom: none; }
     gap: 6px;
     padding: 6px 14px;
     background-color: #f59e0b;
-    color: #0f172a;
+    color: #fff;
     text-decoration: none;
     border-radius: 6px;
     font-size: 12px;
@@ -185,10 +191,10 @@ tbody tr:last-child td { border-bottom: none; }
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    color: #60a5fa; /* Blue link color */
+    color: #3b82f6; /* Adjusted for better dual-mode contrast */
     text-decoration: none;
     font-size: 13px;
-    background: rgba(96, 165, 250, 0.1);
+    background: rgba(59, 130, 246, 0.1);
     padding: 4px 8px;
     border-radius: 4px;
     transition: 0.2s;
@@ -196,11 +202,8 @@ tbody tr:last-child td { border-bottom: none; }
 }
 
 .doc-link:hover {
-    background: rgba(96, 165, 250, 0.2);
-    border-color: #60a5fa;
-    color: #93c5fd;
+    background: rgba(59, 130, 246, 0.2);
+    border-color: #3b82f6;
+    color: #2563eb;
 }
-
-.doc-link i {
-    font-size: 14px;
-}
+.doc-link i { font-size: 14px; }

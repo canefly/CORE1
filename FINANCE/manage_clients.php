@@ -30,9 +30,20 @@ $clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <meta charset="UTF-8">
     <title>Admin | Manage Clients</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+        <script>
+        // THE ANTI-FLASHBANG PROTOCOL 
+        if (localStorage.getItem('theme') === null) {
+            localStorage.setItem('theme', 'dark'); 
+        }
+        if (localStorage.getItem('theme') === 'dark') {
+            document.documentElement.classList.add('dark-mode');
+        }
+    </script>
+    <link rel="stylesheet" href="assets/css/global.css">
     <link rel="stylesheet" href="assets/css/manage_clients.css">
 </head>
 <body>
+
     <?php include 'includes/sidebar.php'; ?>
 
     <div class="main-content">

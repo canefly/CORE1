@@ -4,7 +4,8 @@ $connection_file = __DIR__ . '/includes/db_connect.php';
 require_once __DIR__ . '/includes/session_checker.php';
 if (file_exists($connection_file)) {
     require_once $connection_file;
-} else {
+}
+else {
     die("Error: Connection file not found.");
 }
 
@@ -38,18 +39,21 @@ try {
     $total_payable = $principal + $interest;
     $balance = $loan['outstanding'];
     $total_paid = $total_payable - $balance;
-    if ($total_paid < 0) $total_paid = 0;
-    
+    if ($total_paid < 0)
+        $total_paid = 0;
+
     // Safety display catch
     $displayStatus = $loan['status'];
-    if ($balance <= 0) $displayStatus = 'PAID';
+    if ($balance <= 0)
+        $displayStatus = 'PAID';
 
     // 3. Fetch Payment History (Transactions)
     $stmtTx = $pdo->prepare("SELECT * FROM transactions WHERE loan_id = ? ORDER BY trans_date DESC");
     $stmtTx->execute([$loan_id]);
     $transactions = $stmtTx->fetchAll();
 
-} catch (PDOException $e) {
+}
+catch (PDOException $e) {
     die("Query Failed: " . $e->getMessage());
 }
 ?>
@@ -60,11 +64,21 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Finance | Statement of Account</title>
-    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+        <script>
+        // THE ANTI-FLASHBANG PROTOCOL 
+        if (localStorage.getItem('theme') === null) {
+            localStorage.setItem('theme', 'dark'); 
+        }
+        if (localStorage.getItem('theme') === 'dark') {
+            document.documentElement.classList.add('dark-mode');
+        }
+    </script>
+    <link rel="stylesheet" href="assets/css/global.css">
     <link rel="stylesheet" href="assets/css/view_loan.css">
 </head>
 <body>
+
 
     <?php include 'includes/sidebar.php'; ?>
 
@@ -91,7 +105,7 @@ try {
             <div class="soa-box">
                 <h4>Loan Overview</h4>
                 <p>ID: #LN-<?php echo str_pad($loan['id'], 4, '0', STR_PAD_LEFT); ?></p>
-                <p>Status: <strong style="color: <?php echo ($displayStatus=='PAID')?'#34d399':'#fbbf24'; ?>;"><?php echo $displayStatus; ?></strong></p>
+                <p>Status: <strong style="color: <?php echo($displayStatus == 'PAID') ? '#34d399' : '#fbbf24'; ?>;"><?php echo $displayStatus; ?></strong></p>
                 <p style="font-size: 13px; color: #94a3b8;">Purpose: <?php echo htmlspecialchars($loan['loan_purpose'] ?? 'General'); ?></p>
             </div>
             
@@ -121,17 +135,20 @@ try {
                     <tbody>
                         <?php if (empty($transactions)): ?>
                             <tr><td colspan="5" style="text-align:center; padding: 20px;">No payments recorded yet.</td></tr>
-                        <?php else: ?>
+                        <?php
+else: ?>
                             <?php foreach ($transactions as $tx): ?>
                             <tr>
-                                <td style="color:#60a5fa; font-weight: 600;"><?php echo htmlspecialchars($tx['receipt_number'] ?? 'TRX-'.$tx['id']); ?></td>
+                                <td style="color:#60a5fa; font-weight: 600;"><?php echo htmlspecialchars($tx['receipt_number'] ?? 'TRX-' . $tx['id']); ?></td>
                                 <td><?php echo date("M d, Y - g:i A", strtotime($tx['trans_date'])); ?></td>
                                 <td><?php echo htmlspecialchars($tx['provider_method'] ?? 'OTC'); ?></td>
                                 <td class="text-right font-mono" style="color:#34d399; font-weight: bold;">+ ₱ <?php echo number_format($tx['amount'], 2); ?></td>
                                 <td><span class="status-badge status-paid"><?php echo htmlspecialchars($tx['status']); ?></span></td>
                             </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
+                            <?php
+    endforeach; ?>
+                        <?php
+endif; ?>
                     </tbody>
                 </table>
             </div>

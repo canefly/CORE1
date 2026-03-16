@@ -26,6 +26,16 @@ try {
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="assets/css/Approved.css">
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem("theme");
+            if (savedTheme === "dark" || savedTheme === null) {
+                document.documentElement.classList.add("dark-mode");
+                localStorage.setItem("theme", "dark");
+            }
+        })();
+    </script>
+    <link rel="stylesheet" href="assets/css/base-style.css">
 </head>
 <body>
     <?php include 'includes/sidebar.php'; ?>

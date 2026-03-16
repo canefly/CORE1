@@ -5,7 +5,8 @@ require_once __DIR__ . '/includes/session_checker.php';
 
 if (file_exists($connection_file)) {
     require_once $connection_file;
-} else {
+}
+else {
     die("Error: Connection file not found.");
 }
 
@@ -18,19 +19,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     try {
         $pdo->beginTransaction();
         $stmtUpdate = $pdo->prepare("UPDATE system_settings SET setting_value = ? WHERE setting_key = ?");
-        
+
         // Map form inputs to database keys
         $keys = ['default_interest_rate', 'interest_method', 'penalty_rate', 'processing_fee', 'grace_period'];
-        
+
         foreach ($keys as $key) {
             if (isset($_POST[$key])) {
                 $stmtUpdate->execute([$_POST[$key], $key]);
             }
         }
-        
+
         $pdo->commit();
         $success_message = "System settings updated successfully!";
-    } catch (PDOException $e) {
+    }
+    catch (PDOException $e) {
         $pdo->rollBack();
         $error_message = "Database Error: " . $e->getMessage();
     }
@@ -40,13 +42,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 try {
     $stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings");
     $settings_raw = $stmt->fetchAll();
-    
+
     // Convert to a simple associative array for easy access
     $config = [];
-    foreach($settings_raw as $row) {
+    foreach ($settings_raw as $row) {
         $config[$row['setting_key']] = $row['setting_value'];
     }
-    
+
     // Fallbacks just in case the table is empty
     $int_rate = $config['default_interest_rate'] ?? '3.5';
     $int_method = $config['interest_method'] ?? 'FLAT';
@@ -54,7 +56,8 @@ try {
     $proc_fee = $config['processing_fee'] ?? '500';
     $grace = $config['grace_period'] ?? '3';
 
-} catch (PDOException $e) {
+}
+catch (PDOException $e) {
     die("Query Failed: Please run the SQL command to create the system_settings table first. Error: " . $e->getMessage());
 }
 ?>
@@ -66,12 +69,21 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Finance | Admin Configuration</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    
+        <script>
+        // THE ANTI-FLASHBANG PROTOCOL 
+        if (localStorage.getItem('theme') === null) {
+            localStorage.setItem('theme', 'dark'); 
+        }
+        if (localStorage.getItem('theme') === 'dark') {
+            document.documentElement.classList.add('dark-mode');
+        }
+    </script>
+    <link rel="stylesheet" href="assets/css/global.css">
     <link rel="stylesheet" href="assets/css/settings.css">
 </head>
 <body>
+
 
     <?php include 'includes/sidebar.php'; ?>
 
@@ -82,17 +94,19 @@ try {
             <p>Manage interest rates, penalties, and loan parameters.</p>
         </div>
 
-        <?php if(isset($success_message)): ?>
+        <?php if (isset($success_message)): ?>
             <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; color: #34d399; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
                 <i class="bi bi-check-circle-fill"></i> <?php echo $success_message; ?>
             </div>
-        <?php endif; ?>
+        <?php
+endif; ?>
 
-        <?php if(isset($error_message)): ?>
+        <?php if (isset($error_message)): ?>
             <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #f87171; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
                 <i class="bi bi-exclamation-triangle-fill"></i> <?php echo $error_message; ?>
             </div>
-        <?php endif; ?>
+        <?php
+endif; ?>
 
         <form method="POST" action="settings.php">
             <input type="hidden" name="action" value="update_settings">
@@ -120,11 +134,13 @@ try {
                         <label class="input-label">Calculation Method</label>
                         <div class="radio-group">
                             <label class="radio-option">
-                                <input type="radio" name="interest_method" value="DIMINISHING" <?php if($int_method == 'DIMINISHING') echo 'checked'; ?>>
+                                <input type="radio" name="interest_method" value="DIMINISHING" <?php if ($int_method == 'DIMINISHING')
+    echo 'checked'; ?>>
                                 <span class="radio-box">Diminishing</span>
                             </label>
                             <label class="radio-option">
-                                <input type="radio" name="interest_method" value="FLAT" <?php if($int_method == 'FLAT') echo 'checked'; ?>>
+                                <input type="radio" name="interest_method" value="FLAT" <?php if ($int_method == 'FLAT')
+    echo 'checked'; ?>>
                                 <span class="radio-box">Flat Rate</span>
                             </label>
                         </div>

@@ -1,7 +1,6 @@
 <?php 
 // Standard database include from your LSA/includes folder
 include 'includes/db_connect.php'; 
-require_once __DIR__ . '/includes/session_checker.php';
 
 /** * FETCH RETURNED APPLICATIONS
  * We query for 'REJECTED' status to see what needs client attention.
@@ -25,6 +24,16 @@ $result = $conn->query($query);
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="assets/css/Returned.css">
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem("theme");
+            if (savedTheme === "dark" || savedTheme === null) {
+                document.documentElement.classList.add("dark-mode");
+                localStorage.setItem("theme", "dark");
+            }
+        })();
+    </script>
+    <link rel="stylesheet" href="assets/css/base-style.css">
 </head>
 <body>
 

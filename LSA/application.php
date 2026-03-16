@@ -1,18 +1,14 @@
-<?php 
-// Standard include for your existing database connection
-include 'includes/db_connect.php'; 
-require_once __DIR__ . '/includes/session_checker.php';
+<?php
+require_once __DIR__ . '/includes/db_connect.php';
 
-/** * FETCH PENDING APPLICATIONS
- * Joins loan_applications and users to get real client names.
- * The LSA inbox specifically handles 'PENDING' requests.
- */
 $query = "SELECT la.id, la.principal_amount, la.status, u.fullname 
           FROM loan_applications la 
           JOIN users u ON la.user_id = u.id 
           WHERE la.status = 'PENDING' 
           ORDER BY la.created_at DESC";
-$result = $conn->query($query);
+
+$stmt = $pdo->query($query);
+$result = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -25,6 +21,16 @@ $result = $conn->query($query);
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="assets/css/Application.css">
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem("theme");
+            if (savedTheme === "dark" || savedTheme === null) {
+                document.documentElement.classList.add("dark-mode");
+                localStorage.setItem("theme", "dark");
+            }
+        })();
+    </script>
+    <link rel="stylesheet" href="assets/css/base-style.css">
 </head>
 <body>
 
@@ -61,8 +67,8 @@ $result = $conn->query($query);
                     </tr>
                 </thead>
                 <tbody id="applicationTable">
-                    <?php if ($result && $result->num_rows > 0): ?>
-                        <?php while($row = $result->fetch_assoc()): ?>
+                    <?php if (!empty($result)): ?>
+                        <?php foreach($result as $row): ?>
                         <tr>
                             <td style="color:#10b981; font-weight:700;">#LA-<?php echo $row['id']; ?></td>
                             <td>
@@ -83,7 +89,7 @@ $result = $conn->query($query);
                                 </button>
                             </td>
                         </tr>
-                        <?php endwhile; ?>
+                        <?php endforeach; ?>
                     <?php else: ?>
                         <tr><td colspan="5" style="text-align:center; padding: 20px;">No pending applications available.</td></tr>
                     <?php endif; ?>

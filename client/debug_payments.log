@@ -64,17 +64,35 @@
 [2026-03-10 16:54:29] INSERT OK tx_id=45
 [2026-03-10 17:02:05] HIT create_checkout.php
 [2026-03-10 17:02:05] INSERT OK tx_id=46
-[2026-03-10 17:21:03] HIT create_checkout.php
-[2026-03-10 17:21:03] INSERT OK tx_id=50
-[2026-03-11 12:33:14] HIT create_checkout.php
-[2026-03-11 12:33:14] INSERT OK tx_id=1
-[2026-03-11 12:33:34] HIT create_checkout.php
-[2026-03-11 12:33:34] INSERT OK tx_id=2
-[2026-03-11 12:43:32] HIT create_checkout.php
-[2026-03-11 12:43:32] INSERT OK tx_id=1
-[2026-03-11 12:46:43] HIT create_checkout.php
-[2026-03-11 12:46:43] INSERT OK tx_id=1
-[2026-03-11 13:05:56] HIT create_checkout.php
-[2026-03-11 13:05:56] INSERT OK tx_id=1
-[2026-03-11 13:07:58] HIT create_checkout.php
-[2026-03-11 13:07:58] INSERT OK tx_id=2
+[2026-03-10 18:37:19] HIT create_checkout.php
+[2026-03-10 18:37:19] INSERT OK tx_id=47
+[2026-03-11 12:36:02] HIT create_checkout.php
+[2026-03-11 12:36:02] INSERT OK tx_id=48
+[2026-03-11 20:56:07] HIT create_checkout.php
+[2026-03-11 21:00:35] HIT create_checkout.php
+[2026-03-11 21:56:44] HIT create_checkout.php
+[2026-03-11 22:04:41] HIT create_checkout.php
+[2026-03-11 22:07:56] HIT create_checkout.php
+[2026-03-11 22:08:56] HIT create_checkout.php
+[2026-03-11 22:08:56] INSERT OK tx_id=54 source=original loan_id=13 restructured_loan_id=0
+[2026-03-12 03:03:01] HIT create_checkout.php
+[2026-03-12 03:03:01] INSERT OK tx_id=55 source=original loan_id=15 restructured_loan_id=0
+[2026-03-12 03:04:52] HIT create_checkout.php
+[2026-03-12 03:05:04] HIT create_checkout.php
+[2026-03-15 13:50:00] HIT create_checkout.php
+[2026-03-15 13:50:00] INSERT OK tx_id=56 source=original loan_id=18 restructured_loan_id=0
+[2026-03-15 13:53:55] HIT create_checkout.php
+[2026-03-15 14:12:25] HIT create_checkout.php
+[2026-03-15 14:12:25] INSERT OK tx_id=58 source=original loan_id=18 restructured_loan_id=0
+[2026-03-15 14:14:05] HIT create_checkout.php
+[2026-03-15 14:15:23] HIT create_checkout.php
+[2026-03-15 14:26:52] HIT create_checkout.php
+[2026-03-15 14:34:32] HIT create_checkout.php
+[2026-03-15 14:34:32] BEFORE INSERT source=restructured loan_id=18 restructured_loan_id=6 user_id=12 amount=1665.11
+[2026-03-15 14:34:32] INSERT OK tx_id=62 source=restructured loan_id=18 restructured_loan_id=6
+[2026-03-15 14:41:29] HIT create_checkout.php
+[2026-03-15 14:41:29] BEFORE INSERT source=restructured loan_id=18 restructured_loan_id=6 user_id=12 amount=1665.11
+[2026-03-15 14:41:29] INSERT OK tx_id=63 source=restructured loan_id=18 restructured_loan_id=6
+[2026-03-15 14:50:16] HIT create_checkout.php
+[2026-03-15 14:50:16] BEFORE INSERT source=restructured loan_id=18 restructured_loan_id=6 user_id=12 amount=1665.11
+[2026-03-15 14:50:16] INSERT OK tx_id=64 source=restructured loan_id=18 restructured_loan_id=6

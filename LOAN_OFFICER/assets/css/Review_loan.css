@@ -1,13 +1,37 @@
 /* =========================================
-   LOAN REVIEW DOSSIER STYLES
+   3. MAIN CONTENT LAYOUT 
    ========================================= */
-* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Google Sans', sans-serif; }
-body { background-color: #0f172a; color: #e2e8f0; display: flex; min-height: 100vh; }
-.main-content { margin-left: 260px; padding: 30px; width: calc(100% - 260px); }
+.main-content {
+    padding: 30px;
+    position: relative; 
+    display: flex;
+    flex-direction: column;
+}
 
-.page-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px; }
-.page-header h1 { font-size: 26px; color: #fff; font-weight: 700; margin-bottom: 5px; }
-.page-header p { color: #94a3b8; font-size: 14px; }
+.page-header {
+    margin: -30px -30px 30px -30px !important; 
+    padding: 24px 30px !important;
+    background-color: var(--surface) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    display: block !important; 
+    width: auto !important;
+    min-width: 100% !important;
+    transition: all 0.3s ease;
+}
+
+.page-header h1 {
+    font-size: 24px !important;
+    color: var(--text-primary) !important;
+    margin-bottom: 4px !important;
+    text-align: left !important;
+}
+
+.page-header p {
+    color: var(--text-tertiary) !important;
+    font-size: 14px !important;
+    margin: 0 !important;
+    text-align: left !important;
+}
 
 .btn-back { color: #94a3b8; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; font-weight: 500; transition: 0.2s; }
 .btn-back:hover { color: #fff; }
@@ -16,13 +40,13 @@ body { background-color: #0f172a; color: #e2e8f0; display: flex; min-height: 100
 .dossier-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
 
 /* Panels */
-.panel { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 25px; margin-bottom: 20px; }
+.panel { background: var(--surface); border: 1px solid var(--border-color); border-radius: 12px; padding: 25px; margin-bottom: 20px; }
 .panel-title { color: #fff; font-size: 16px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #334155; padding-bottom: 15px; }
 
 /* Data Rows */
 .data-row { display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 14px; }
-.data-label { color: #94a3b8; }
-.data-value { color: #fff; font-weight: 600; text-align: right; }
+.data-label { color: var(--text-tertiary); }
+.data-value { color: var(--text-primary); font-weight: 600; text-align: right; }
 .val-highlight { color: #60a5fa; font-size: 18px; font-weight: 700; }
 .val-good { color: #34d399; }
 .val-bad { color: #f87171; }

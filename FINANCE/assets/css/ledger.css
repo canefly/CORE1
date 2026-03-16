@@ -11,8 +11,8 @@
 }
 
 body {
-    background-color: #0f172a; /* Dark Slate */
-    color: #e2e8f0;
+    background-color: var(--bg-dark); /* Dark Slate */
+    color: var(--text-primary);
     display: flex;
     min-height: 100vh;
 }
@@ -25,8 +25,8 @@ body {
 }
 
 .page-header { margin-bottom: 25px; }
-.page-header h1 { font-size: 24px; color: #fff; margin-bottom: 5px; }
-.page-header p { color: #94a3b8; font-size: 14px; }
+.page-header h1 { font-size: 24px; color: var(--text-primary); margin-bottom: 5px; }
+.page-header p { color: var(--text-secondary); font-size: 14px; }
 
 /* --- FILTERS & TOOLS --- */
 .toolbar {
@@ -34,18 +34,18 @@ body {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 20px;
-    background: #1e293b;
+    background: var(--surface);
     padding: 15px;
     border-radius: 12px;
-    border: 1px solid #334155;
+    border: 1px solid var(--border);
 }
 
 .filter-group { display: flex; gap: 10px; }
 
 .select-filter {
-    background: #0f172a;
-    color: #e2e8f0;
-    border: 1px solid #334155;
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
     padding: 8px 12px;
     border-radius: 6px;
     outline: none;
@@ -54,7 +54,7 @@ body {
 
 .btn-export {
     background: rgba(16, 185, 129, 0.1);
-    color: #34d399;
+    color: var(--success);
     border: 1px solid rgba(16, 185, 129, 0.2);
     padding: 8px 16px;
     border-radius: 6px;
@@ -75,23 +75,23 @@ body {
     left: 12px;
     top: 50%;
     transform: translateY(-50%);
-    color: #94a3b8;
+    color: var(--text-secondary);
 }
 .search-input {
     width: 100%;
-    background: #0f172a;
-    border: 1px solid #334155;
+    background: var(--bg-dark);
+    border: 1px solid var(--border);
     padding: 10px 10px 10px 35px;
     border-radius: 6px;
-    color: #fff;
+    color: var(--text-primary);
     outline: none;
 }
-.search-input:focus { border-color: #fbbf24; } /* Gold Focus */
+.search-input:focus { border-color: var(--brand-gold); } /* Gold Focus */
 
 /* --- TABLE STYLES --- */
 .ledger-container {
-    background-color: #1e293b;
-    border: 1px solid #334155;
+    background-color: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 12px;
     padding: 0; /* Flush padding for sticky header */
     overflow: hidden;
@@ -107,12 +107,12 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; }
 thead th {
     position: sticky;
     top: 0;
-    background: #1e293b;
+    background: var(--surface);
     z-index: 10;
     text-align: left;
-    color: #94a3b8;
+    color: var(--text-secondary);
     padding: 18px 15px;
-    border-bottom: 2px solid #334155;
+    border-bottom: 2px solid var(--border);
     text-transform: uppercase;
     font-size: 11px;
     font-weight: 700;
@@ -120,11 +120,11 @@ thead th {
 
 tbody td {
     padding: 15px;
-    border-bottom: 1px solid #334155;
-    color: #cbd5e1;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-muted);
     vertical-align: middle;
 }
-tbody tr:hover { background-color: #0f172a; }
+tbody tr:hover { background-color: var(--bg-dark); }
 
 /* Financial Columns Alignment */
 .text-right { text-align: right; }
@@ -138,31 +138,31 @@ tbody tr:hover { background-color: #0f172a; }
     font-weight: 700;
     text-transform: uppercase;
 }
-.status-active { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
-.status-paid { background: rgba(16, 185, 129, 0.15); color: #34d399; }
-.status-overdue { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+.status-active { background: rgba(59, 130, 246, 0.15); color: var(--info); }
+.status-paid { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+.status-overdue { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
 
 /* --- PROGRESS BAR (Paid %) --- */
 .progress-wrapper {
     width: 100px;
     height: 6px;
-    background: #334155;
+    background: var(--border);
     border-radius: 3px;
     margin-top: 5px;
     overflow: hidden;
 }
 .progress-fill {
     height: 100%;
-    background: #fbbf24; /* Gold Progress */
+    background: var(--brand-gold); /* Gold Progress */
     border-radius: 3px;
 }
-.progress-text { font-size: 10px; color: #94a3b8; display: block; margin-bottom: 2px; }
+.progress-text { font-size: 10px; color: var(--text-secondary); display: block; margin-bottom: 2px; }
 
 /* Action Button */
 .btn-view {
-    color: #fbbf24;
+    color: var(--brand-gold);
     background: transparent;
-    border: 1px solid #fbbf24;
+    border: 1px solid var(--brand-gold);
     padding: 6px 12px;
     border-radius: 4px;
     cursor: pointer;

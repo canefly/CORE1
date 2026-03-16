@@ -1,63 +1,69 @@
 <?php 
-// Standard database include
-include 'includes/db_connect.php'; 
-require_once __DIR__ . '/includes/session_checker.php';
-
-/** * ANALYTICS QUERIES
- * Fetching real-time counts from the loan_applications table.
- */
+include 'includes/db_connect.php';
 
 // 1. Pending Review Count
-$pending_sql = "SELECT COUNT(*) as total FROM loan_applications WHERE status = 'PENDING'";
-$pending_res = $conn->query($pending_sql);
-$pending_count = $pending_res->fetch_assoc()['total'];
+$stmt = $pdo->query("SELECT COUNT(*) as total FROM loan_applications WHERE status = 'PENDING'");
+$pending_count = $stmt->fetch()['total'];
 
-// 2. Returned Today Count
-$returned_sql = "SELECT COUNT(*) as total FROM loan_applications 
-                 WHERE status = 'REJECTED' AND DATE(updated_at) = CURDATE()";
-$returned_res = $conn->query($returned_sql);
-$returned_today = $returned_res->fetch_assoc()['total'];
+// 2. Returned Today
+$stmt = $pdo->query("
+    SELECT COUNT(*) as total 
+    FROM loan_applications 
+    WHERE status = 'REJECTED' 
+    AND DATE(updated_at) = CURDATE()
+");
+$returned_today = $stmt->fetch()['total'];
 
-// 3. Accuracy Rate (Approved vs Total Processed)
-$total_processed_sql = "SELECT COUNT(*) as total FROM loan_applications WHERE status IN ('APPROVED', 'REJECTED')";
-$total_proc_res = $conn->query($total_processed_sql);
-$total_proc = $total_proc_res->fetch_assoc()['total'];
+// 3. Accuracy
+$stmt = $pdo->query("
+    SELECT COUNT(*) as total 
+    FROM loan_applications 
+    WHERE status IN ('APPROVED','REJECTED')
+");
+$total_proc = $stmt->fetch()['total'];
 
-$approved_sql = "SELECT COUNT(*) as total FROM loan_applications WHERE status = 'APPROVED'";
-$app_res = $conn->query($approved_sql);
-$total_app = $app_res->fetch_assoc()['total'];
+$stmt = $pdo->query("
+    SELECT COUNT(*) as total 
+    FROM loan_applications 
+    WHERE status='APPROVED'
+");
+$total_app = $stmt->fetch()['total'];
 
 $accuracy = ($total_proc > 0) ? round(($total_app / $total_proc) * 100) : 100;
 
-/** * REJECTION REASONS TRACKING
- * Counts occurrences of keywords within the 'remarks' column.
- */
-function getReasonCount($conn, $keyword) {
-    $keyword = mysqli_real_escape_string($conn, $keyword);
-    $sql = "SELECT COUNT(*) as total FROM loan_applications 
-            WHERE status = 'REJECTED' AND remarks LIKE '%$keyword%'";
-    $res = $conn->query($sql);
-    return $res->fetch_assoc()['total'];
+// Rejection reason function
+function getReasonCount($pdo, $keyword){
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*) as total 
+        FROM loan_applications
+        WHERE status='REJECTED'
+        AND remarks LIKE ?
+    ");
+    $stmt->execute(["%$keyword%"]);
+    return $stmt->fetch()['total'];
 }
-
-$blurryCount = getReasonCount($conn, 'Blurry ID');
-$expiredCount = getReasonCount($conn, 'Expired Documents');
-$incompleteCount = getReasonCount($conn, 'Incomplete Documents');
-$wrongDocCount = getReasonCount($conn, 'Wrong Document Type');
-
-// Get total rejections for percentage calculation
-$totalRejections = ($returned_today > 0) ? $returned_today : ($total_proc - $total_app);
 
 function getPercentage($count, $total) {
     return ($total > 0) ? round(($count / $total) * 100) : 0;
 }
 
-// 4. Recent Activity Log
-$activity_sql = "SELECT u.fullname, la.status, la.updated_at, la.remarks 
-                 FROM loan_applications la 
-                 JOIN users u ON la.user_id = u.id 
-                 ORDER BY la.updated_at DESC LIMIT 4";
-$activities = $conn->query($activity_sql);
+$blurryCount = getReasonCount($pdo,'Blurry ID');
+$expiredCount = getReasonCount($pdo,'Expired Documents');
+$incompleteCount = getReasonCount($pdo,'Incomplete Documents');
+$wrongDocCount = getReasonCount($pdo,'Wrong Document Type');
+
+$totalRejections = ($returned_today > 0) ? $returned_today : ($total_proc - $total_app);
+
+// Recent Activity
+$stmt = $pdo->query("
+    SELECT u.fullname, la.status, la.updated_at, la.remarks
+    FROM loan_applications la
+    JOIN users u ON la.user_id = u.id
+    ORDER BY la.updated_at DESC
+    LIMIT 4
+");
+
+$activities = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -70,6 +76,16 @@ $activities = $conn->query($activity_sql);
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="assets/css/Dashboard.css">
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem("theme");
+            if (savedTheme === "dark" || savedTheme === null) {
+                document.documentElement.classList.add("dark-mode");
+                localStorage.setItem("theme", "dark");
+            }
+        })();
+    </script>
+    <link rel="stylesheet" href="assets/css/base-style.css">
 </head>
 <body>
 
@@ -153,8 +169,8 @@ $activities = $conn->query($activity_sql);
                 </div>
 
                 <ul class="activity-list">
-                    <?php if($activities && $activities->num_rows > 0): ?>
-                        <?php while($act = $activities->fetch_assoc()): ?>
+                    <?php if (!empty($activities)): ?>
+                        <?php foreach($activities as $act): ?>
                         <li class="activity-item" style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
                             <div class="dot" style="height: 10px; width: 10px; border-radius: 50%; background: <?php echo ($act['status'] == 'APPROVED') ? '#10b981' : '#ef4444'; ?>;"></div>
                             <div>
@@ -166,7 +182,7 @@ $activities = $conn->query($activity_sql);
                                 <span style="color: #94a3b8; font-size: 12px;"><?php echo date('h:i A', strtotime($act['updated_at'])); ?></span>
                             </div>
                         </li>
-                        <?php endwhile; ?>
+                        <?php endforeach; ?>
                     <?php else: ?>
                         <p style="color: #94a3b8; padding: 20px;">No recent activity found.</p>
                     <?php endif; ?>
