@@ -1,0 +1,187 @@
+/* =========================================
+   CLIENT DASHBOARD STYLES (ORIGINAL MO 'TO)
+   ========================================= */
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Google Sans', sans-serif; }
+
+body {
+    background-color: #0f172a; /* Dark Slate BG */
+    color: #e2e8f0;
+    display: flex;
+    min-height: 100vh;
+}
+
+/* Main Content Wrapper */
+.main-content {
+    margin-left: 260px; /* Width of Sidebar */
+    padding: 30px;
+    width: calc(100% - 260px);
+    transition: 0.3s;
+}
+
+/* Page Title */
+.page-header { margin-bottom: 25px; }
+.page-header h1 { font-size: 24px; color: #fff; margin-bottom: 5px; }
+.page-header p { color: #94a3b8; font-size: 14px; }
+
+/* --- HERO CARD (The "Next Due" Box) --- */
+.hero-card {
+    background: linear-gradient(135deg, #065f46 0%, #047857 100%);
+    border: 1px solid #10b981;
+    border-radius: 16px;
+    padding: 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    box-shadow: 0 10px 20px -5px rgba(16, 185, 129, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Background Pattern Decoration */
+.hero-card::before {
+    content: "";
+    position: absolute; top: -50px; right: -50px;
+    width: 200px; height: 200px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 50%;
+}
+
+.hero-info h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: #6ee7b7; margin-bottom: 8px; font-weight: 700; }
+.hero-info .amount { font-size: 42px; font-weight: 800; color: #fff; margin-bottom: 5px; }
+.hero-info .due-date { font-size: 14px; color: #d1fae5; display: flex; align-items: center; gap: 6px; }
+
+.hero-actions { display: flex; gap: 12px; position: relative; z-index: 2; }
+
+/* Action Buttons */
+.btn-pay {
+    background: #fff; color: #064e3b;
+    padding: 12px 24px; border-radius: 8px;
+    font-weight: 700; font-size: 14px; border: none; cursor: pointer;
+    display: flex; align-items: center; gap: 8px;
+    transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+.btn-pay:hover { background: #f0fdf4; transform: translateY(-2px); }
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.15); color: #fff;
+    padding: 12px 24px; border-radius: 8px; border: none; cursor: pointer;
+    font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px;
+    backdrop-filter: blur(4px); transition: 0.2s;
+}
+.btn-secondary:hover { background: rgba(255, 255, 255, 0.25); }
+
+/* --- RECENT ACTIVITY TABLE --- */
+.table-card {
+    background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px;
+}
+.section-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+.section-head h3 { font-size: 16px; color: #fff; }
+.link-all { font-size: 13px; color: #60a5fa; text-decoration: none; }
+
+.table-responsive { width: 100%; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 500px; }
+thead th { text-align: left; color: #94a3b8; padding: 12px; border-bottom: 1px solid #334155; font-size: 12px; text-transform: uppercase; }
+tbody td { padding: 15px 12px; border-bottom: 1px solid #334155; color: #e2e8f0; }
+tbody tr:last-child td { border-bottom: none; }
+
+/* Status Badges */
+.badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+.bg-yellow { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+.bg-green { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+.text-green { color: #34d399; }
+
+/* =========================================
+   ADDITIONS PARA SA DIGITAL WALLET
+   ========================================= */
+
+/* Activation Screen Specifics */
+.activation-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 70vh;
+}
+
+.activation-icon {
+    width: 70px; height: 70px;
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px;
+    margin: 0 auto 20px;
+}
+
+.user-box {
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid #334155;
+    padding: 15px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    text-align: left;
+}
+
+.user-box small { color: #94a3b8; font-size: 12px; }
+.user-box h3 { color: #fff; font-size: 16px; margin-top: 5px; }
+
+.wallet-rules {
+    list-style: none; text-align: left; margin-bottom: 20px;
+}
+
+.wallet-rules li {
+    font-size: 13px; color: #cbd5e1; margin-bottom: 12px;
+    display: flex; align-items: flex-start; gap: 10px;
+}
+
+.wallet-rules li i { font-size: 16px; margin-top: 2px; }
+
+.strict-rule {
+    background: rgba(239, 68, 68, 0.1);
+    color: #fca5a5 !important;
+    padding: 12px; border-radius: 8px;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+.strict-rule i { color: #ef4444; }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* =========================================
+   RESPONSIVE ADJUSTMENTS (CELLPHONE VIEW)
+   ========================================= */
+@media (max-width: 1024px) {
+    .main-content { margin-left: 0; width: 100%; padding: 20px; }
+}
+
+@media (max-width: 600px) {
+    .hero-card { 
+        flex-direction: column; 
+        text-align: center; 
+        gap: 20px; 
+        padding: 25px 20px;
+    }
+    
+    .hero-info .amount { font-size: 36px; }
+    .hero-info .due-date { justify-content: center; }
+    
+    .hero-actions.wallet-mobile-actions {
+        width: 100%;
+        flex-direction: row; /* Keep side-by-side on mobile for Add/Pay */
+        justify-content: space-between;
+    }
+    
+    .hero-actions.wallet-mobile-actions button {
+        width: 48%; /* Half-half width para sa cellphone */
+        justify-content: center;
+        flex-direction: column;
+        padding: 15px 10px;
+        gap: 5px;
+    }
+    
+    .hero-actions.wallet-mobile-actions button i {
+        font-size: 20px;
+    }
+}
