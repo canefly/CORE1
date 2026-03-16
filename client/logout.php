@@ -19,6 +19,6 @@ session_unset();
 session_destroy();
 
 // 4. I-redirect pabalik sa login page
-header("Location: login.php?msg=logged_out");
+header("Location: ../index.php");
 exit;
 ?>
