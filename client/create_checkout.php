@@ -35,7 +35,7 @@ if ($source === 'restructured') {
   }
 
   $stmt = $conn->prepare("
-    SELECT id, principal_amount, monthly_due, outstanding, status
+    SELECT id, original_loan_id, principal_amount, monthly_due, outstanding, status
     FROM restructured_loans
     WHERE id = ? AND user_id = ?
     LIMIT 1
@@ -51,6 +51,12 @@ if ($source === 'restructured') {
 
   $loan = $res->fetch_assoc();
   $stmt->close();
+
+  $loan_id = (int)($loan['original_loan_id'] ?? 0);
+  if ($loan_id <= 0) {
+    http_response_code(400);
+    exit("Invalid original loan mapping for restructured loan.");
+  }
 
   if (strtoupper((string)$loan['status']) !== 'ACTIVE') {
     http_response_code(400);
@@ -113,6 +119,11 @@ if ($source === 'restructured') {
   $loanLabel = "Loan Payment (Loan #{$loan_id})";
 }
 
+if ($loan_id <= 0) {
+  http_response_code(400);
+  exit("Invalid loan_id for transaction.");
+}
+
 $amountCentavos = (int) round($amount * 100);
 
 // optional blocker: huwag payagan kung may existing PAID_PENDING
@@ -144,6 +155,11 @@ if ($chkRes && $chkRes->num_rows > 0) {
   exit("You still have a payment pending verification for this loan.");
 }
 $chk->close();
+
+file_put_contents(__DIR__ . "/debug_payments.log",
+  "[" . date("Y-m-d H:i:s") . "] BEFORE INSERT source={$source} loan_id={$loan_id} restructured_loan_id={$restructured_loan_id} user_id={$user_id} amount={$amount}\n",
+  FILE_APPEND
+);
 
 // 1) Create PENDING transaction
 $ins = $conn->prepare("
