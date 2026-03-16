@@ -6,15 +6,16 @@ if (!isset($_GET['id'])) {
     exit();
 }
 
-$application_id = mysqli_real_escape_string($conn, $_GET['id']);
+$application_id = $_GET['id'];
 
 // Fetch client and application info
 $query = "SELECT la.*, u.fullname, u.email 
           FROM loan_applications la 
           JOIN users u ON la.user_id = u.id 
-          WHERE la.id = '$application_id'";
-$result = $conn->query($query);
-$app = $result->fetch_assoc();
+          WHERE la.id = ?";
+$stmt = $pdo->prepare($query);
+$stmt->execute([$application_id]);
+$app = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$app) {
     echo "Application not found.";
@@ -95,12 +96,13 @@ if (!$app) {
     
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
         <?php 
-        
-        $docQuery = "SELECT * FROM loan_documents WHERE loan_application_id = '$application_id'";
-        $docResult = $conn->query($docQuery);
+        $docQuery = "SELECT * FROM loan_documents WHERE loan_application_id = ?";
+        $docStmt = $pdo->prepare($docQuery);
+        $docStmt->execute([$application_id]);
+        $docResults = $docStmt->fetchAll(PDO::FETCH_ASSOC);
 
-        if ($docResult && $docResult->num_rows > 0): 
-            while($doc = $docResult->fetch_assoc()): 
+        if ($docResults && count($docResults) > 0): 
+            foreach($docResults as $doc): 
                 $label = ucwords(str_replace('_', ' ', $doc['doc_type']));
       
                 $filePath = "../client/" . $doc['file_path']; 
@@ -131,10 +133,10 @@ if (!$app) {
                     Uploaded on <?php echo date('M d, Y', strtotime($doc['uploaded_at'])); ?>
                 </div>
             </div>
-        <?php endwhile; else: ?>
+        <?php endforeach; else: ?>
             <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #94a3b8;">
                 <i class="bi bi-folder-x" style="font-size: 40px; display: block; margin-bottom: 10px;"></i>
-                <p>No documents found in DB for Application ID: <?php echo $application_id; ?></p>
+                <p>No documents found in DB for Application ID: <?php echo htmlspecialchars($application_id); ?></p>
             </div>
         <?php endif; ?>
     </div>

@@ -23,10 +23,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = trim($_POST['action'] ?? '');
     $notes  = trim($_POST['notes'] ?? '');
 
-    $conn->begin_transaction();
+    $pdo->beginTransaction();
 
     try {
-        $stmtReq = $conn->prepare("
+        $stmtReq = $pdo->prepare("
             SELECT
                 rr.*,
                 u.fullname,
@@ -41,18 +41,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         ");
 
         if (!$stmtReq) {
-            throw new Exception("Prepare failed: " . $conn->error);
+            $errorInfo = $pdo->errorInfo();
+            throw new Exception("Prepare failed: " . $errorInfo[2]);
         }
 
-        $stmtReq->bind_param("i", $request_id);
-
-        if (!$stmtReq->execute()) {
-            throw new Exception("Execute failed: " . $stmtReq->error);
+        if (!$stmtReq->execute([$request_id])) {
+            $errorInfo = $stmtReq->errorInfo();
+            throw new Exception("Execute failed: " . $errorInfo[2]);
         }
 
-        $reqResult = $stmtReq->get_result();
-        $req = $reqResult->fetch_assoc();
-        $stmtReq->close();
+        $req = $stmtReq->fetch(PDO::FETCH_ASSOC);
 
         if (!$req) {
             throw new Exception("Restructure request not found.");
@@ -71,7 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 throw new Exception("Cannot verify request with missing proof document.");
             }
 
-            $stmtUpd = $conn->prepare("
+            $stmtUpd = $pdo->prepare("
                 UPDATE loan_restructure_requests
                 SET
                     status = 'VERIFIED',
@@ -84,17 +82,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             ");
 
             if (!$stmtUpd) {
-                throw new Exception("Prepare failed: " . $conn->error);
+                $errorInfo = $pdo->errorInfo();
+                throw new Exception("Prepare failed: " . $errorInfo[2]);
             }
 
-            $stmtUpd->bind_param("isi", $lsa_id, $notes, $request_id);
-
-            if (!$stmtUpd->execute()) {
-                throw new Exception("Failed to verify request: " . $stmtUpd->error);
+            if (!$stmtUpd->execute([$lsa_id, $notes, $request_id])) {
+                $errorInfo = $stmtUpd->errorInfo();
+                throw new Exception("Failed to verify request: " . $errorInfo[2]);
             }
 
-            $stmtUpd->close();
-            $conn->commit();
+            $pdo->commit();
 
             header("Location: restructure.php?verified=1");
             exit;
@@ -105,7 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 throw new Exception("Rejection notes are required.");
             }
 
-            $stmtUpd = $conn->prepare("
+            $stmtUpd = $pdo->prepare("
                 UPDATE loan_restructure_requests
                 SET
                     status = 'REJECTED',
@@ -118,17 +115,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             ");
 
             if (!$stmtUpd) {
-                throw new Exception("Prepare failed: " . $conn->error);
+                $errorInfo = $pdo->errorInfo();
+                throw new Exception("Prepare failed: " . $errorInfo[2]);
             }
 
-            $stmtUpd->bind_param("isi", $lsa_id, $notes, $request_id);
-
-            if (!$stmtUpd->execute()) {
-                throw new Exception("Failed to reject request: " . $stmtUpd->error);
+            if (!$stmtUpd->execute([$lsa_id, $notes, $request_id])) {
+                $errorInfo = $stmtUpd->errorInfo();
+                throw new Exception("Failed to reject request: " . $errorInfo[2]);
             }
 
-            $stmtUpd->close();
-            $conn->commit();
+            $pdo->commit();
 
             header("Location: restructure.php?rejected=1");
             exit;
@@ -136,7 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
         throw new Exception("Invalid action.");
     } catch (Exception $e) {
-        $conn->rollback();
+        $pdo->rollBack();
         $error_message = $e->getMessage();
     }
 }
@@ -144,7 +140,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 /* =========================
    FETCH REQUEST DETAILS
 ========================= */
-$stmt = $conn->prepare("
+$stmt = $pdo->prepare("
     SELECT
         rr.*,
         u.fullname,
@@ -167,18 +163,16 @@ $stmt = $conn->prepare("
 ");
 
 if (!$stmt) {
-    die("Prepare failed: " . $conn->error);
+    $errorInfo = $pdo->errorInfo();
+    die("Prepare failed: " . $errorInfo[2]);
 }
 
-$stmt->bind_param("i", $request_id);
-
-if (!$stmt->execute()) {
-    die("Execute failed: " . $stmt->error);
+if (!$stmt->execute([$request_id])) {
+    $errorInfo = $stmt->errorInfo();
+    die("Execute failed: " . $errorInfo[2]);
 }
 
-$result = $stmt->get_result();
-$req = $result->fetch_assoc();
-$stmt->close();
+$req = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$req) {
     die("Restructure request not found.");

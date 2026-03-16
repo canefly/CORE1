@@ -12,15 +12,16 @@ require_once __DIR__ . "/includes/db_connect.php";
         ORDER BY rr.created_at ASC
         ";
 
-        $result = $conn->query($query);
+        $stmt = $pdo->query($query);
 
-        if (!$result) {
-                    die("Query Failed: " . $conn->error);
+        if (!$stmt) {
+                    $errorInfo = $pdo->errorInfo();
+                    die("Query Failed: " . $errorInfo[2]);
                 }
 
                 $pendingRequests = [];
 
-                while ($row = $result->fetch_assoc()) {
+                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                     $pendingRequests[] = $row;
                 }
 ?>

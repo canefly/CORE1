@@ -8,21 +8,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $remarks = trim($_POST['remarks']); 
 
     // 1. Kunin muna ang user_id ng application na ito para alam natin kung kanino ipapadala ang notif
-    $get_user = $conn->prepare("SELECT user_id FROM loan_applications WHERE id = ?");
-    $get_user->bind_param("i", $application_id);
-    $get_user->execute();
-    $user_res = $get_user->get_result();
+    $get_user = $pdo->prepare("SELECT user_id FROM loan_applications WHERE id = ?");
+    $get_user->execute([$application_id]);
     $user_id = 0;
-    if ($user_row = $user_res->fetch_assoc()) {
+    if ($user_row = $get_user->fetch(PDO::FETCH_ASSOC)) {
         $user_id = $user_row['user_id'];
     }
-    $get_user->close();
 
     // 2. I-update ang loan application status
-    $stmt = $conn->prepare("UPDATE loan_applications SET status = ?, remarks = ?, updated_at = NOW() WHERE id = ?");
-    $stmt->bind_param("ssi", $new_status, $remarks, $application_id);
+    $stmt = $pdo->prepare("UPDATE loan_applications SET status = ?, remarks = ?, updated_at = NOW() WHERE id = ?");
 
-    if ($stmt->execute()) {
+    if ($stmt->execute([$new_status, $remarks, $application_id])) {
         
         // 3. I-INSERT ANG NOTIFICATION (Kung may nahanap na user)
         if ($user_id > 0) {
@@ -47,10 +43,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
 
             // Execute Notification Insert
-            $notif_stmt = $conn->prepare("INSERT INTO notifications (user_id, title, message, type, icon, link) VALUES (?, ?, ?, ?, ?, ?)");
-            $notif_stmt->bind_param("isssss", $user_id, $notif_title, $notif_message, $notif_type, $notif_icon, $notif_link);
-            $notif_stmt->execute();
-            $notif_stmt->close();
+            $notif_stmt = $pdo->prepare("INSERT INTO notifications (user_id, title, message, type, icon, link) VALUES (?, ?, ?, ?, ?, ?)");
+            $notif_stmt->execute([$user_id, $notif_title, $notif_message, $notif_type, $notif_icon, $notif_link]);
         }
 
         // Redirect back to application inbox with success message
@@ -58,9 +52,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         header("Location: application.php?msg=" . urlencode($msg));
         exit();
     } else {
-        echo "Error updating record: " . $conn->error;
+        $errorInfo = $stmt->errorInfo();
+        echo "Error updating record: " . $errorInfo[2];
     }
-    
-    $stmt->close();
 }
 ?>
