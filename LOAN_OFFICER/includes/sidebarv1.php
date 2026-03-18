@@ -16,57 +16,34 @@ if (session_status() === PHP_SESSION_NONE) {
 // DYNAMIC SIDEBAR ROUTING FOR FINANCE ADMIN
 if (isset($_SESSION['admin_role']) && $_SESSION['admin_role'] === 'FINANCE_ADMIN') {
     include '../FINANCE/includes/sidebar.php';
-    return; // Stop rendering the rest of the LSA sidebar
+    return; // Stop rendering the rest of the LO sidebar
 }
 
 $current_page = basename($_SERVER['PHP_SELF']);
 
-// 1. Kunin ang Session Info ni LSA
+// Kunin ang Session Info ni LO
 $admin_id = $_SESSION['admin_id'] ?? 0;
-$admin_name = $_SESSION['admin_name'] ?? 'LSA Officer';
-$admin_role = $_SESSION['admin_role'] ?? 'LSA';
-
-// Default profile picture
+$admin_name = $_SESSION['admin_name'] ?? 'Loan Officer';
+$admin_role = $_SESSION['admin_role'] ?? 'Loan Officer';
 $profile_img = 'default_avatar.png';
 
-// 2. Kunin ang Profile Picture sa lsa_users table
+$pendingApprovals = 0;
+$pendingRestructures = 0;
+
 if (isset($pdo) && $admin_id > 0) {
-    $stmt = $pdo->prepare("SELECT profile_pic FROM lsa_users WHERE id = ?");
+    // 1. Kunin ang Profile Picture
+    $stmt = $pdo->prepare("SELECT profile_pic FROM lo_users WHERE id = ?");
     $stmt->execute([$admin_id]);
     $user_data = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($user_data && !empty($user_data['profile_pic'])) {
         $profile_img = $user_data['profile_pic'];
     }
-} elseif (isset($conn) && $admin_id > 0) {
-    $stmt = $conn->prepare("SELECT profile_pic FROM lsa_users WHERE id = ?");
-    $stmt->bind_param("i", $admin_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    if ($row = $result->fetch_assoc()) {
-        if (!empty($row['profile_pic'])) {
-            $profile_img = $row['profile_pic'];
-        }
-    }
-}
-
-// 3. Kunin ang Badge Counts (Hybrid PDO & MySQLi para iwas error)
-$newAppCount = 0;
-$restructureCount = 0;
-
-if (isset($pdo)) {
-    $pendingResult = $pdo->query("SELECT COUNT(*) as total FROM loan_applications WHERE status = 'PENDING' AND loan_purpose NOT LIKE '%Restructure%' AND loan_purpose NOT LIKE '%Extension%'");
-    $newAppCount = $pendingResult ? $pendingResult->fetch(PDO::FETCH_ASSOC)['total'] : 0;
-
-    $restructureResult = $pdo->query("SELECT COUNT(*) as total FROM loan_restructure_requests WHERE status = 'PENDING'");
-    $restructureCount = $restructureResult ? $restructureResult->fetch(PDO::FETCH_ASSOC)['total'] : 0;
-} elseif (isset($conn)) {
-    $pendingQuery = "SELECT COUNT(*) as total FROM loan_applications WHERE status = 'PENDING' AND loan_purpose NOT LIKE '%Restructure%' AND loan_purpose NOT LIKE '%Extension%'";
-    $pendingResult = $conn->query($pendingQuery);
-    $newAppCount = ($pendingResult) ? $pendingResult->fetch_assoc()['total'] : 0;
-
-    $restructureQuery = "SELECT COUNT(*) as total FROM loan_restructure_requests WHERE status = 'PENDING'";
-    $restructureResult = $conn->query($restructureQuery);
-    $restructureCount = ($restructureResult) ? $restructureResult->fetch_assoc()['total'] : 0;
+    
+    // 2. DYNAMIC BADGE COUNTS (Naka-filter out ang restructures sa normal apps)
+    $pendingApprovals = $pdo->query("SELECT COUNT(*) FROM loan_applications WHERE status = 'VERIFIED' AND loan_purpose NOT LIKE '%Restructure%' AND loan_purpose NOT LIKE '%Extension%'")->fetchColumn() ?: 0;
+    
+    // Hanapin ang Verified Restructures na pasado na kay LSA
+    $pendingRestructures = $pdo->query("SELECT COUNT(*) FROM loan_restructure_requests WHERE status = 'VERIFIED'")->fetchColumn() ?: 0;
 }
 ?>
 
@@ -159,8 +136,6 @@ if (isset($pdo)) {
     }
 </style>
 
-
-
 <aside class="sidebar" id="sidebar">
     <script>
         // THE ANTI-SIDEBAR-DANCE PROTOCOL
@@ -175,7 +150,7 @@ if (isset($pdo)) {
             </div>
             <div class="logo-text">
                 <h2 class="app-name">Microfinance</h2>
-                <span class="app-tagline" style="color: #a78bfa; font-weight: 600;">LSA OFFICER</span>
+                <span class="app-tagline" style="color: #a78bfa; font-weight: 600;">LOAN OFFICER</span>
             </div>
         </div>
         
@@ -188,40 +163,37 @@ if (isset($pdo)) {
 
     <nav class="sidebar-nav">
         <div class="nav-section">
-            <span class="nav-section-title">LSA MANAGEMENT</span>
+            <span class="nav-section-title">LOAN MANAGEMENT</span>
             
             <a href="dashboard.php" class="nav-item <?= ($current_page == 'dashboard.php') ? 'active' : '' ?>">
                 <i data-lucide="layout-dashboard"></i>
-                <span>Dashboard</span>
+                <span>LO Dashboard</span>
             </a>
 
-            <a href="application.php" class="nav-item <?= ($current_page == 'application.php') ? 'active' : '' ?>">
-                <i data-lucide="file-plus-2"></i>
-                <span>New Applications</span>
-                <?php if($newAppCount > 0): ?>
-                    <span class="nav-badge" data-count="<?= $newAppCount ?>"><?= $newAppCount ?></span>
+            <a href="approvals.php" class="nav-item <?= ($current_page == 'approvals.php') ? 'active' : '' ?>">
+                <i data-lucide="check-square"></i>
+                <span>For Approval</span>
+                <?php if($pendingApprovals > 0): ?>
+                    <span class="nav-badge"><?= $pendingApprovals ?></span>
                 <?php endif; ?>
             </a>
 
-            <a href="forwarded.php" class="nav-item <?= ($current_page == 'forwarded.php') ? 'active' : '' ?>">
-                <i data-lucide="arrow-up-right"></i>
-                <span>Forwarded Apps</span>
+            <a href="approved.php" class="nav-item <?= ($current_page == 'approved.php') ? 'active' : '' ?>">
+                <i data-lucide="file-check-2"></i>
+                <span>Approved Loans</span>
             </a>
 
-            <a href="returned.php" class="nav-item <?= ($current_page == 'returned.php') ? 'active' : '' ?>">
-                <i data-lucide="rotate-ccw"></i>
-                <span>Returned Apps</span>
+            <a href="rejected.php" class="nav-item <?= ($current_page == 'rejected.php') ? 'active' : '' ?>">
+                <i data-lucide="file-x-2"></i>
+                <span>Rejected Loans</span>
             </a>
             
             <a href="restructure.php" class="nav-item <?= ($current_page == 'restructure.php') ? 'active' : '' ?>">
                 <i data-lucide="refresh-cw"></i>
                 <span>Restructure Req.</span>
-                <?php if($restructureCount > 0): ?>
-                    <span class="nav-badge" data-count="<?= $restructureCount ?>"><?= $restructureCount ?></span>
+                <?php if($pendingRestructures > 0): ?>
+                    <span class="nav-badge" style="background:#fbbf24; color:#0f172a;"><?= $pendingRestructures ?></span>
                 <?php endif; ?>
-            <a href="restructure_archive.php" class="nav-item <?= ($current_page == 'restructure_archive.php') ? 'active' : '' ?>">
-                <i data-lucide="archive"></i>
-                <span>Restructure Archive</span>   
             </a>
         </div>
     </nav>
@@ -353,30 +325,5 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     }
-
-    // 7. Function to update badges without refreshing (LSA AJAX)
-    function refreshBadges() {
-        fetch('get_badge_counts.php')
-            .then(response => response.json())
-            .then(data => {
-                // Update New Applications Badge
-                const appBadge = document.querySelector('a[href="application.php"] .nav-badge');
-                if (appBadge) {
-                    appBadge.textContent = data.new_apps;
-                    appBadge.style.display = data.new_apps > 0 ? 'inline-block' : 'none';
-                }
-
-                // Update Restructure Badge
-                const restBadge = document.querySelector('a[href="restructure.php"] .nav-badge');
-                if (restBadge) {
-                    restBadge.textContent = data.restructure;
-                    restBadge.style.display = data.restructure > 0 ? 'inline-block' : 'none';
-                }
-            })
-            .catch(error => console.error("Error fetching badges:", error));
-    }
-
-    // Refresh every 30 seconds
-    setInterval(refreshBadges, 30000);
 });
 </script>

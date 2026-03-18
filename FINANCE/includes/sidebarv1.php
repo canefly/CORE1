@@ -256,12 +256,6 @@
                         <span>Restructure</span>
                     </a>
                 </li>
-                <li>
-                    <a href="../LSA/restructure_archive.php" class="nav-item <?= ($current_page == 'restructure_archive.php') ? 'active' : '' ?>">
-                <i data-lucide="archive"></i>
-                <span>Restructure Archive</span>   
-                    </a>
-                </li>
             </ul>
         </div>
 

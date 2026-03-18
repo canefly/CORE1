@@ -219,9 +219,6 @@ if (isset($pdo)) {
                 <?php if($restructureCount > 0): ?>
                     <span class="nav-badge" data-count="<?= $restructureCount ?>"><?= $restructureCount ?></span>
                 <?php endif; ?>
-            <a href="restructure_archive.php" class="nav-item <?= ($current_page == 'restructure_archive.php') ? 'active' : '' ?>">
-                <i data-lucide="archive"></i>
-                <span>Restructure Archive</span>   
             </a>
         </div>
     </nav>
