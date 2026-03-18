@@ -26,3 +26,7 @@
 [2026-03-18 17:13:47] Detected restructured payment. transaction_id=131, restructured_loan_id=7, amount=1561.48
 [2026-03-18 17:13:47] RESTRUCTURED LOAN UPDATED restructured_loan_id=7, old_outstanding=10333.33, payment=1561.48, new_outstanding=8771.85, new_status=ACTIVE, new_next_payment=NULL
 [2026-03-18 17:13:47] SUCCESS transaction_id=131, payment_id=49, payment_number=CORE1-TXN-131, status=SUCCESS, receipt_number=RCPT-20260318-000131, reference_number=NULL, resolved_loan_id=25, resolved_restructured_loan_id=7
+[2026-03-19 03:42:49] Receiver started successfully.
+[2026-03-19 03:42:49] RAW INPUT: {"token":"core1_financial_payment_verify_secret_key","payment_id":24,"payment_number":"CORE1-TXN-90","receipt_number":"RCPT-20260317-000090","reference_number":null,"loan_id":19,"client_id":12,"amount":2066.67,"payment_date":"2026-03-17","status":"SUCCESS","financial_payment_status":"Completed"}
+[2026-03-19 03:42:49] Parsed payload => payment_id=24, payment_number=CORE1-TXN-90, transaction_id=90, loan_id=19, client_id=12, amount=2066.67, status=SUCCESS, financial_payment_status=Completed
+[2026-03-19 03:42:49] ERROR: No matching CORE1 transaction found. payment_number=CORE1-TXN-90, loan_id=19, amount=2066.67

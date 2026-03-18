@@ -14,7 +14,7 @@ require_once __DIR__ . "/include/config.php";
 require_once __DIR__ . "/include/API/api_vault.php";
 require_once __DIR__ . "/receipt_image_generator.php";
 
-function resolveTransactionBreakdown(mysqli $conn, string $source, array $loan, int $loan_id, int $restructured_loan_id, float $amount): array
+function resolveTransactionBreakdown(mysqli $conn, string $source, array $loan, int $loan_id, ?int $restructured_loan_id, float $amount): array
 {
   $principalAmount = 0.00;
   $interestAmount  = 0.00;
@@ -96,7 +96,7 @@ $user_id = (int)$_SESSION['user_id'];
 $source  = trim((string)($_GET['source'] ?? 'original'));
 
 $loan_id = 0;
-$restructured_loan_id = 0;
+$restructured_loan_id = null;
 $amount = 0.00;
 $loanLabel = '';
 $loan = [];
@@ -151,6 +151,8 @@ if ($source === 'restructured') {
   $loanLabel = "Restructured Loan Payment (RL #{$restructured_loan_id})";
 } else {
   $loan_id = (int)($_GET['loan_id'] ?? 0);
+  $restructured_loan_id = null;
+
   if ($loan_id <= 0) {
     http_response_code(400);
     exit("Invalid loan_id");
@@ -198,6 +200,31 @@ if ($loan_id <= 0) {
   exit("Invalid loan_id for transaction.");
 }
 
+// extra FK-safe validation for restructured transactions only
+if ($source === 'restructured') {
+  if ($restructured_loan_id === null || $restructured_loan_id <= 0) {
+    http_response_code(400);
+    exit("Invalid restructured_loan_id for transaction.");
+  }
+
+  $fkCheck = $conn->prepare("
+    SELECT id
+    FROM restructured_loans
+    WHERE id = ?
+    LIMIT 1
+  ");
+  $fkCheck->bind_param("i", $restructured_loan_id);
+  $fkCheck->execute();
+  $fkRes = $fkCheck->get_result();
+  $fkRow = $fkRes ? $fkRes->fetch_assoc() : null;
+  $fkCheck->close();
+
+  if (!$fkRow) {
+    http_response_code(400);
+    exit("Restructured loan reference does not exist.");
+  }
+}
+
 $amountCentavos = (int) round($amount * 100);
 
 // optional blocker: huwag payagan kung may existing PAID_PENDING
@@ -231,7 +258,7 @@ if ($chkRes && $chkRes->num_rows > 0) {
 $chk->close();
 
 file_put_contents(__DIR__ . "/debug_payments.log",
-  "[" . date("Y-m-d H:i:s") . "] BEFORE INSERT source={$source} loan_id={$loan_id} restructured_loan_id={$restructured_loan_id} user_id={$user_id} amount={$amount}\n",
+  "[" . date("Y-m-d H:i:s") . "] BEFORE INSERT source={$source} loan_id={$loan_id} restructured_loan_id=" . ($restructured_loan_id === null ? 'NULL' : $restructured_loan_id) . " user_id={$user_id} amount={$amount}\n",
   FILE_APPEND
 );
 
@@ -250,7 +277,7 @@ $penalty_amount   = (float)$breakdown['penalty_amount'];
 $monthly_due      = (float)$breakdown['monthly_due'];
 
 file_put_contents(__DIR__ . "/debug_payments.log",
-  "[" . date("Y-m-d H:i:s") . "] BREAKDOWN tx source={$source} loan_id={$loan_id} restructured_loan_id={$restructured_loan_id} principal={$principal_amount} interest={$interest_amount} penalty={$penalty_amount} monthly_due={$monthly_due}\n",
+  "[" . date("Y-m-d H:i:s") . "] BREAKDOWN tx source={$source} loan_id={$loan_id} restructured_loan_id=" . ($restructured_loan_id === null ? 'NULL' : $restructured_loan_id) . " principal={$principal_amount} interest={$interest_amount} penalty={$penalty_amount} monthly_due={$monthly_due}\n",
   FILE_APPEND
 );
 
@@ -291,7 +318,7 @@ $tx_id = (int)$conn->insert_id;
 $ins->close();
 
 file_put_contents(__DIR__ . "/debug_payments.log",
-  "[" . date("Y-m-d H:i:s") . "] INSERT OK tx_id={$tx_id} source={$source} loan_id={$loan_id} restructured_loan_id={$restructured_loan_id}\n",
+  "[" . date("Y-m-d H:i:s") . "] INSERT OK tx_id={$tx_id} source={$source} loan_id={$loan_id} restructured_loan_id=" . ($restructured_loan_id === null ? 'NULL' : $restructured_loan_id) . "\n",
   FILE_APPEND
 );
 
@@ -323,7 +350,7 @@ $payload = [
         "tx_id" => (string)$tx_id,
         "source" => $source,
         "loan_id" => (string)$loan_id,
-        "restructured_loan_id" => (string)$restructured_loan_id,
+        "restructured_loan_id" => $restructured_loan_id === null ? "" : (string)$restructured_loan_id,
         "user_id" => (string)$user_id
       ]
     ]
