@@ -195,6 +195,10 @@ if (isset($pdo) && $admin_id > 0) {
                     <span class="nav-badge" style="background:#fbbf24; color:#0f172a;"><?= $pendingRestructures ?></span>
                 <?php endif; ?>
             </a>
+            <a href="restructure_archive.php" class="nav-item <?= ($current_page == 'restructure_archive.php') ? 'active' : '' ?>">
+                    <i data-lucide="archive"></i>
+                    <span>Restructure Archive</span>
+                </a>
         </div>
     </nav>
 
