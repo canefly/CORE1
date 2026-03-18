@@ -153,3 +153,109 @@
 [2026-03-16 16:19:18] HIT create_checkout.php
 [2026-03-16 16:19:18] BEFORE INSERT source=original loan_id=19 restructured_loan_id=0 user_id=12 amount=2066.67
 [2026-03-16 16:19:18] INSERT OK tx_id=82 source=original loan_id=19 restructured_loan_id=0
+[2026-03-17 13:59:00] HIT create_checkout.php
+[2026-03-17 13:59:00] BEFORE INSERT source=original loan_id=20 restructured_loan_id=0 user_id=12 amount=2066.67
+[2026-03-17 13:59:00] INSERT OK tx_id=105 source=original loan_id=20 restructured_loan_id=0
+[2026-03-17 14:09:46] HIT create_checkout.php
+[2026-03-17 14:09:46] BEFORE INSERT source=original loan_id=20 restructured_loan_id=0 user_id=12 amount=2066.67
+[2026-03-17 14:09:46] INSERT OK tx_id=106 source=original loan_id=20 restructured_loan_id=0
+[2026-03-17 14:38:12] HIT create_checkout.php
+[2026-03-17 14:38:12] BEFORE INSERT source=original loan_id=20 restructured_loan_id=0 user_id=12 amount=2066.67
+[2026-03-17 14:38:12] BREAKDOWN tx source=original loan_id=20 restructured_loan_id=0 principal=1637.34 interest=429.33 penalty=0 monthly_due=2066.67
+[2026-03-17 14:38:12] INSERT OK tx_id=107 source=original loan_id=20 restructured_loan_id=0
+[2026-03-17 14:38:25] HIT create_checkout.php
+[2026-03-17 14:38:25] BEFORE INSERT source=original loan_id=20 restructured_loan_id=0 user_id=12 amount=2066.67
+[2026-03-17 14:38:25] BREAKDOWN tx source=original loan_id=20 restructured_loan_id=0 principal=1637.34 interest=429.33 penalty=0 monthly_due=2066.67
+[2026-03-17 14:38:25] INSERT OK tx_id=108 source=original loan_id=20 restructured_loan_id=0
+[2026-03-17 14:38:39] HIT create_checkout.php
+[2026-03-17 14:38:39] BEFORE INSERT source=original loan_id=20 restructured_loan_id=0 user_id=12 amount=2066.67
+[2026-03-17 14:38:39] BREAKDOWN tx source=original loan_id=20 restructured_loan_id=0 principal=1637.34 interest=429.33 penalty=0 monthly_due=2066.67
+[2026-03-17 14:38:39] INSERT OK tx_id=109 source=original loan_id=20 restructured_loan_id=0
+[2026-03-17 15:02:59] HIT create_checkout.php
+[2026-03-17 15:02:59] BEFORE INSERT source=original loan_id=21 restructured_loan_id=0 user_id=12 amount=2066.67
+[2026-03-17 15:02:59] BREAKDOWN tx source=original loan_id=21 restructured_loan_id=0 principal=1570.67 interest=496 penalty=0 monthly_due=2066.67
+[2026-03-17 15:02:59] INSERT OK tx_id=110 source=original loan_id=21 restructured_loan_id=0
+[2026-03-17 15:03:24] HIT create_checkout.php
+[2026-03-17 15:03:24] BEFORE INSERT source=original loan_id=21 restructured_loan_id=0 user_id=12 amount=2066.67
+[2026-03-17 15:03:24] BREAKDOWN tx source=original loan_id=21 restructured_loan_id=0 principal=1570.67 interest=496 penalty=0 monthly_due=2066.67
+[2026-03-17 15:03:24] INSERT OK tx_id=111 source=original loan_id=21 restructured_loan_id=0
+[2026-03-17 15:03:29] HIT create_checkout.php
+[2026-03-17 15:03:29] BEFORE INSERT source=original loan_id=21 restructured_loan_id=0 user_id=12 amount=2066.67
+[2026-03-17 15:03:29] BREAKDOWN tx source=original loan_id=21 restructured_loan_id=0 principal=1570.67 interest=496 penalty=0 monthly_due=2066.67
+[2026-03-17 15:03:29] INSERT OK tx_id=112 source=original loan_id=21 restructured_loan_id=0
+[2026-03-17 15:07:40] HIT create_checkout.php
+[2026-03-17 15:07:40] BEFORE INSERT source=original loan_id=21 restructured_loan_id=0 user_id=12 amount=2066.67
+[2026-03-17 15:07:40] BREAKDOWN tx source=original loan_id=21 restructured_loan_id=0 principal=1570.67 interest=496 penalty=0 monthly_due=2066.67
+[2026-03-17 15:07:40] INSERT OK tx_id=113 source=original loan_id=21 restructured_loan_id=0
+[2026-03-17 15:32:10] HIT create_checkout.php
+[2026-03-17 15:32:10] BEFORE INSERT source=original loan_id=21 restructured_loan_id=0 user_id=12 amount=2066.67
+[2026-03-17 15:32:10] BREAKDOWN tx source=original loan_id=21 restructured_loan_id=0 principal=1570.67 interest=496 penalty=0 monthly_due=2066.67
+[2026-03-17 15:32:10] INSERT OK tx_id=114 source=original loan_id=21 restructured_loan_id=0
+[2026-03-17 15:38:17] HIT create_checkout.php
+[2026-03-17 15:38:17] BEFORE INSERT source=original loan_id=21 restructured_loan_id=0 user_id=12 amount=2066.67
+[2026-03-17 15:38:17] BREAKDOWN tx source=original loan_id=21 restructured_loan_id=0 principal=1570.67 interest=496 penalty=0 monthly_due=2066.67
+[2026-03-17 15:38:17] INSERT OK tx_id=115 source=original loan_id=21 restructured_loan_id=0
+[2026-03-17 15:38:21] HIT create_checkout.php
+[2026-03-17 15:38:21] BEFORE INSERT source=original loan_id=21 restructured_loan_id=0 user_id=12 amount=2066.67
+[2026-03-17 15:38:21] BREAKDOWN tx source=original loan_id=21 restructured_loan_id=0 principal=1570.67 interest=496 penalty=0 monthly_due=2066.67
+[2026-03-17 15:38:21] INSERT OK tx_id=116 source=original loan_id=21 restructured_loan_id=0
+[2026-03-17 15:40:46] HIT create_checkout.php
+[2026-03-17 15:40:46] BEFORE INSERT source=original loan_id=21 restructured_loan_id=0 user_id=12 amount=2066.67
+[2026-03-17 15:40:46] BREAKDOWN tx source=original loan_id=21 restructured_loan_id=0 principal=1570.67 interest=496 penalty=0 monthly_due=2066.67
+[2026-03-17 15:40:46] INSERT OK tx_id=117 source=original loan_id=21 restructured_loan_id=0
+[2026-03-17 15:47:27] HIT create_checkout.php
+[2026-03-17 15:47:27] BEFORE INSERT source=original loan_id=21 restructured_loan_id=0 user_id=12 amount=2066.67
+[2026-03-17 15:47:27] BREAKDOWN tx source=original loan_id=21 restructured_loan_id=0 principal=1570.67 interest=496 penalty=0 monthly_due=2066.67
+[2026-03-17 15:47:27] INSERT OK tx_id=118 source=original loan_id=21 restructured_loan_id=0
+[2026-03-17 16:02:25] HIT create_checkout.php
+[2026-03-17 16:02:25] BEFORE INSERT source=original loan_id=22 restructured_loan_id=0 user_id=12 amount=2066.67
+[2026-03-17 16:02:25] BREAKDOWN tx source=original loan_id=22 restructured_loan_id=0 principal=1570.67 interest=496 penalty=0 monthly_due=2066.67
+[2026-03-17 16:02:25] INSERT OK tx_id=119 source=original loan_id=22 restructured_loan_id=0
+[2026-03-17 16:03:42] HIT create_checkout.php
+[2026-03-17 16:03:42] BEFORE INSERT source=original loan_id=22 restructured_loan_id=0 user_id=12 amount=2066.67
+[2026-03-17 16:03:42] BREAKDOWN tx source=original loan_id=22 restructured_loan_id=0 principal=1570.67 interest=496 penalty=0 monthly_due=2066.67
+[2026-03-17 16:03:42] INSERT OK tx_id=120 source=original loan_id=22 restructured_loan_id=0
+[2026-03-17 16:04:27] HIT create_checkout.php
+[2026-03-17 16:04:27] BEFORE INSERT source=original loan_id=22 restructured_loan_id=0 user_id=12 amount=2066.67
+[2026-03-17 16:04:27] BREAKDOWN tx source=original loan_id=22 restructured_loan_id=0 principal=1570.67 interest=496 penalty=0 monthly_due=2066.67
+[2026-03-17 16:04:27] INSERT OK tx_id=121 source=original loan_id=22 restructured_loan_id=0
+[2026-03-17 16:08:26] HIT create_checkout.php
+[2026-03-17 16:08:26] BEFORE INSERT source=original loan_id=22 restructured_loan_id=0 user_id=12 amount=2066.67
+[2026-03-17 16:08:26] BREAKDOWN tx source=original loan_id=22 restructured_loan_id=0 principal=1570.67 interest=496 penalty=0 monthly_due=2066.67
+[2026-03-17 16:08:26] INSERT OK tx_id=122 source=original loan_id=22 restructured_loan_id=0
+[2026-03-17 16:08:29] HIT create_checkout.php
+[2026-03-17 16:08:29] BEFORE INSERT source=original loan_id=22 restructured_loan_id=0 user_id=12 amount=2066.67
+[2026-03-17 16:08:29] BREAKDOWN tx source=original loan_id=22 restructured_loan_id=0 principal=1570.67 interest=496 penalty=0 monthly_due=2066.67
+[2026-03-17 16:08:29] INSERT OK tx_id=123 source=original loan_id=22 restructured_loan_id=0
+[2026-03-17 16:14:06] HIT create_checkout.php
+[2026-03-17 16:14:06] BEFORE INSERT source=original loan_id=23 restructured_loan_id=0 user_id=12 amount=2066.67
+[2026-03-17 16:14:06] BREAKDOWN tx source=original loan_id=23 restructured_loan_id=0 principal=1570.67 interest=496 penalty=0 monthly_due=2066.67
+[2026-03-17 16:14:06] INSERT OK tx_id=124 source=original loan_id=23 restructured_loan_id=0
+[2026-03-17 16:15:31] HIT create_checkout.php
+[2026-03-17 16:15:31] BEFORE INSERT source=original loan_id=23 restructured_loan_id=0 user_id=12 amount=2066.67
+[2026-03-17 16:15:31] BREAKDOWN tx source=original loan_id=23 restructured_loan_id=0 principal=1570.67 interest=496 penalty=0 monthly_due=2066.67
+[2026-03-17 16:15:31] INSERT OK tx_id=125 source=original loan_id=23 restructured_loan_id=0
+[2026-03-17 16:23:58] HIT create_checkout.php
+[2026-03-17 16:23:58] BEFORE INSERT source=original loan_id=24 restructured_loan_id=0 user_id=14 amount=2066.67
+[2026-03-17 16:23:58] BREAKDOWN tx source=original loan_id=24 restructured_loan_id=0 principal=1570.67 interest=496 penalty=0 monthly_due=2066.67
+[2026-03-17 16:23:58] INSERT OK tx_id=126 source=original loan_id=24 restructured_loan_id=0
+[2026-03-17 16:26:37] HIT create_checkout.php
+[2026-03-17 16:26:37] BEFORE INSERT source=original loan_id=24 restructured_loan_id=0 user_id=14 amount=2066.67
+[2026-03-17 16:26:37] BREAKDOWN tx source=original loan_id=24 restructured_loan_id=0 principal=1570.67 interest=496 penalty=0 monthly_due=2066.67
+[2026-03-17 16:26:37] INSERT OK tx_id=127 source=original loan_id=24 restructured_loan_id=0
+[2026-03-18 08:37:19] HIT create_checkout.php
+[2026-03-18 08:37:19] BEFORE INSERT source=original loan_id=25 restructured_loan_id=0 user_id=15 amount=2066.67
+[2026-03-18 08:37:19] BREAKDOWN tx source=original loan_id=25 restructured_loan_id=0 principal=1570.67 interest=496 penalty=0 monthly_due=2066.67
+[2026-03-18 08:37:19] INSERT OK tx_id=128 source=original loan_id=25 restructured_loan_id=0
+[2026-03-18 08:41:12] HIT create_checkout.php
+[2026-03-18 08:41:12] BEFORE INSERT source=restructured loan_id=25 restructured_loan_id=7 user_id=15 amount=1561.48
+[2026-03-18 08:41:12] BREAKDOWN tx source=restructured loan_id=25 restructured_loan_id=7 principal=1148.15 interest=413.33 penalty=0 monthly_due=1561.48
+[2026-03-18 08:41:12] INSERT OK tx_id=129 source=restructured loan_id=25 restructured_loan_id=7
+[2026-03-18 10:00:09] HIT create_checkout.php
+[2026-03-18 10:00:09] BEFORE INSERT source=restructured loan_id=25 restructured_loan_id=7 user_id=15 amount=1561.48
+[2026-03-18 10:00:09] BREAKDOWN tx source=restructured loan_id=25 restructured_loan_id=7 principal=1148.15 interest=413.33 penalty=0 monthly_due=1561.48
+[2026-03-18 10:00:09] INSERT OK tx_id=130 source=restructured loan_id=25 restructured_loan_id=7
+[2026-03-18 10:13:02] HIT create_checkout.php
+[2026-03-18 10:13:02] BEFORE INSERT source=restructured loan_id=25 restructured_loan_id=7 user_id=15 amount=1561.48
+[2026-03-18 10:13:02] BREAKDOWN tx source=restructured loan_id=25 restructured_loan_id=7 principal=1148.15 interest=413.33 penalty=0 monthly_due=1561.48
+[2026-03-18 10:13:02] INSERT OK tx_id=131 source=restructured loan_id=25 restructured_loan_id=7

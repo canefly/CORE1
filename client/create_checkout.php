@@ -14,6 +14,79 @@ require_once __DIR__ . "/include/config.php";
 require_once __DIR__ . "/include/API/api_vault.php";
 require_once __DIR__ . "/receipt_image_generator.php";
 
+function resolveTransactionBreakdown(mysqli $conn, string $source, array $loan, int $loan_id, int $restructured_loan_id, float $amount): array
+{
+  $principalAmount = 0.00;
+  $interestAmount  = 0.00;
+  $penaltyAmount   = 0.00;
+  $monthlyDue      = round($amount, 2);
+
+  if ($source === 'restructured') {
+    $outstanding  = round((float)($loan['outstanding'] ?? 0), 2);
+    $interestRate = round((float)($loan['interest_rate'] ?? 0), 2);
+
+    if ($interestRate > 0 && $outstanding > 0) {
+      $interestAmount = round($outstanding * ($interestRate / 100), 2);
+      if ($interestAmount > $amount) {
+        $interestAmount = 0.00;
+      }
+    }
+
+    $principalAmount = round($amount - $interestAmount - $penaltyAmount, 2);
+
+    if ($principalAmount < 0) {
+      $principalAmount = 0.00;
+    }
+
+    return [
+      'principal_amount' => $principalAmount,
+      'interest_amount'  => $interestAmount,
+      'penalty_amount'   => $penaltyAmount,
+      'monthly_due'      => $monthlyDue
+    ];
+  }
+
+  $interestRate = 0.00;
+  $outstanding  = 0.00;
+
+  $loanStmt = $conn->prepare("
+    SELECT interest_rate, outstanding
+    FROM loans
+    WHERE id = ?
+    LIMIT 1
+  ");
+  $loanStmt->bind_param("i", $loan_id);
+  $loanStmt->execute();
+  $loanRes = $loanStmt->get_result();
+  $loanRow = $loanRes ? $loanRes->fetch_assoc() : null;
+  $loanStmt->close();
+
+  if ($loanRow) {
+    $interestRate = round((float)($loanRow['interest_rate'] ?? 0), 2);
+    $outstanding  = round((float)($loanRow['outstanding'] ?? 0), 2);
+  }
+
+  if ($interestRate > 0 && $outstanding > 0) {
+    $interestAmount = round($outstanding * ($interestRate / 100), 2);
+    if ($interestAmount > $amount) {
+      $interestAmount = 0.00;
+    }
+  }
+
+  $principalAmount = round($amount - $interestAmount - $penaltyAmount, 2);
+
+  if ($principalAmount < 0) {
+    $principalAmount = 0.00;
+  }
+
+  return [
+    'principal_amount' => $principalAmount,
+    'interest_amount'  => $interestAmount,
+    'penalty_amount'   => $penaltyAmount,
+    'monthly_due'      => $monthlyDue
+  ];
+}
+
 if (!isset($_SESSION['user_id'])) {
   header("Location: login.php");
   exit;
@@ -26,6 +99,7 @@ $loan_id = 0;
 $restructured_loan_id = 0;
 $amount = 0.00;
 $loanLabel = '';
+$loan = [];
 
 if ($source === 'restructured') {
   $restructured_loan_id = (int)($_GET['restructured_loan_id'] ?? 0);
@@ -35,7 +109,7 @@ if ($source === 'restructured') {
   }
 
   $stmt = $conn->prepare("
-    SELECT id, original_loan_id, principal_amount, monthly_due, outstanding, status
+    SELECT id, original_loan_id, principal_amount, monthly_due, outstanding, interest_rate, status
     FROM restructured_loans
     WHERE id = ? AND user_id = ?
     LIMIT 1
@@ -161,6 +235,25 @@ file_put_contents(__DIR__ . "/debug_payments.log",
   FILE_APPEND
 );
 
+$breakdown = resolveTransactionBreakdown(
+  $conn,
+  $source,
+  $loan,
+  $loan_id,
+  $restructured_loan_id,
+  (float)$amount
+);
+
+$principal_amount = (float)$breakdown['principal_amount'];
+$interest_amount  = (float)$breakdown['interest_amount'];
+$penalty_amount   = (float)$breakdown['penalty_amount'];
+$monthly_due      = (float)$breakdown['monthly_due'];
+
+file_put_contents(__DIR__ . "/debug_payments.log",
+  "[" . date("Y-m-d H:i:s") . "] BREAKDOWN tx source={$source} loan_id={$loan_id} restructured_loan_id={$restructured_loan_id} principal={$principal_amount} interest={$interest_amount} penalty={$penalty_amount} monthly_due={$monthly_due}\n",
+  FILE_APPEND
+);
+
 // 1) Create PENDING transaction
 $ins = $conn->prepare("
   INSERT INTO transactions (
@@ -168,13 +261,27 @@ $ins = $conn->prepare("
     loan_id,
     restructured_loan_id,
     amount,
+    principal_amount,
+    interest_amount,
+    penalty_amount,
+    monthly_due,
     status,
     trans_date,
     provider_method
   )
-  VALUES (?, ?, ?, ?, 'PENDING', NOW(), '')
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', NOW(), '')
 ");
-$ins->bind_param("iiid", $user_id, $loan_id, $restructured_loan_id, $amount);
+$ins->bind_param(
+  "iiiddddd",
+  $user_id,
+  $loan_id,
+  $restructured_loan_id,
+  $amount,
+  $principal_amount,
+  $interest_amount,
+  $penalty_amount,
+  $monthly_due
+);
 
 if (!$ins->execute()) {
   http_response_code(500);
@@ -292,6 +399,10 @@ $txRow = [
   "loan_id" => $loan_id,
   "restructured_loan_id" => $restructured_loan_id,
   "amount" => $amount,
+  "principal_amount" => $principal_amount,
+  "interest_amount" => $interest_amount,
+  "penalty_amount" => $penalty_amount,
+  "monthly_due" => $monthly_due,
   "status" => "PENDING",
   "trans_date" => date("Y-m-d H:i:s"),
   "provider_method" => "TO_BE_CONFIRMED",

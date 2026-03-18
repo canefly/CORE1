@@ -15,6 +15,80 @@ function dbg_return(string $message): void {
     file_put_contents($logFile, "[" . date("Y-m-d H:i:s") . "] " . $message . PHP_EOL, FILE_APPEND);
 }
 
+/**
+ * Added only: payment breakdown resolver
+ * No existing logic removed
+ */
+function resolvePaymentBreakdown(mysqli $conn, array $txRow): array
+{
+    $loanId = (int)($txRow['loan_id'] ?? 0);
+    $restructuredLoanId = (int)($txRow['restructured_loan_id'] ?? 0);
+    $amount = round((float)($txRow['amount'] ?? 0), 2);
+
+    $finalLoanId = $loanId > 0 ? $loanId : $restructuredLoanId;
+
+    $principalAmount = $amount;
+    $interestAmount = 0.00;
+    $penaltyAmount = 0.00;
+    $paymentType = 'loan_principal';
+
+    if ($finalLoanId <= 0 || $amount <= 0) {
+        return [
+            'principal_amount' => $principalAmount,
+            'interest_amount' => $interestAmount,
+            'penalty_amount' => $penaltyAmount,
+            'payment_type' => $paymentType
+        ];
+    }
+
+    // Try to resolve from loans table
+    $loanStmt = $conn->prepare("
+        SELECT monthly_due, interest_rate, interest_method, outstanding
+        FROM loans
+        WHERE id = ?
+        LIMIT 1
+    ");
+    $loanStmt->bind_param("i", $finalLoanId);
+    $loanStmt->execute();
+    $loanRow = $loanStmt->get_result()->fetch_assoc();
+    $loanStmt->close();
+
+    if ($loanRow) {
+        $monthlyDue = round((float)($loanRow['monthly_due'] ?? 0), 2);
+        $interestRate = (float)($loanRow['interest_rate'] ?? 0);
+        $interestMethod = strtoupper((string)($loanRow['interest_method'] ?? ''));
+        $outstanding = round((float)($loanRow['outstanding'] ?? 0), 2);
+
+        if ($monthlyDue > 0 && abs($amount - $monthlyDue) <= 0.05) {
+            if ($interestRate > 0) {
+                if ($interestMethod === 'FLAT') {
+                    $interestAmount = round($outstanding * ($interestRate / 100), 2);
+                } else {
+                    $interestAmount = round($outstanding * ($interestRate / 100), 2);
+                }
+
+                if ($interestAmount > $amount) {
+                    $interestAmount = 0.00;
+                }
+
+                $principalAmount = round($amount - $interestAmount - $penaltyAmount, 2);
+
+                if ($principalAmount < 0) {
+                    $principalAmount = $amount;
+                    $interestAmount = 0.00;
+                }
+            }
+        }
+    }
+
+    return [
+        'principal_amount' => round($principalAmount, 2),
+        'interest_amount' => round($interestAmount, 2),
+        'penalty_amount' => round($penaltyAmount, 2),
+        'payment_type' => $paymentType
+    ];
+}
+
 $tx_id = (int)($_GET['tx_id'] ?? 0);
 $ok = isset($_GET['ok']);
 
@@ -46,7 +120,6 @@ if (!$checkoutId) {
     exit;
 }
 
-// Grabbing the pre-encoded auth string from the vault
 $auth = $paymongo_auth_base64;
 $ch = curl_init("https://api.paymongo.com/v1/checkout_sessions/" . urlencode($checkoutId));
 curl_setopt_array($ch, [
@@ -148,6 +221,8 @@ if (!empty($payments) && isset($payments[0]['id'])) {
             ? (int)$txRow["loan_id"]
             : (int)$txRow["restructured_loan_id"];
 
+        $breakdown = resolvePaymentBreakdown($conn, $txRow);
+
         $paymentPayload = [
             "transaction_id" => (int)$txRow["id"],
             "user_id" => (int)$txRow["user_id"],
@@ -161,6 +236,11 @@ if (!empty($payments) && isset($payments[0]['id'])) {
             "paymongo_checkout_id" => (string)$txRow["paymongo_checkout_id"],
             "receipt_number" => (string)$txRow["receipt_number"],
 
+            "principal_amount" => (float)$breakdown["principal_amount"],
+            "interest_amount" => (float)$breakdown["interest_amount"],
+            "penalty_amount" => (float)$breakdown["penalty_amount"],
+            "payment_type" => (string)$breakdown["payment_type"],
+
             "client_full_name" => (string)($userRow["fullname"] ?? ''),
             "client_email" => (string)($userRow["email"] ?? ''),
             "client_phone" => (string)($userRow["phone"] ?? ''),
@@ -168,6 +248,7 @@ if (!empty($payments) && isset($payments[0]['id'])) {
             "client_monthly_income" => (float)($loanAppRow["estimated_monthly_income"] ?? 0)
         ];
 
+        dbg_return("Payment breakdown=" . json_encode($breakdown));
         dbg_return("Sending to FINANCIAL payload=" . json_encode($paymentPayload));
 
         $financialResponse = sendPaymentToFinancial($paymentPayload);

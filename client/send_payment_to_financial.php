@@ -2,7 +2,7 @@
 
 function sendPaymentToFinancial(array $paymentData): array
 {
-    $url = "http://192.168.1.5/microfinancee/modules/collections/receive_payment_from_core1.php";
+    $url = "http://10.112.107.207/microfinancee/modules/collections/receive_payment_from_core1.php";
     $logFile = __DIR__ . "/debug_send_to_financial.log";
 
     $payloadArray = [
