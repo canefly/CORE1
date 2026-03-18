@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 session_start();
 require_once __DIR__ . "/include/config.php";
-require_once __DIR__ . "/include/paymongo_config.php";
+require_once __DIR__ . "/include/API/api_vault.php";
 require_once __DIR__ . "/receipt_image_generator.php";
 
 if (!isset($_SESSION['user_id'])) {

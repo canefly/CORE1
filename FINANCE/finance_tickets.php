@@ -5,7 +5,7 @@ session_start();
 // DUAL-DATABASE CONNECTION
 // ==========================================
 $core1_host = "127.0.0.1";       // Localhost ng PC mo
-$core2_host = "127.0.0.1";   // IP Address ng Core2
+$core2_host = "10.112.107.130";   // IP Address ng Core2
 $user = "root";
 $pass = "";
 

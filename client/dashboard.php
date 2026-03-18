@@ -298,6 +298,7 @@ if ($hasLoan) {
 
 <?php include 'include/sidebar.php'; ?>
 <?php include 'include/theme_toggle.php'; ?>
+<?php include 'include/chat_support.php'; ?>
 
 <div class="main-content">
 
