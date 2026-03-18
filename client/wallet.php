@@ -1,655 +1,732 @@
 <?php
 session_start();
 require_once __DIR__ . "/include/config.php";
-include __DIR__ . "/include/session_checker.php";
+require_once __DIR__ . "/include/session_checker.php";
+require_once __DIR__ . "/include/wallet_helper.php";
 
-if (!isset($conn)) {
-    die("Error: Variable \$conn is not defined in config.php. Please check your connection file.");
-}
-
-$mysqli = $conn;
-
-// ==========================================
-// CORE2 REMOTE CONFIG
-// HUWAG localhost kung magkaibang PC
-// Palitan ng actual reachable IP/hostname ng CORE2 PC
-// Example: http://192.168.1.50/core2_api
-// ==========================================
-define('CORE2_API_BASE', 'http://192.168.1.50/core2_api');
-define('CORE2_API_TIMEOUT', 15);
-
-// Optional shared token kung gusto niyo lagyan ng simple auth
-define('CORE2_API_TOKEN', 'YOUR_SHARED_SECRET_TOKEN');
-
-// ==========================================
-// HELPERS
-// ==========================================
-function h($value): string
-{
-    return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
-}
-
-function redirect_with_query(string $query): void
-{
-    header("Location: wallet.php" . ($query ? "?{$query}" : ""));
-    exit;
-}
-
-function core2_api_post(string $endpoint, array $payload = []): array
-{
-    $url = rtrim(CORE2_API_BASE, '/') . '/' . ltrim($endpoint, '/');
-
-    $ch = curl_init($url);
-    if ($ch === false) {
-        return [
-            'success' => false,
-            'message' => 'Failed to initialize cURL.'
-        ];
-    }
-
-    $headers = [
-        'Content-Type: application/json',
-        'Accept: application/json',
-        'X-API-KEY: ' . CORE2_API_TOKEN
-    ];
-
-    curl_setopt_array($ch, [
-        CURLOPT_POST            => true,
-        CURLOPT_RETURNTRANSFER  => true,
-        CURLOPT_HTTPHEADER      => $headers,
-        CURLOPT_POSTFIELDS      => json_encode($payload),
-        CURLOPT_CONNECTTIMEOUT  => 5,
-        CURLOPT_TIMEOUT         => CORE2_API_TIMEOUT,
-    ]);
-
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlErr  = curl_error($ch);
-    curl_close($ch);
-
-    if ($response === false || $curlErr) {
-        return [
-            'success' => false,
-            'message' => 'CORE2 connection failed: ' . $curlErr
-        ];
-    }
-
-    $decoded = json_decode($response, true);
-
-    if (!is_array($decoded)) {
-        return [
-            'success' => false,
-            'message' => 'Invalid response from CORE2.',
-            'raw'     => $response,
-            'http'    => $httpCode
-        ];
-    }
-
-    $decoded['_http_code'] = $httpCode;
-    return $decoded;
-}
-
-function generate_wallet_account_number(int $userId): string
-{
-    return 'WAL-' . date('Y') . '-' . str_pad((string)$userId, 4, '0', STR_PAD_LEFT);
-}
-
-function generate_reference(string $prefix = 'PAY'): string
-{
-    return $prefix . '-' . date('YmdHis') . '-' . random_int(1000, 9999);
-}
-
-function get_user_fullname(mysqli $mysqli, int $userId): string
-{
-    $full_name = "Unknown User";
-
-    $stmt = $mysqli->prepare("SELECT fullname FROM users WHERE id = ? LIMIT 1");
-    if ($stmt) {
-        $stmt->bind_param("i", $userId);
-        $stmt->execute();
-        $res = $stmt->get_result();
-        if ($row = $res->fetch_assoc()) {
-            $full_name = $row['fullname'] ?? $full_name;
-        }
-        $stmt->close();
-    }
-
-    return $full_name;
-}
-
-function get_active_loan(mysqli $mysqli, int $userId): array
-{
-    $data = [
-        'has_active_loan' => false,
-        'loan_id'         => null,
-        'monthly_due'     => 0.00,
-        'next_payment'    => 'N/A',
-        'raw_next_payment'=> null,
-        'status'          => null,
-        'outstanding'     => 0.00
-    ];
-
-    $stmt = $mysqli->prepare("
-        SELECT id, monthly_due, next_payment, status, outstanding
-        FROM loans
-        WHERE user_id = ?
-          AND status IN ('ACTIVE', 'RESTRUCTURED')
-        ORDER BY id DESC
-        LIMIT 1
-    ");
-
-    if ($stmt) {
-        $stmt->bind_param("i", $userId);
-        $stmt->execute();
-        $res = $stmt->get_result();
-
-        if ($row = $res->fetch_assoc()) {
-            $data['has_active_loan'] = true;
-            $data['loan_id'] = (int)$row['id'];
-            $data['monthly_due'] = (float)$row['monthly_due'];
-            $data['raw_next_payment'] = $row['next_payment'];
-            $data['next_payment'] = !empty($row['next_payment'])
-                ? date('M d, Y', strtotime($row['next_payment']))
-                : 'N/A';
-            $data['status'] = $row['status'] ?? null;
-            $data['outstanding'] = isset($row['outstanding']) ? (float)$row['outstanding'] : 0.00;
-        }
-
-        $stmt->close();
-    }
-
-    return $data;
-}
-
-function get_wallet_from_core2(int $userId): array
-{
-    $result = core2_api_post('wallet/get_wallet.php', [
-        'user_id' => $userId
-    ]);
-
-    if (!($result['success'] ?? false)) {
-        return [
-            'success'           => false,
-            'has_wallet'        => false,
-            'wallet_account_id' => null,
-            'wallet_account_num'=> '',
-            'wallet_balance'    => 0.00,
-            'message'           => $result['message'] ?? 'Unable to fetch wallet from CORE2.'
-        ];
-    }
-
-    $wallet = $result['wallet'] ?? [];
-
-    return [
-        'success'            => true,
-        'has_wallet'         => !empty($wallet),
-        'wallet_account_id'  => $wallet['id'] ?? null,
-        'wallet_account_num' => $wallet['account_number'] ?? '',
-        'wallet_balance'     => isset($wallet['current_balance']) ? (float)$wallet['current_balance'] : 0.00,
-        'wallet_status'      => $wallet['status'] ?? '',
-        'message'            => $result['message'] ?? ''
-    ];
-}
-
-function get_wallet_history_from_core2($walletAccountId): array
-{
-    if (!$walletAccountId) {
-        return [];
-    }
-
-    $result = core2_api_post('wallet/get_history.php', [
-        'account_id' => $walletAccountId,
-        'limit'      => 5
-    ]);
-
-    if (!($result['success'] ?? false)) {
-        return [];
-    }
-
-    return is_array($result['history'] ?? null) ? $result['history'] : [];
-}
-
-// ==========================================
-// KICK OUT IF NOT LOGGED IN
-// ==========================================
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit;
 }
 
-$user_id = (int)$_SESSION['user_id'];
-$full_name = get_user_fullname($mysqli, $user_id);
-
-$loanData = get_active_loan($mysqli, $user_id);
-$has_active_loan = $loanData['has_active_loan'];
-$loan_id         = $loanData['loan_id'];
-$monthly_due     = $loanData['monthly_due'];
-$next_payment    = $loanData['next_payment'];
-$loan_status     = $loanData['status'];
-$outstanding     = $loanData['outstanding'];
-
-$walletData = get_wallet_from_core2($user_id);
-$has_wallet        = $walletData['has_wallet'];
-$wallet_account_id = $walletData['wallet_account_id'];
-$wallet_balance    = $walletData['wallet_balance'];
-$wallet_account_num= $walletData['wallet_account_num'];
-
-$error_message = '';
-if (!$walletData['success'] && $has_active_loan) {
-    $error_message = $walletData['message'] ?? 'Unable to connect to CORE2 wallet service.';
+if (!isset($conn) || !($conn instanceof mysqli)) {
+    die("Database connection is not available.");
 }
 
-// ==========================================
-// HANDLE POST REQUESTS
-// ==========================================
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action = $_POST['action'] ?? '';
+$user_id = (int) $_SESSION['user_id'];
 
-    // --------------------------------------
-    // ACTION: ACTIVATE WALLET
-    // CORE1 asks CORE2 to create wallet
-    // --------------------------------------
-    if ($action === 'activate') {
-        if (!$has_active_loan) {
-            redirect_with_query('error=no_active_loan');
-        }
+$wallet = getOrCreateWallet($conn, $user_id);
 
-        if ($has_wallet) {
-            redirect_with_query('error=wallet_exists');
-        }
+$walletId        = (int) ($wallet['id'] ?? 0);
+$accountNumber   = (string) ($wallet['account_number'] ?? '');
+$balance         = (float) ($wallet['balance'] ?? 0);
+$walletStatus    = (string) ($wallet['status'] ?? 'ACTIVE');
 
-        $new_acct_num = generate_wallet_account_number($user_id);
+$fullName        = getUserFullName($conn, $user_id);
 
-        $activateResult = core2_api_post('wallet/create_wallet.php', [
-            'user_id'        => $user_id,
-            'full_name'      => $full_name,
-            'account_number' => $new_acct_num,
-            'account_type'   => 'Digital Wallet',
-            'status'         => 'active'
-        ]);
+$loanContext     = getEffectiveLoanContext($conn, $user_id);
+$hasLoan         = (bool) ($loanContext['has_loan'] ?? false);
+$loanType        = (string) ($loanContext['loan_type'] ?? '');
+$loanId          = $loanContext['loan_id'] ?? null;
+$restructuredId  = $loanContext['restructured_loan_id'] ?? null;
+$monthlyDue      = (float) ($loanContext['monthly_due'] ?? 0);
+$outstanding     = (float) ($loanContext['outstanding'] ?? 0);
+$nextPaymentRaw  = $loanContext['next_payment'] ?? null;
+$loanStatus      = (string) ($loanContext['status'] ?? '');
 
-        if ($activateResult['success'] ?? false) {
-            redirect_with_query('success=activated');
-        }
+$reservedAmount  = getReservedAmount($conn, $user_id);
+$withdrawable    = getWithdrawableAmount($conn, $user_id);
 
-        $msg = urlencode($activateResult['message'] ?? 'Wallet activation failed.');
-        redirect_with_query("error_msg={$msg}");
-    }
+$recentTransactions = getRecentWalletTransactions($conn, $user_id, 10);
 
-    // --------------------------------------
-    // ACTION: PAY LOAN
-    // FLOW:
-    // 1) validate loan in CORE1
-    // 2) ask CORE2 to debit wallet + record wallet transaction
-    // 3) if success, update CORE1 loans + transactions
-    // --------------------------------------
-    if ($action === 'pay_loan') {
-        if (!$has_active_loan || !$loan_id) {
-            redirect_with_query('error=no_active_loan');
-        }
+$nextPaymentDisplay = formatWalletDate($nextPaymentRaw);
 
-        if (!$has_wallet || !$wallet_account_id) {
-            redirect_with_query('error=no_wallet');
-        }
+function e($value): string
+{
+    return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+}
 
-        if ($monthly_due <= 0) {
-            redirect_with_query('error=invalid_due');
-        }
+$successMessage = '';
+$errorMessage   = '';
 
-        if ($wallet_balance < $monthly_due) {
-            redirect_with_query('error=insufficient');
-        }
-
-        $ref_num = generate_reference('PAY');
-
-        // Step 1: Debit wallet in CORE2
-        $debitResult = core2_api_post('wallet/pay_loan.php', [
-            'user_id'          => $user_id,
-            'account_id'       => $wallet_account_id,
-            'loan_id'          => $loan_id,
-            'amount'           => $monthly_due,
-            'reference_number' => $ref_num,
-            'description'      => "Paid Monthly Loan Due (Loan ID: {$loan_id})"
-        ]);
-
-        if (!($debitResult['success'] ?? false)) {
-            $msg = urlencode($debitResult['message'] ?? 'CORE2 wallet debit failed.');
-            redirect_with_query("error_msg={$msg}");
-        }
-
-        // Step 2: Update CORE1 loan and transaction
-        $mysqli->begin_transaction();
-
-        try {
-            $newOutstanding = max(0, $outstanding - $monthly_due);
-
-            // Optional sample next payment logic only
-            // Replace with your actual amortization/schedule logic later
-            $computedNextPayment = null;
-            if (!empty($loanData['raw_next_payment'])) {
-                $computedNextPayment = date('Y-m-d', strtotime($loanData['raw_next_payment'] . ' +1 month'));
-            }
-
-            if ($newOutstanding <= 0) {
-                $loanUpdate = $mysqli->prepare("
-                    UPDATE loans
-                    SET outstanding = 0,
-                        status = 'COMPLETED'
-                    WHERE id = ?
-                    LIMIT 1
-                ");
-                $loanUpdate->bind_param("i", $loan_id);
-            } else {
-                if ($computedNextPayment) {
-                    $loanUpdate = $mysqli->prepare("
-                        UPDATE loans
-                        SET outstanding = ?,
-                            next_payment = ?
-                        WHERE id = ?
-                        LIMIT 1
-                    ");
-                    $loanUpdate->bind_param("dsi", $newOutstanding, $computedNextPayment, $loan_id);
-                } else {
-                    $loanUpdate = $mysqli->prepare("
-                        UPDATE loans
-                        SET outstanding = ?
-                        WHERE id = ?
-                        LIMIT 1
-                    ");
-                    $loanUpdate->bind_param("di", $newOutstanding, $loan_id);
-                }
-            }
-
-            if (!$loanUpdate || !$loanUpdate->execute()) {
-                throw new Exception("Failed to update CORE1 loans table.");
-            }
-            $loanUpdate->close();
-
-            $txStmt = $mysqli->prepare("
-                INSERT INTO transactions
-                (user_id, loan_id, amount, status, trans_date, provider_method, receipt_number)
-                VALUES (?, ?, ?, 'SUCCESS', NOW(), 'WALLET', ?)
-            ");
-
-            if (!$txStmt) {
-                throw new Exception("Failed to prepare CORE1 transaction insert.");
-            }
-
-            $txStmt->bind_param("iids", $user_id, $loan_id, $monthly_due, $ref_num);
-
-            if (!$txStmt->execute()) {
-                throw new Exception("Failed to record CORE1 transaction.");
-            }
-            $txStmt->close();
-
-            $mysqli->commit();
-            redirect_with_query('success=paid');
-        } catch (Throwable $e) {
-            $mysqli->rollback();
-
-            // NOTE:
-            // Since successful na ang debit sa CORE2 dito, ideally meron kayong:
-            // 1) rollback endpoint sa CORE2, or
-            // 2) pending verification queue / reconciliation log
-            // Sa ngayon structure muna ito gaya ng hiningi mo.
-
-            $msg = urlencode('Payment debited from wallet but CORE1 update failed: ' . $e->getMessage());
-            redirect_with_query("error_msg={$msg}");
-        }
+if (isset($_GET['success'])) {
+    switch ($_GET['success']) {
+        case 'cashin':
+            $successMessage = 'Cash in successful.';
+            break;
+        case 'cashout':
+            $successMessage = 'Cash out successful.';
+            break;
+        case 'loanpaid':
+            $successMessage = 'Loan payment using wallet successful.';
+            break;
     }
 }
 
-// refresh history after actions/view load
-$wallet_history = $has_wallet ? get_wallet_history_from_core2($wallet_account_id) : [];
+if (isset($_GET['error'])) {
+    switch ($_GET['error']) {
+        case 'insufficient_balance':
+            $errorMessage = 'Insufficient wallet balance.';
+            break;
+        case 'withdraw_limit':
+            $errorMessage = 'Requested cash out exceeds your withdrawable balance.';
+            break;
+        case 'no_active_loan':
+            $errorMessage = 'No active or restructured loan found.';
+            break;
+        default:
+            $errorMessage = urldecode((string)$_GET['error']);
+            break;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Digital Wallet - Microfinance</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wallet</title>
 
-    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="assets/css/wallet.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+    <style>
+        :root{
+            --bg-main: linear-gradient(135deg, #06152f 0%, #071a3b 50%, #041127 100%);
+            --card-bg: rgba(11, 26, 57, 0.92);
+            --card-border: rgba(255,255,255,0.08);
+            --text-main: #ffffff;
+            --text-soft: #a9b8d4;
+            --text-muted: #7f92b3;
+            --accent: #16e0a0;
+            --accent-dark: #13c48c;
+            --accent-soft: rgba(22, 224, 160, 0.12);
+            --danger: #ff6b6b;
+            --warning: #ffc857;
+            --shadow: 0 18px 50px rgba(0, 0, 0, 0.25);
+            --radius-lg: 24px;
+            --radius-md: 18px;
+            --radius-sm: 14px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg-main);
+        }
+
+        .main-content {
+            padding: 28px;
+            color: var(--text-main);
+        }
+
+        .wallet-shell {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .page-header {
+            margin-bottom: 24px;
+        }
+
+        .page-header h1 {
+            margin: 0;
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            color: var(--text-main);
+        }
+
+        .page-header p {
+            margin: 8px 0 0;
+            color: var(--text-soft);
+            font-size: 0.98rem;
+        }
+
+        .alert {
+            border-radius: 16px;
+            padding: 14px 18px;
+            margin-bottom: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border: 1px solid transparent;
+        }
+
+        .alert-success {
+            background: rgba(14, 116, 88, 0.18);
+            color: #d1fae5;
+            border-color: rgba(16, 185, 129, 0.30);
+        }
+
+        .alert-error {
+            background: rgba(127, 29, 29, 0.22);
+            color: #fee2e2;
+            border-color: rgba(239, 68, 68, 0.25);
+        }
+
+        .wallet-top-grid {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 22px;
+            margin-bottom: 22px;
+        }
+
+        .wallet-balance-card,
+        .stat-card,
+        .section-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .wallet-balance-card {
+            padding: 28px;
+            min-height: 270px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .wallet-balance-card::before {
+            content: "";
+            position: absolute;
+            width: 260px;
+            height: 260px;
+            border-radius: 50%;
+            top: -90px;
+            right: -70px;
+            background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 50%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .wallet-balance-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 18px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .wallet-balance-label {
+            color: var(--text-soft);
+            font-size: 0.95rem;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        .wallet-balance-value {
+            font-size: clamp(2.3rem, 4vw, 4rem);
+            line-height: 1;
+            font-weight: 900;
+            letter-spacing: -0.05em;
+            margin: 0;
+            color: var(--text-main);
+        }
+
+        .wallet-owner-block {
+            margin-top: 18px;
+        }
+
+        .wallet-owner-name {
+            font-size: 1.08rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+            word-break: break-word;
+        }
+
+        .wallet-owner-meta {
+            color: var(--text-soft);
+            font-size: 0.92rem;
+            word-break: break-word;
+        }
+
+        .wallet-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            background: var(--accent-soft);
+            color: #d7fff3;
+            border: 1px solid rgba(22, 224, 160, 0.28);
+            padding: 9px 14px;
+            border-radius: 999px;
+            font-weight: 700;
+            font-size: 0.88rem;
+            white-space: nowrap;
+        }
+
+        .wallet-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 26px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .btn-secondary,
+        .btn-pay {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            text-decoration: none;
+            border: 0;
+            border-radius: 14px;
+            padding: 13px 18px;
+            cursor: pointer;
+            font-weight: 700;
+            transition: all 0.18s ease;
+            min-width: 150px;
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.06);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-1px);
+            background: rgba(255,255,255,0.10);
+        }
+
+        .btn-pay {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+            color: #052b1f;
+            box-shadow: 0 10px 24px rgba(22, 224, 160, 0.28);
+        }
+
+        .btn-pay:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 14px 30px rgba(22, 224, 160, 0.34);
+        }
+
+        .wallet-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+
+        .stat-card {
+            padding: 20px;
+            min-height: 127px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .stat-card-label {
+            font-size: 0.88rem;
+            color: var(--text-soft);
+            margin-bottom: 10px;
+        }
+
+        .stat-card-value {
+            font-size: 1.55rem;
+            font-weight: 800;
+            line-height: 1.1;
+            color: var(--text-main);
+            word-break: break-word;
+        }
+
+        .stat-card-value.small-text {
+            font-size: 1.25rem;
+        }
+
+        .section-grid {
+            display: grid;
+            grid-template-columns: 0.95fr 1.35fr;
+            gap: 22px;
+        }
+
+        .section-card {
+            padding: 24px;
+        }
+
+        .section-title {
+            margin: 0 0 18px;
+            font-size: 1.28rem;
+            font-weight: 800;
+            color: var(--text-main);
+        }
+
+        .loan-pill {
+            display: inline-block;
+            background: var(--accent-soft);
+            color: #d7fff3;
+            border: 1px solid rgba(22, 224, 160, 0.26);
+            border-radius: 999px;
+            padding: 8px 12px;
+            font-size: 0.8rem;
+            font-weight: 800;
+            margin-bottom: 18px;
+        }
+
+        .loan-pill.muted {
+            background: rgba(255,255,255,0.06);
+            color: #e5e7eb;
+            border-color: rgba(255,255,255,0.08);
+        }
+
+        .info-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            padding: 14px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+        }
+
+        .info-row:last-child {
+            border-bottom: 0;
+        }
+
+        .info-row span:first-child {
+            color: var(--text-soft);
+            font-size: 0.95rem;
+        }
+
+        .info-row span:last-child {
+            color: var(--text-main);
+            font-weight: 700;
+            text-align: right;
+        }
+
+        .empty-note {
+            color: var(--text-soft);
+            line-height: 1.7;
+            margin: 0;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        .tx-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .tx-table th,
+        .tx-table td {
+            text-align: left;
+            padding: 14px 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+
+        .tx-table th {
+            color: var(--text-soft);
+            font-size: 0.8rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .tx-table td {
+            color: var(--text-main);
+            font-size: 0.93rem;
+        }
+
+        .tx-type {
+            font-weight: 800;
+        }
+
+        .amount-in {
+            color: #37e2a8;
+            font-weight: 800;
+        }
+
+        .amount-out {
+            color: #ffc857;
+            font-weight: 800;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 7px 10px;
+            border-radius: 999px;
+            font-size: 0.77rem;
+            font-weight: 800;
+            background: rgba(255,255,255,0.06);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.07);
+        }
+
+        .tx-empty {
+            text-align: center;
+            color: var(--text-soft);
+            padding: 22px 0;
+        }
+
+        @media (max-width: 1180px) {
+            .wallet-top-grid,
+            .section-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 720px) {
+            .main-content {
+                padding: 18px;
+            }
+
+            .wallet-stats-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .wallet-balance-card,
+            .section-card,
+            .stat-card {
+                border-radius: 18px;
+            }
+
+            .wallet-balance-card {
+                padding: 22px;
+                min-height: auto;
+            }
+
+            .wallet-balance-top {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .wallet-actions {
+                flex-direction: column;
+            }
+
+            .btn-secondary,
+            .btn-pay {
+                width: 100%;
+            }
+
+            .tx-table th,
+            .tx-table td {
+                padding: 12px 10px;
+            }
+        }
+
+        @media (max-width: 520px) {
+            .wallet-stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .info-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .info-row span:last-child {
+                text-align: left;
+            }
+        }
+    </style>
 </head>
 <body>
 
-<?php include 'include/sidebar.php'; ?>
-<?php include 'include/theme_toggle.php'; ?>
+<?php include __DIR__ . '/include/sidebar.php'; ?>
 
 <div class="main-content">
-
-    <?php if (!empty($error_message)): ?>
-        <div style="background:#7f1d1d;color:#fff;padding:15px;border-radius:8px;margin-bottom:20px;text-align:center;">
-            <i class="bi bi-exclamation-triangle-fill"></i> <?php echo h($error_message); ?>
-        </div>
-    <?php endif; ?>
-
-    <?php if (isset($_GET['error_msg'])): ?>
-        <div style="background:#7f1d1d;color:#fff;padding:15px;border-radius:8px;margin-bottom:20px;text-align:center;">
-            <i class="bi bi-exclamation-triangle-fill"></i> <?php echo h($_GET['error_msg']); ?>
-        </div>
-    <?php endif; ?>
-
-    <?php if (isset($_GET['success']) && $_GET['success'] === 'paid'): ?>
-        <div style="background:#065f46;color:#fff;padding:15px;border-radius:8px;margin-bottom:20px;text-align:center;">
-            <i class="bi bi-check-circle-fill"></i> Loan payment successful! Deducted from your digital wallet.
-        </div>
-    <?php endif; ?>
-
-    <?php if (isset($_GET['success']) && $_GET['success'] === 'cashin'): ?>
-        <div style="background:#065f46;color:#fff;padding:15px;border-radius:8px;margin-bottom:20px;text-align:center;">
-            <i class="bi bi-check-circle-fill"></i> Cash In successful! Your wallet balance has been updated.
-        </div>
-    <?php endif; ?>
-
-    <?php if (isset($_GET['success']) && $_GET['success'] === 'activated'): ?>
-        <div style="background:#065f46;color:#fff;padding:15px;border-radius:8px;margin-bottom:20px;text-align:center;">
-            <i class="bi bi-check-circle-fill"></i> Wallet activated successfully.
-        </div>
-    <?php endif; ?>
-
-    <?php
-    // ==========================================
-    // SCREEN 1: NO ACTIVE LOAN
-    // ==========================================
-    if (!$has_active_loan):
-    ?>
-    <div class="activation-wrapper">
-        <div class="table-card text-center" style="max-width: 400px; margin: 0 auto; padding: 40px 30px;">
-            <div class="activation-icon" style="color: #f87171; background: rgba(239, 68, 68, 0.15);">
-                <i class="bi bi-lock-fill"></i>
-            </div>
-            <h2 style="color: #fff; margin-bottom: 10px; font-size: 22px;">Wallet Locked</h2>
-            <p style="color: #94a3b8; font-size: 14px; line-height: 1.6;">
-                You need an approved and active loan to activate the Digital Wallet feature. Apply for a loan first.
-            </p>
-        </div>
-    </div>
-
-    <?php
-    // ==========================================
-    // SCREEN 2: HAS LOAN, BUT NO WALLET YET
-    // ==========================================
-    elseif ($has_active_loan && !$has_wallet):
-    ?>
-    <div id="activationScreen" class="activation-wrapper">
-        <div class="table-card text-center" style="max-width: 400px; margin: 0 auto; padding: 40px 30px;">
-            <div class="activation-icon">
-                <i class="bi bi-wallet2"></i>
-            </div>
-            <h2 style="color: #fff; margin-bottom: 10px; font-size: 22px;">Activate Wallet</h2>
-            <p style="color: #94a3b8; font-size: 14px; line-height: 1.6; margin-bottom: 25px;">
-                Enable your digital wallet to manage funds and pay your loans easily.
-            </p>
-
-            <div class="user-box">
-                <small>Account Owner</small>
-                <h3><?php echo h($full_name); ?></h3>
-            </div>
-
-            <ul class="wallet-rules">
-                <li><i class="bi bi-check-circle-fill text-green"></i> Real-time Loan Repayment</li>
-                <li><i class="bi bi-check-circle-fill text-green"></i> Secure Savings Tracking</li>
-                <li class="strict-rule">
-                    <i class="bi bi-exclamation-triangle-fill"></i>
-                    <strong>STRICTLY NO CASHOUT.</strong><br>Funds are for loan repayment only.
-                </li>
-            </ul>
-
-            <form method="POST">
-                <input type="hidden" name="action" value="activate">
-                <button type="submit" class="btn-pay" style="width: 100%; justify-content: center; margin-top: 20px;">
-                    Activate Wallet Now <i class="bi bi-arrow-right"></i>
-                </button>
-            </form>
-        </div>
-    </div>
-
-    <?php
-    // ==========================================
-    // SCREEN 3: HAS LOAN AND WALLET IS ACTIVE
-    // ==========================================
-    else:
-    ?>
-    <div id="mainWalletScreen" style="animation: fadeIn 0.4s ease-in-out;">
+    <div class="wallet-shell">
         <div class="page-header">
             <h1>Digital Wallet</h1>
-            <p>Manage your funds for loan repayments</p>
+            <p>Manage your savings, cash in, cash out, and loan payments in one place.</p>
         </div>
 
-        <div class="hero-card">
-            <div class="hero-info">
-                <h2>Available Balance</h2>
-                <div class="amount">₱ <?php echo number_format($wallet_balance, 2); ?></div>
-                <div class="due-date">
-                    <i class="bi bi-person-badge"></i>
-                    <?php echo h($full_name); ?> | <?php echo h($wallet_account_num); ?>
+        <?php if ($successMessage !== ''): ?>
+            <div class="alert alert-success">
+                <i class="bi bi-check-circle-fill"></i>
+                <?php echo e($successMessage); ?>
+            </div>
+        <?php endif; ?>
+
+        <?php if ($errorMessage !== ''): ?>
+            <div class="alert alert-error">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <?php echo e($errorMessage); ?>
+            </div>
+        <?php endif; ?>
+
+        <div class="wallet-top-grid">
+            <div class="wallet-balance-card">
+                <div>
+                    <div class="wallet-balance-top">
+                        <div>
+                            <div class="wallet-balance-label">Available Wallet Balance</div>
+                            <h2 class="wallet-balance-value">₱ <?php echo number_format($balance, 2); ?></h2>
+
+                            <div class="wallet-owner-block">
+                                <div class="wallet-owner-name"><?php echo e($fullName); ?></div>
+                                <div class="wallet-owner-meta"><?php echo e($accountNumber); ?></div>
+                            </div>
+                        </div>
+
+                        <div class="wallet-badge">
+                            <i class="bi bi-wallet2"></i>
+                            <?php echo e($walletStatus); ?>
+                        </div>
+                    </div>
                 </div>
-                <div class="due-date" style="margin-top:8px;">
-                    <i class="bi bi-credit-card-2-front"></i>
-                    Loan Status: <?php echo h($loan_status); ?> |
-                    Due: ₱ <?php echo number_format($monthly_due, 2); ?> |
-                    Next: <?php echo h($next_payment); ?>
+
+                <div class="wallet-actions">
+                    <a href="cash_in.php" class="btn-secondary">
+                        <i class="bi bi-plus-circle-fill"></i> Cash In
+                    </a>
+
+                    <a href="cash_out.php" class="btn-secondary">
+                        <i class="bi bi-dash-circle-fill"></i> Cash Out
+                    </a>
+
+                    <?php if ($hasLoan): ?>
+                        <a href="pay_loan_using_wallet.php" class="btn-pay">
+                            <i class="bi bi-credit-card-fill"></i> Pay Loan Using Wallet
+                        </a>
+                    <?php endif; ?>
                 </div>
             </div>
-            <div class="hero-actions wallet-mobile-actions">
-                <button class="btn-secondary" onclick="window.location.href='cash_in.php'">
-                    <i class="bi bi-plus-circle-fill"></i> Add Balance
-                </button>
-                <button class="btn-pay" onclick="checkPaymentLogic()">
-                    <i class="bi bi-credit-card-fill"></i> Pay Loan
-                </button>
+
+            <div class="wallet-stats-grid">
+                <div class="stat-card">
+                    <div class="stat-card-label">Reserved Amount</div>
+                    <div class="stat-card-value">₱ <?php echo number_format($reservedAmount, 2); ?></div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-label">Withdrawable Amount</div>
+                    <div class="stat-card-value">₱ <?php echo number_format($withdrawable, 2); ?></div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-label">Loan Access</div>
+                    <div class="stat-card-value small-text">
+                        <?php echo $hasLoan ? e($loanType) : 'No Active Loan'; ?>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-label">Next Payment</div>
+                    <div class="stat-card-value small-text">
+                        <?php echo $hasLoan ? e($nextPaymentDisplay) : 'Not Available'; ?>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="table-card">
-            <div class="section-head">
-                <h3>Recent Activity</h3>
-            </div>
-            <div class="table-responsive">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Transaction</th>
-                            <th>Date & Time</th>
-                            <th>Amount</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (!empty($wallet_history)): ?>
-                            <?php foreach ($wallet_history as $hist): ?>
-                                <?php
-                                    $type = strtolower((string)($hist['transaction_type'] ?? ''));
-                                    $amount = isset($hist['amount']) ? (float)$hist['amount'] : 0.00;
-                                    $created_at = $hist['created_at'] ?? '';
-                                    $is_deposit = in_array($type, ['deposit', 'cash_in'], true);
-                                ?>
-                                <tr>
-                                    <td>
-                                        <div style="display:flex;align-items:center;gap:10px;">
-                                            <?php if ($is_deposit): ?>
-                                                <i class="bi bi-arrow-down-left-circle-fill" style="color:#34d399;font-size:18px;"></i>
-                                                <strong style="color:#fff;">Cash In</strong>
-                                            <?php else: ?>
-                                                <i class="bi bi-arrow-up-right-circle-fill" style="color:#fbbf24;font-size:18px;"></i>
-                                                <strong style="color:#fff;">Loan Payment</strong>
-                                            <?php endif; ?>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <?php echo $created_at ? date('M d, Y • h:i A', strtotime($created_at)) : 'N/A'; ?>
-                                    </td>
-                                    <td style="color: <?php echo $is_deposit ? '#34d399' : '#fff'; ?>; font-weight:700;">
-                                        <?php echo $is_deposit ? '+' : '-'; ?> ₱ <?php echo number_format($amount, 2); ?>
-                                    </td>
-                                    <td><span class="badge bg-green">Completed</span></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <tr><td colspan="4" style="text-align:center;">No recent transactions.</td></tr>
+        <div class="section-grid">
+            <div class="section-card">
+                <h3 class="section-title">Loan Information</h3>
+
+                <?php if ($hasLoan): ?>
+                    <div class="loan-pill"><?php echo e($loanType); ?></div>
+
+                    <div class="info-list">
+                        <div class="info-row">
+                            <span>Status</span>
+                            <span><?php echo e($loanStatus); ?></span>
+                        </div>
+                        <div class="info-row">
+                            <span>Monthly Due</span>
+                            <span>₱ <?php echo number_format($monthlyDue, 2); ?></span>
+                        </div>
+                        <div class="info-row">
+                            <span>Outstanding</span>
+                            <span>₱ <?php echo number_format($outstanding, 2); ?></span>
+                        </div>
+                        <div class="info-row">
+                            <span>Next Payment</span>
+                            <span><?php echo e($nextPaymentDisplay); ?></span>
+                        </div>
+                        <?php if ($loanId): ?>
+                            <div class="info-row">
+                                <span>Loan ID</span>
+                                <span><?php echo e($loanId); ?></span>
+                            </div>
                         <?php endif; ?>
-                    </tbody>
-                </table>
+                        <?php if ($restructuredId): ?>
+                            <div class="info-row">
+                                <span>Restructured Loan ID</span>
+                                <span><?php echo e($restructuredId); ?></span>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                <?php else: ?>
+                    <div class="loan-pill muted">No Active Loan</div>
+                    <p class="empty-note">
+                        Your wallet is active and ready for savings, cash in, and cash out. Loan payment options will appear here once you have an active or restructured loan.
+                    </p>
+                <?php endif; ?>
+            </div>
+
+            <div class="section-card">
+                <h3 class="section-title">Recent Wallet Transactions</h3>
+
+                <div class="table-wrap">
+                    <table class="tx-table">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Reference</th>
+                                <th>Amount</th>
+                                <th>Running Balance</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (!empty($recentTransactions)): ?>
+                                <?php foreach ($recentTransactions as $tx): ?>
+                                    <?php
+                                        $type = strtoupper((string)($tx['transaction_type'] ?? ''));
+                                        $amount = (float)($tx['amount'] ?? 0);
+                                        $runningBalance = (float)($tx['running_balance'] ?? 0);
+                                        $status = (string)($tx['status'] ?? '');
+                                        $reference = (string)($tx['reference_no'] ?? '');
+                                        $createdAt = (string)($tx['created_at'] ?? '');
+                                        $isIn = in_array($type, ['CASH_IN', 'ADJUSTMENT'], true);
+                                    ?>
+                                    <tr>
+                                        <td class="tx-type"><?php echo e($type); ?></td>
+                                        <td><?php echo e($reference ?: 'N/A'); ?></td>
+                                        <td class="<?php echo $isIn ? 'amount-in' : 'amount-out'; ?>">
+                                            <?php echo $isIn ? '+' : '-'; ?> ₱ <?php echo number_format($amount, 2); ?>
+                                        </td>
+                                        <td>₱ <?php echo number_format($runningBalance, 2); ?></td>
+                                        <td>
+                                            <span class="status-pill"><?php echo e($status); ?></span>
+                                        </td>
+                                        <td>
+                                            <?php echo $createdAt ? e(date('M d, Y h:i A', strtotime($createdAt))) : 'N/A'; ?>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="6" class="tx-empty">No wallet transactions yet.</td>
+                                </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
-    <?php endif; ?>
-
 </div>
-
-<div id="modalPayNow" class="modal-overlay">
-    <div class="modal-content">
-        <div class="modal-icon icon-success"><i class="bi bi-check-lg"></i></div>
-        <h3>Ready to Pay?</h3>
-        <p>
-            You have enough balance to pay your upcoming due of
-            <strong>₱<?php echo number_format($monthly_due, 2); ?></strong>
-            for <strong><?php echo h($next_payment); ?></strong>.
-        </p>
-        <form method="POST">
-            <input type="hidden" name="action" value="pay_loan">
-            <div class="modal-actions">
-                <button type="button" class="btn-secondary" onclick="closeModal('modalPayNow')">Cancel</button>
-                <button type="submit" class="btn-pay">Pay Now</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<div id="modalInsufficient" class="modal-overlay">
-    <div class="modal-content">
-        <div class="modal-icon icon-error"><i class="bi bi-exclamation-triangle-fill"></i></div>
-        <h3>Insufficient Balance</h3>
-        <p>
-            Your balance is only <strong>₱<?php echo number_format($wallet_balance, 2); ?></strong>.
-            Your monthly due is <strong>₱<?php echo number_format($monthly_due, 2); ?></strong>.
-            Please Add Balance first.
-        </p>
-        <div class="modal-actions">
-            <button class="btn-secondary" onclick="closeModal('modalInsufficient')" style="width:100%;">Close</button>
-        </div>
-    </div>
-</div>
-
-<script>
-const walletBalance = <?php echo json_encode((float)$wallet_balance); ?>;
-const monthlyDue    = <?php echo json_encode((float)$monthly_due); ?>;
-
-function checkPaymentLogic() {
-    if (walletBalance >= monthlyDue && monthlyDue > 0) {
-        document.getElementById('modalPayNow').style.display = 'flex';
-    } else {
-        document.getElementById('modalInsufficient').style.display = 'flex';
-    }
-}
-
-function closeModal(modalId) {
-    document.getElementById(modalId).style.display = 'none';
-}
-</script>
 
 </body>
 </html>
