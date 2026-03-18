@@ -3,6 +3,27 @@ session_start();
 require_once __DIR__ . '/includes/db_connect.php'; 
 require_once __DIR__ . '/includes/session_checker.php';
 
+// --- ACTION: FETCH CLIENT DOCUMENTS (AJAX) ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'get_client_docs') {
+    $client_id = (int)$_POST['client_id'];
+    
+    // Get the most recent loan application for this user
+    $appStmt = $pdo->prepare("SELECT id FROM loan_applications WHERE user_id = ? ORDER BY id DESC LIMIT 1");
+    $appStmt->execute([$client_id]);
+    $app = $appStmt->fetch(PDO::FETCH_ASSOC);
+    
+    $docs = [];
+    if ($app) {
+        $docStmt = $pdo->prepare("SELECT doc_type, file_path FROM loan_documents WHERE loan_application_id = ?");
+        $docStmt->execute([$app['id']]);
+        $docs = $docStmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    
+    header('Content-Type: application/json');
+    echo json_encode(['status' => 'success', 'docs' => $docs]);
+    exit;
+}
+
 // --- ACTION: TOGGLE CLIENT STATUS ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'toggle_client_status') {
     $client_id = (int)$_POST['client_id'];
@@ -86,7 +107,7 @@ $clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </td>
                         <td style="text-align:center;">
                             <button class="btn-action btn-view" style="margin-right: 5px; color: #3b82f6; border-color: rgba(59,130,246,0.3);" 
-                                onclick="viewClient('<?= addslashes($row['fullname']) ?>', '<?= addslashes($row['email']) ?>', '<?= addslashes($row['phone'] ?? 'N/A') ?>', '<?= addslashes($row['id_document'] ?? 'default_id.png') ?>')">
+                                onclick="viewClient(<?= $row['id'] ?>, '<?= addslashes($row['fullname']) ?>', '<?= addslashes($row['email']) ?>', '<?= addslashes($row['phone'] ?? 'N/A') ?>')">
                                 <i class="bi bi-eye-fill"></i> View
                             </button>
 
@@ -111,7 +132,7 @@ $clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
     </div>
 
     <div class="modal-overlay" id="viewClientModal">
-        <div class="modal-content large" style="width: 500px;">
+        <div class="modal-content large" style="width: 600px;">
             <button class="close-modal" onclick="closeClientModal()"><i class="bi bi-x-lg"></i></button>
             <h2 style="color:#fff; margin-top:0; margin-bottom:20px; font-size:20px;">Client Information</h2>
             
@@ -131,22 +152,137 @@ $clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </div>
 
             <div class="detail-group" style="margin-top: 15px;">
-                <label style="color:#9ca3af; font-size:11px; font-weight:bold; text-transform:uppercase; margin-bottom: 8px; display:block;">Submitted Valid ID / Document</label>
-                <img src="" id="viewDoc" alt="Client Document" style="width: 100%; height: 200px; object-fit: contain; background: #111827; border-radius: 8px; border: 1px solid #374151;">
+                <label style="color:#9ca3af; font-size:11px; font-weight:bold; text-transform:uppercase; margin-bottom: 8px; display:block;">Submitted Documents</label>
+                <div id="documentGallery" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px;">
+                    <!-- Dynamically populated via AJAX -->
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- Lightbox Overlay -->
+    <div class="modal-overlay" id="lightboxOverlay" style="display: none; z-index: 9999; flex-direction: column; align-items: center; justify-content: center; background: rgba(17, 24, 39, 0.95);">
+        <div style="position: relative; max-width: 90%; max-height: 90vh; display: flex; flex-direction: column; align-items: center;">
+            <button onclick="closeLightbox()" style="position: absolute; top: -30px; right: -30px; background: none; border: none; color: #fff; font-size: 30px; cursor: pointer;"><i class="bi bi-x-lg"></i></button>
+            
+            <div style="display: flex; align-items: center; justify-content: center; position: relative; width: 100%;">
+                <button id="lightboxPrev" onclick="prevImage()" style="position: absolute; left: -50px; background: none; border: none; color: #fff; font-size: 40px; cursor: pointer; text-shadow: 0 2px 4px rgba(0,0,0,0.5);"><i class="bi bi-chevron-left"></i></button>
+                <img id="lightboxImg" src="" style="max-height: 80vh; max-width: 100%; object-fit: contain; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+                <button id="lightboxNext" onclick="nextImage()" style="position: absolute; right: -50px; background: none; border: none; color: #fff; font-size: 40px; cursor: pointer; text-shadow: 0 2px 4px rgba(0,0,0,0.5);"><i class="bi bi-chevron-right"></i></button>
+            </div>
+            
+            <div id="lightboxCaption" style="color: #e5e7eb; margin-top: 15px; font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;"></div>
+        </div>
+    </div>
+
     <script>
-        // TAMA ANG PATHING DITO BASE SA SCREENSHOT MO (../client/uploads/loan_docs/)
-        function viewClient(name, email, phone, docPath) {
+        let currentDocs = [];
+        let currentImageIndex = 0;
+
+        // Dynamically fetch and view user documents via AJAX
+        function viewClient(clientId, name, email, phone) {
             document.getElementById('viewName').innerText = name;
             document.getElementById('viewEmail').innerText = email;
             document.getElementById('viewPhone').innerText = phone;
-            document.getElementById('viewDoc').src = '../client/uploads/loan_docs/' + docPath; 
+            
+            const gallery = document.getElementById('documentGallery');
+            gallery.innerHTML = '<p style="color:#9ca3af; font-size: 13px; grid-column: 1 / -1; text-align: center; padding: 20px 0;">Loading documents...</p>';
             document.getElementById('viewClientModal').style.display = 'flex';
+
+            const formData = new FormData();
+            formData.append('action', 'get_client_docs');
+            formData.append('client_id', clientId);
+
+            fetch('', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                gallery.innerHTML = '';
+                if (data.status === 'success' && data.docs && data.docs.length > 0) {
+                    currentDocs = data.docs;
+                    data.docs.forEach((doc, index) => {
+                        const col = document.createElement('div');
+                        col.style.display = 'flex';
+                        col.style.flexDirection = 'column';
+                        col.style.gap = '8px';
+
+                        const label = document.createElement('span');
+                        label.style.color = '#9ca3af';
+                        label.style.fontSize = '10px';
+                        label.style.fontWeight = 'bold';
+                        label.style.textTransform = 'uppercase';
+                        label.style.textAlign = 'center';
+                        label.innerText = doc.doc_type ? doc.doc_type.replace(/_/g, ' ') : 'DOCUMENT';
+
+                        const img = document.createElement('img');
+                        let path = doc.file_path.startsWith('/') ? doc.file_path.substring(1) : doc.file_path;
+                        img.src = '../client/' + path;
+                        img.alt = doc.doc_type;
+                        img.style.width = '100%';
+                        img.style.height = '150px';
+                        img.style.objectFit = 'cover';
+                        img.style.background = '#111827';
+                        img.style.borderRadius = '8px';
+                        img.style.border = '1px solid #374151';
+                        img.style.cursor = 'pointer';
+                        img.title = 'Click to view full size';
+                        img.onclick = () => openLightbox(index);
+
+                        col.appendChild(label);
+                        col.appendChild(img);
+                        gallery.appendChild(col);
+                    });
+                } else {
+                    currentDocs = [];
+                    gallery.innerHTML = '<p style="color:#9ca3af; font-size: 13px; grid-column: 1 / -1; text-align: center; padding: 20px 0;">No documents found for this user.</p>';
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching documents:', error);
+                currentDocs = [];
+                gallery.innerHTML = '<p style="color:#ef4444; font-size: 13px; grid-column: 1 / -1; text-align: center; padding: 20px 0;">Failed to load documents.</p>';
+            });
         }
-        
+
+        // --- Lightbox Functions ---
+        function openLightbox(index) {
+            currentImageIndex = index;
+            updateLightbox();
+            document.getElementById('lightboxOverlay').style.display = 'flex';
+        }
+
+        function updateLightbox() {
+            if (currentDocs.length === 0) return;
+            const doc = currentDocs[currentImageIndex];
+            let path = doc.file_path.startsWith('/') ? doc.file_path.substring(1) : doc.file_path;
+            
+            document.getElementById('lightboxImg').src = '../client/' + path;
+            document.getElementById('lightboxCaption').innerText = doc.doc_type ? doc.doc_type.replace(/_/g, ' ') : 'DOCUMENT';
+
+            document.getElementById('lightboxPrev').style.visibility = currentImageIndex > 0 ? 'visible' : 'hidden';
+            document.getElementById('lightboxNext').style.visibility = currentImageIndex < currentDocs.length - 1 ? 'visible' : 'hidden';
+        }
+
+        function prevImage() {
+            if (currentImageIndex > 0) {
+                currentImageIndex--;
+                updateLightbox();
+            }
+        }
+
+        function nextImage() {
+            if (currentImageIndex < currentDocs.length - 1) {
+                currentImageIndex++;
+                updateLightbox();
+            }
+        }
+
+        function closeLightbox() {
+            document.getElementById('lightboxOverlay').style.display = 'none';
+        }
+
         function closeClientModal() { document.getElementById('viewClientModal').style.display = 'none'; }
         
         function confirmAction(currentStatus, name) {
@@ -158,8 +294,10 @@ $clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
 
         window.onclick = function(event) {
-            let modal = document.getElementById('viewClientModal');
-            if (event.target == modal) { modal.style.display = "none"; }
+            let clientModal = document.getElementById('viewClientModal');
+            let lightbox = document.getElementById('lightboxOverlay');
+            if (event.target == lightbox) { closeLightbox(); }
+            if (event.target == clientModal) { closeClientModal(); }
         }
     </script>
 </body>
