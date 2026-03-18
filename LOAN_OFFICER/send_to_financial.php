@@ -3,7 +3,7 @@
 function sendApprovedLoanToFinancial(array $payload): array
 {
     // PALITAN kung iba ang IP/folder name ng FINANCIAL server
-    $financialUrl = 'http://10.112.107.207/microfinancee/modules/disbursement/receive_core1_disbursement.php';
+    $financialUrl = 'http://192.168.1.5/microfinancee/modules/disbursement/receive_core1_disbursement.php';
     $apiKey = 'CORE1_FINANCIAL_SECRET_123';
 
     $ch = curl_init($financialUrl);

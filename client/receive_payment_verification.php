@@ -524,6 +524,255 @@ function updateRestructuredLoanAfterVerifiedPayment(
     );
 }
 
+/* =========================
+   ADDED WALLET SUPPORT ONLY
+   ========================= */
+
+function fetchWalletTransactionByReference(
+    mysqli $conn,
+    string $referenceNo
+): ?array {
+    if ($referenceNo === '') {
+        return null;
+    }
+
+    $stmt = $conn->prepare("
+        SELECT *
+        FROM wallet_transactions
+        WHERE reference_no = ?
+        ORDER BY id DESC
+        LIMIT 1
+    ");
+    if (!$stmt) {
+        throw new Exception('Prepare failed while fetching wallet transaction by reference: ' . $conn->error);
+    }
+
+    $stmt->bind_param('s', $referenceNo);
+    $stmt->execute();
+
+    $result = $stmt->get_result();
+    $row = $result ? $result->fetch_assoc() : null;
+    $stmt->close();
+
+    return $row ?: null;
+}
+
+function updateWalletTransactionSyncStatus(
+    mysqli $conn,
+    int $walletTransactionId,
+    string $syncStatus,
+    ?string $syncError = null
+): void {
+    if ($walletTransactionId <= 0) {
+        return;
+    }
+
+    $stmt = $conn->prepare("
+        UPDATE wallet_transactions
+        SET sync_status = ?, sync_error = ?, updated_at = NOW()
+        WHERE id = ?
+        LIMIT 1
+    ");
+    if (!$stmt) {
+        throw new Exception('Prepare failed while updating wallet transaction sync status: ' . $conn->error);
+    }
+
+    $stmt->bind_param('ssi', $syncStatus, $syncError, $walletTransactionId);
+
+    if (!$stmt->execute()) {
+        $error = $stmt->error;
+        $stmt->close();
+        throw new Exception('Failed to update wallet transaction sync status: ' . $error);
+    }
+
+    $stmt->close();
+}
+
+function walletReversalAlreadyExists(
+    mysqli $conn,
+    string $referenceNo
+): bool {
+    if ($referenceNo === '') {
+        return false;
+    }
+
+    $reversalRef = $referenceNo . '-REVERSAL';
+
+    $stmt = $conn->prepare("
+        SELECT id
+        FROM wallet_transactions
+        WHERE reference_no = ?
+        LIMIT 1
+    ");
+    if (!$stmt) {
+        throw new Exception('Prepare failed while checking wallet reversal: ' . $conn->error);
+    }
+
+    $stmt->bind_param('s', $reversalRef);
+    $stmt->execute();
+
+    $result = $stmt->get_result();
+    $exists = $result && $result->num_rows > 0;
+    $stmt->close();
+
+    return $exists;
+}
+
+function reverseWalletPaymentIfNeeded(
+    mysqli $conn,
+    array $transaction,
+    float $amount
+): void {
+    $providerMethod = strtoupper(trim((string)($transaction['provider_method'] ?? '')));
+    if ($providerMethod !== 'WALLET') {
+        dbg_verify('Wallet reversal skipped: provider_method is not WALLET.');
+        return;
+    }
+
+    $receiptNumber = trim((string)($transaction['receipt_number'] ?? ''));
+    if ($receiptNumber === '') {
+        dbg_verify('Wallet reversal skipped: receipt_number missing.');
+        return;
+    }
+
+    $walletTx = fetchWalletTransactionByReference($conn, $receiptNumber);
+    if (!$walletTx) {
+        dbg_verify('Wallet reversal skipped: original wallet transaction not found for reference=' . $receiptNumber);
+        return;
+    }
+
+    $walletTransactionId = (int)($walletTx['id'] ?? 0);
+    $walletAccountId = (int)($walletTx['wallet_account_id'] ?? 0);
+    $walletUserId = (int)($walletTx['user_id'] ?? 0);
+
+    if ($walletTransactionId <= 0 || $walletAccountId <= 0 || $walletUserId <= 0) {
+        dbg_verify('Wallet reversal skipped: invalid wallet transaction/account/user metadata.');
+        return;
+    }
+
+    if (walletReversalAlreadyExists($conn, $receiptNumber)) {
+        dbg_verify('Wallet reversal skipped: reversal already exists for reference=' . $receiptNumber);
+        return;
+    }
+
+    $stmt = $conn->prepare("
+        SELECT id, balance
+        FROM wallet_accounts
+        WHERE id = ?
+        LIMIT 1
+        FOR UPDATE
+    ");
+    if (!$stmt) {
+        throw new Exception('Prepare failed while locking wallet account for reversal: ' . $conn->error);
+    }
+
+    $stmt->bind_param('i', $walletAccountId);
+    $stmt->execute();
+
+    $result = $stmt->get_result();
+    $walletAccount = $result ? $result->fetch_assoc() : null;
+    $stmt->close();
+
+    if (!$walletAccount) {
+        throw new Exception('Wallet account not found for reversal. wallet_account_id=' . $walletAccountId);
+    }
+
+    $currentBalance = (float)($walletAccount['balance'] ?? 0.00);
+    $newBalance = $currentBalance + $amount;
+
+    $upd = $conn->prepare("
+        UPDATE wallet_accounts
+        SET balance = ?, updated_at = NOW()
+        WHERE id = ?
+        LIMIT 1
+    ");
+    if (!$upd) {
+        throw new Exception('Prepare failed while updating wallet balance reversal: ' . $conn->error);
+    }
+
+    $upd->bind_param('di', $newBalance, $walletAccountId);
+
+    if (!$upd->execute()) {
+        $error = $upd->error;
+        $upd->close();
+        throw new Exception('Failed to reverse wallet balance: ' . $error);
+    }
+    $upd->close();
+
+    $transactionType = 'ADJUSTMENT';
+    $runningBalance = $newBalance;
+    $referenceNo = $receiptNumber . '-REVERSAL';
+    $remarks = 'Auto reversal after failed/rejected financial verification for wallet payment';
+    $status = 'SUCCESS';
+    $syncStatus = 'FAILED';
+    $syncError = 'Financial verification failed/rejected; wallet amount returned to client.';
+    $loanId = isset($transaction['loan_id']) && (int)$transaction['loan_id'] > 0 ? (int)$transaction['loan_id'] : null;
+    $restructuredLoanId = isset($transaction['restructured_loan_id']) && (int)$transaction['restructured_loan_id'] > 0 ? (int)$transaction['restructured_loan_id'] : null;
+
+    $ins = $conn->prepare("
+        INSERT INTO wallet_transactions (
+            wallet_account_id,
+            user_id,
+            loan_id,
+            restructured_loan_id,
+            transaction_type,
+            amount,
+            running_balance,
+            reference_no,
+            remarks,
+            status,
+            sync_status,
+            sync_error
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ");
+    if (!$ins) {
+        throw new Exception('Prepare failed while inserting wallet reversal transaction: ' . $conn->error);
+    }
+
+    $ins->bind_param(
+        'iiiisddsssss',
+        $walletAccountId,
+        $walletUserId,
+        $loanId,
+        $restructuredLoanId,
+        $transactionType,
+        $amount,
+        $runningBalance,
+        $referenceNo,
+        $remarks,
+        $status,
+        $syncStatus,
+        $syncError
+    );
+
+    if (!$ins->execute()) {
+        $error = $ins->error;
+        $ins->close();
+        throw new Exception('Failed to insert wallet reversal transaction: ' . $error);
+    }
+    $ins->close();
+
+    updateWalletTransactionSyncStatus(
+        $conn,
+        $walletTransactionId,
+        'FAILED',
+        'Financial verification failed/rejected; wallet payment reversed automatically.'
+    );
+
+    dbg_verify(
+        'WALLET PAYMENT REVERSED wallet_tx_id=' . $walletTransactionId .
+        ', wallet_account_id=' . $walletAccountId .
+        ', amount=' . number_format($amount, 2, '.', '') .
+        ', old_balance=' . number_format($currentBalance, 2, '.', '') .
+        ', new_balance=' . number_format($newBalance, 2, '.', '') .
+        ', reference=' . $receiptNumber
+    );
+}
+
+/* =========================
+   END ADDED WALLET SUPPORT
+   ========================= */
+
 try {
     $conn = getCore1Connection();
     dbg_verify('Receiver started successfully.');
@@ -547,6 +796,14 @@ try {
 
     if (!tableExists($conn, 'restructured_loans')) {
         throw new Exception('restructured_loans table not found in CORE1 database.');
+    }
+
+    if (!tableExists($conn, 'wallet_accounts')) {
+        dbg_verify('wallet_accounts table not found. Wallet reversal features will be skipped if not needed.');
+    }
+
+    if (!tableExists($conn, 'wallet_transactions')) {
+        dbg_verify('wallet_transactions table not found. Wallet sync/reversal features will be skipped if not needed.');
     }
 
     $transactionColumns = getTableColumns($conn, 'transactions');
@@ -627,12 +884,15 @@ try {
     }
 
     $resolvedTransactionId = (int)$transaction['id'];
+    $oldTransactionStatus = strtoupper(trim((string)($transaction['status'] ?? '')));
+    $providerMethod = strtoupper(trim((string)($transaction['provider_method'] ?? '')));
 
     dbg_verify(
         'Matched transaction => id=' . $resolvedTransactionId .
         ', loan_id=' . ((isset($transaction['loan_id']) && $transaction['loan_id'] !== null) ? (string)$transaction['loan_id'] : 'NULL') .
         ', restructured_loan_id=' . ((isset($transaction['restructured_loan_id']) && $transaction['restructured_loan_id'] !== null) ? (string)$transaction['restructured_loan_id'] : 'NULL') .
-        ', current_status=' . ((string)($transaction['status'] ?? 'UNKNOWN'))
+        ', current_status=' . ((string)($transaction['status'] ?? 'UNKNOWN')) .
+        ', provider_method=' . ($providerMethod !== '' ? $providerMethod : 'UNKNOWN')
     );
 
     updateTransaction(
@@ -659,7 +919,51 @@ try {
         $resolvedRestructuredLoanId = (int)$transaction['restructured_loan_id'];
     }
 
-    if ($normalizedStatus === 'SUCCESS' && $amount > 0) {
+    /* ==========================================
+       ADDED: WALLET TRANSACTION SYNC STATUS UPDATE
+       ========================================== */
+    if ($providerMethod === 'WALLET' && tableExists($conn, 'wallet_transactions')) {
+        $walletReference = $receiptNumber !== '' ? $receiptNumber : trim((string)($transaction['receipt_number'] ?? ''));
+
+        if ($walletReference !== '') {
+            $walletTx = fetchWalletTransactionByReference($conn, $walletReference);
+
+            if ($walletTx) {
+                $walletTxId = (int)($walletTx['id'] ?? 0);
+
+                if ($normalizedStatus === 'SUCCESS') {
+                    updateWalletTransactionSyncStatus($conn, $walletTxId, 'SYNCED', null);
+                    dbg_verify('Wallet transaction marked SYNCED. wallet_tx_id=' . $walletTxId . ', reference=' . $walletReference);
+                } elseif ($normalizedStatus === 'FAILED') {
+                    updateWalletTransactionSyncStatus(
+                        $conn,
+                        $walletTxId,
+                        'FAILED',
+                        'Financial verification returned FAILED.'
+                    );
+                    dbg_verify('Wallet transaction marked FAILED. wallet_tx_id=' . $walletTxId . ', reference=' . $walletReference);
+                }
+            } else {
+                dbg_verify('Wallet transaction not found for sync update. reference=' . $walletReference);
+            }
+        }
+    }
+
+    /* ==========================================
+       ADDED: IDEMPOTENCY GUARD
+       Prevent double loan deduction on repeated SUCCESS callbacks
+       ========================================== */
+    $shouldApplyLoanBalanceUpdate = true;
+
+    if ($normalizedStatus === 'SUCCESS' && $oldTransactionStatus === 'SUCCESS') {
+        $shouldApplyLoanBalanceUpdate = false;
+        dbg_verify(
+            'Idempotency guard hit: transaction already SUCCESS before this callback. ' .
+            'Skipping loan/restructured balance update for transaction_id=' . $resolvedTransactionId
+        );
+    }
+
+    if ($normalizedStatus === 'SUCCESS' && $amount > 0 && $shouldApplyLoanBalanceUpdate) {
         if ($resolvedRestructuredLoanId > 0) {
             dbg_verify(
                 'Detected restructured payment. transaction_id=' . $resolvedTransactionId .
@@ -694,6 +998,18 @@ try {
         }
     }
 
+    /* ==========================================
+       ADDED: WALLET REVERSAL ON FAILED
+       Only for provider_method = WALLET
+       ========================================== */
+    if ($normalizedStatus === 'FAILED' && $amount > 0 && $providerMethod === 'WALLET') {
+        if (tableExists($conn, 'wallet_accounts') && tableExists($conn, 'wallet_transactions')) {
+            reverseWalletPaymentIfNeeded($conn, $transaction, $amount);
+        } else {
+            dbg_verify('Wallet reversal skipped because wallet tables do not exist.');
+        }
+    }
+
     $conn->commit();
 
     dbg_verify(
@@ -704,7 +1020,8 @@ try {
         ', receipt_number=' . ($receiptNumber !== '' ? $receiptNumber : 'NULL') .
         ', reference_number=' . ($referenceNumber !== '' ? $referenceNumber : 'NULL') .
         ', resolved_loan_id=' . $resolvedLoanId .
-        ', resolved_restructured_loan_id=' . $resolvedRestructuredLoanId
+        ', resolved_restructured_loan_id=' . $resolvedRestructuredLoanId .
+        ', provider_method=' . ($providerMethod !== '' ? $providerMethod : 'UNKNOWN')
     );
 
     success_response('Payment verification synced to CORE1 successfully.', [
@@ -715,6 +1032,7 @@ try {
         'financial_payment_status' => $financialPaymentStatus !== '' ? $financialPaymentStatus : 'Completed',
         'loan_id' => $resolvedLoanId,
         'restructured_loan_id' => $resolvedRestructuredLoanId,
+        'provider_method' => $providerMethod !== '' ? $providerMethod : 'UNKNOWN',
     ]);
 } catch (Throwable $e) {
     if (isset($conn) && $conn instanceof mysqli) {

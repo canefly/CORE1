@@ -72,7 +72,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new Exception('Invalid wallet balance after cash out.');
                 }
 
-                // safety check again: after deduction, remaining balance must still protect reserved amount
                 if ($newBalance < $currentReserved) {
                     throw new Exception('Cash out would reduce protected loan funds.');
                 }
@@ -109,7 +108,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // refresh latest values after validation/result
     $wallet         = getOrCreateWallet($conn, $user_id);
     $balance        = (float) ($wallet['balance'] ?? 0);
     $reservedAmount = getReservedAmount($conn, $user_id);
@@ -151,20 +149,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             box-sizing: border-box;
         }
 
-        body {
+        html, body {
             margin: 0;
+            min-height: 100%;
             background: var(--bg-main);
             color: var(--text-main);
             font-family: Arial, sans-serif;
         }
 
+        body {
+            background: var(--bg-main);
+        }
+
         .main-content {
+            margin-left: 250px;
+            min-height: 100vh;
             padding: 28px;
         }
 
         .cashout-shell {
+            width: 100%;
             max-width: 1100px;
-            margin: 0 auto;
         }
 
         .page-header {
@@ -184,16 +189,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         .grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr);
             gap: 22px;
+            align-items: start;
         }
 
         .card {
+            width: 100%;
             background: var(--card-bg);
             border: 1px solid var(--card-border);
             border-radius: var(--radius-lg);
             box-shadow: var(--shadow);
             padding: 24px;
+            overflow: hidden;
         }
 
         .balance-card .label {
@@ -207,6 +215,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-weight: 900;
             line-height: 1;
             margin-bottom: 18px;
+            word-break: break-word;
         }
 
         .meta {
@@ -217,6 +226,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .meta-row {
             display: flex;
             justify-content: space-between;
+            align-items: flex-start;
             gap: 12px;
             padding: 12px 0;
             border-bottom: 1px solid rgba(255,255,255,0.07);
@@ -228,11 +238,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         .meta-row span:first-child {
             color: var(--text-soft);
+            flex: 1;
         }
 
         .meta-row span:last-child {
             font-weight: 700;
             text-align: right;
+            flex: 1;
+            word-break: break-word;
         }
 
         .form-title {
@@ -340,17 +353,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .loan-box .loan-row {
             display: flex;
             justify-content: space-between;
+            align-items: flex-start;
             gap: 12px;
             padding: 8px 0;
         }
 
         .loan-box .loan-row span:first-child {
             color: var(--text-soft);
+            flex: 1;
         }
 
         .loan-box .loan-row span:last-child {
             font-weight: 700;
             text-align: right;
+            flex: 1;
+            word-break: break-word;
         }
 
         .warning-note {
@@ -364,17 +381,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-size: 0.9rem;
         }
 
-        @media (max-width: 900px) {
+        @media (max-width: 1100px) {
+            .main-content {
+                margin-left: 250px;
+                padding: 22px;
+            }
+
             .grid {
                 grid-template-columns: 1fr;
             }
+        }
 
+        @media (max-width: 768px) {
             .main-content {
+                margin-left: 0;
                 padding: 18px;
+                padding-top: 90px;
             }
 
             .form-actions .btn {
                 width: 100%;
+            }
+
+            .balance-card .amount {
+                font-size: 2.4rem;
+            }
+        }
+
+        @media (max-width: 520px) {
+            .meta-row,
+            .loan-box .loan-row {
+                flex-direction: column;
+            }
+
+            .meta-row span:last-child,
+            .loan-box .loan-row span:last-child {
+                text-align: left;
             }
         }
     </style>
