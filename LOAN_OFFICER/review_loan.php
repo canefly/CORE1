@@ -23,229 +23,254 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             $pdo->beginTransaction();
 
-// Lock + fetch application details
-$stmtApp = $pdo->prepare("
-    SELECT *
-    FROM loan_applications
-    WHERE id = ?
-    FOR UPDATE
-");
-$stmtApp->execute([$app_id]);
-$appRow = $stmtApp->fetch(PDO::FETCH_ASSOC);
+            // Lock + fetch application details
+            $stmtApp = $pdo->prepare("
+                SELECT *
+                FROM loan_applications
+                WHERE id = ?
+                FOR UPDATE
+            ");
+            $stmtApp->execute([$app_id]);
+            $appRow = $stmtApp->fetch(PDO::FETCH_ASSOC);
 
-if (!$appRow) {
-    throw new Exception("Application not found.");
-}
+            if (!$appRow) {
+                throw new Exception("Application not found.");
+            }
 
-if (($appRow['status'] ?? '') !== 'VERIFIED') {
-    throw new Exception("Only VERIFIED applications can be approved.");
-}
+            if (($appRow['status'] ?? '') !== 'VERIFIED') {
+                throw new Exception("Only VERIFIED applications can be approved.");
+            }
 
-// 1) Update loan application status to APPROVED
-$stmtUpd = $pdo->prepare("
-    UPDATE loan_applications
-    SET status = 'APPROVED', updated_at = NOW()
-    WHERE id = ?
-");
-$stmtUpd->execute([$app_id]);
+            // 1) Update loan application status to APPROVED
+            $stmtUpd = $pdo->prepare("
+                UPDATE loan_applications
+                SET status = 'APPROVED', updated_at = NOW()
+                WHERE id = ?
+            ");
+            $stmtUpd->execute([$app_id]);
 
-// 2) Check or create/update CORE1 local loan_disbursement
-$stmtCheckDisb = $pdo->prepare("
-    SELECT id
-    FROM loan_disbursement
-    WHERE application_id = ?
-    LIMIT 1
-");
-$stmtCheckDisb->execute([$app_id]);
-$existingDisbId = $stmtCheckDisb->fetchColumn();
+            // 2) Check or create/update CORE1 local loan_disbursement
+            $stmtCheckDisb = $pdo->prepare("
+                SELECT id
+                FROM loan_disbursement
+                WHERE application_id = ?
+                LIMIT 1
+            ");
+            $stmtCheckDisb->execute([$app_id]);
+            $existingDisbId = $stmtCheckDisb->fetchColumn();
 
-if (!$existingDisbId) {
-    $stmtInsertDisb = $pdo->prepare("
-        INSERT INTO loan_disbursement (
-            application_id,
-            user_id,
-            principal_amount,
-            term_months,
-            loan_purpose,
-            source_of_income,
-            estimated_monthly_income,
-            interest_rate,
-            interest_type,
-            interest_method,
-            total_interest,
-            total_payable,
-            monthly_due,
-            status,
-            created_at,
-            updated_at
-        )
-        VALUES (
-            :application_id,
-            :user_id,
-            :principal_amount,
-            :term_months,
-            :loan_purpose,
-            :source_of_income,
-            :estimated_monthly_income,
-            :interest_rate,
-            :interest_type,
-            :interest_method,
-            :total_interest,
-            :total_payable,
-            :monthly_due,
-            'WAITING FOR DISBURSEMENT',
-            NOW(),
-            NOW()
-        )
-    ");
+            if (!$existingDisbId) {
+                $stmtInsertDisb = $pdo->prepare("
+                    INSERT INTO loan_disbursement (
+                        application_id,
+                        user_id,
+                        principal_amount,
+                        term_months,
+                        loan_purpose,
+                        source_of_income,
+                        estimated_monthly_income,
+                        interest_rate,
+                        interest_type,
+                        interest_method,
+                        total_interest,
+                        total_payable,
+                        monthly_due,
+                        status,
+                        created_at,
+                        updated_at
+                    )
+                    VALUES (
+                        :application_id,
+                        :user_id,
+                        :principal_amount,
+                        :term_months,
+                        :loan_purpose,
+                        :source_of_income,
+                        :estimated_monthly_income,
+                        :interest_rate,
+                        :interest_type,
+                        :interest_method,
+                        :total_interest,
+                        :total_payable,
+                        :monthly_due,
+                        'WAITING FOR DISBURSEMENT',
+                        NOW(),
+                        NOW()
+                    )
+                ");
 
-    $stmtInsertDisb->execute([
-        ':application_id'           => $appRow['id'],
-        ':user_id'                  => $appRow['user_id'],
-        ':principal_amount'         => $appRow['principal_amount'],
-        ':term_months'              => $appRow['term_months'],
-        ':loan_purpose'             => $appRow['loan_purpose'],
-        ':source_of_income'         => $appRow['source_of_income'],
-        ':estimated_monthly_income' => $appRow['estimated_monthly_income'],
-        ':interest_rate'            => $appRow['interest_rate'],
-        ':interest_type'            => $appRow['interest_type'],
-        ':interest_method'          => $appRow['interest_method'],
-        ':total_interest'           => $appRow['total_interest'],
-        ':total_payable'            => $appRow['total_payable'],
-        ':monthly_due'              => $appRow['monthly_due']
-    ]);
-} else {
-    $stmtUpdateDisb = $pdo->prepare("
-        UPDATE loan_disbursement
-        SET
-            user_id = :user_id,
-            principal_amount = :principal_amount,
-            term_months = :term_months,
-            loan_purpose = :loan_purpose,
-            source_of_income = :source_of_income,
-            estimated_monthly_income = :estimated_monthly_income,
-            interest_rate = :interest_rate,
-            interest_type = :interest_type,
-            interest_method = :interest_method,
-            total_interest = :total_interest,
-            total_payable = :total_payable,
-            monthly_due = :monthly_due,
-            status = 'WAITING FOR DISBURSEMENT',
-            updated_at = NOW()
-        WHERE application_id = :application_id
-    ");
+                $stmtInsertDisb->execute([
+                    ':application_id'           => $appRow['id'],
+                    ':user_id'                  => $appRow['user_id'],
+                    ':principal_amount'         => $appRow['principal_amount'],
+                    ':term_months'              => $appRow['term_months'],
+                    ':loan_purpose'             => $appRow['loan_purpose'],
+                    ':source_of_income'         => $appRow['source_of_income'],
+                    ':estimated_monthly_income' => $appRow['estimated_monthly_income'],
+                    ':interest_rate'            => $appRow['interest_rate'],
+                    ':interest_type'            => $appRow['interest_type'],
+                    ':interest_method'          => $appRow['interest_method'],
+                    ':total_interest'           => $appRow['total_interest'],
+                    ':total_payable'            => $appRow['total_payable'],
+                    ':monthly_due'              => $appRow['monthly_due']
+                ]);
+            } else {
+                $stmtUpdateDisb = $pdo->prepare("
+                    UPDATE loan_disbursement
+                    SET
+                        user_id = :user_id,
+                        principal_amount = :principal_amount,
+                        term_months = :term_months,
+                        loan_purpose = :loan_purpose,
+                        source_of_income = :source_of_income,
+                        estimated_monthly_income = :estimated_monthly_income,
+                        interest_rate = :interest_rate,
+                        interest_type = :interest_type,
+                        interest_method = :interest_method,
+                        total_interest = :total_interest,
+                        total_payable = :total_payable,
+                        monthly_due = :monthly_due,
+                        status = 'WAITING FOR DISBURSEMENT',
+                        updated_at = NOW()
+                    WHERE application_id = :application_id
+                ");
 
-    $stmtUpdateDisb->execute([
-        ':application_id'           => $appRow['id'],
-        ':user_id'                  => $appRow['user_id'],
-        ':principal_amount'         => $appRow['principal_amount'],
-        ':term_months'              => $appRow['term_months'],
-        ':loan_purpose'             => $appRow['loan_purpose'],
-        ':source_of_income'         => $appRow['source_of_income'],
-        ':estimated_monthly_income' => $appRow['estimated_monthly_income'],
-        ':interest_rate'            => $appRow['interest_rate'],
-        ':interest_type'            => $appRow['interest_type'],
-        ':interest_method'          => $appRow['interest_method'],
-        ':total_interest'           => $appRow['total_interest'],
-        ':total_payable'            => $appRow['total_payable'],
-        ':monthly_due'              => $appRow['monthly_due']
-    ]);
-}
+                $stmtUpdateDisb->execute([
+                    ':application_id'           => $appRow['id'],
+                    ':user_id'                  => $appRow['user_id'],
+                    ':principal_amount'         => $appRow['principal_amount'],
+                    ':term_months'              => $appRow['term_months'],
+                    ':loan_purpose'             => $appRow['loan_purpose'],
+                    ':source_of_income'         => $appRow['source_of_income'],
+                    ':estimated_monthly_income' => $appRow['estimated_monthly_income'],
+                    ':interest_rate'            => $appRow['interest_rate'],
+                    ':interest_type'            => $appRow['interest_type'],
+                    ':interest_method'          => $appRow['interest_method'],
+                    ':total_interest'           => $appRow['total_interest'],
+                    ':total_payable'            => $appRow['total_payable'],
+                    ':monthly_due'              => $appRow['monthly_due']
+                ]);
+            }
 
-// 3) Get client full name from CORE1 users table
-$stmtGetUser = $pdo->prepare("
-    SELECT u.fullname
-    FROM loan_applications la
-    JOIN users u ON la.user_id = u.id
-    WHERE la.id = ?
-    LIMIT 1
-");
-$stmtGetUser->execute([$appRow['id']]);
-$userRow = $stmtGetUser->fetch(PDO::FETCH_ASSOC);
+            // 3) Get client full profile from CORE1 users table
+            $stmtGetUser = $pdo->prepare("
+                SELECT 
+                    u.fullname,
+                    u.phone,
+                    u.email,
+                    u.dob,
+                    u.gender,
+                    u.occupation,
+                    u.address,
+                    u.created_at
+                FROM loan_applications la
+                JOIN users u ON la.user_id = u.id
+                WHERE la.id = ?
+                LIMIT 1
+            ");
+            $stmtGetUser->execute([$appRow['id']]);
+            $userRow = $stmtGetUser->fetch(PDO::FETCH_ASSOC);
 
-$clientName = trim((string)($userRow['fullname'] ?? ''));
+            $clientName = trim((string)($userRow['fullname'] ?? ''));
 
-if ($clientName === '') {
-    throw new Exception("Client name not found.");
-}
+            if ($clientName === '') {
+                throw new Exception("Client name not found.");
+            }
 
-// 4) Get CORE1 local disbursement id
-$stmtLocalDisb = $pdo->prepare("
-    SELECT id
-    FROM loan_disbursement
-    WHERE application_id = ?
-    LIMIT 1
-");
-$stmtLocalDisb->execute([$appRow['id']]);
-$localDisb = $stmtLocalDisb->fetch(PDO::FETCH_ASSOC);
+            $clientPhone      = trim((string)($userRow['phone'] ?? ''));
+            $clientEmail      = trim((string)($userRow['email'] ?? ''));
+            $clientDob        = $userRow['dob'] ?? null;
+            $clientGender     = trim((string)($userRow['gender'] ?? ''));
+            $clientOccupation = trim((string)($userRow['occupation'] ?? ''));
+            $clientAddress    = trim((string)($userRow['address'] ?? ''));
+            $clientCreatedAt  = $userRow['created_at'] ?? null;
 
-$core1DisbursementId = (int)($localDisb['id'] ?? 0);
+            // 4) Get CORE1 local disbursement id
+            $stmtLocalDisb = $pdo->prepare("
+                SELECT id
+                FROM loan_disbursement
+                WHERE application_id = ?
+                LIMIT 1
+            ");
+            $stmtLocalDisb->execute([$appRow['id']]);
+            $localDisb = $stmtLocalDisb->fetch(PDO::FETCH_ASSOC);
 
-if ($core1DisbursementId <= 0) {
-    throw new Exception("Local disbursement queue record not found.");
-}
+            $core1DisbursementId = (int)($localDisb['id'] ?? 0);
 
-// 5) Safe payload values
-$principalAmount = (float)($appRow['principal_amount'] ?? 0);
-$termMonths      = (int)($appRow['term_months'] ?? 0);
-$interestRate    = (float)($appRow['interest_rate'] ?? 0);
-$interestMethod  = trim((string)($appRow['interest_method'] ?? 'FLAT'));
-$monthlyDueVal   = (float)($appRow['monthly_due'] ?? 0);
-$totalPayableVal = (float)($appRow['total_payable'] ?? 0);
+            if ($core1DisbursementId <= 0) {
+                throw new Exception("Local disbursement queue record not found.");
+            }
 
-if ($principalAmount <= 0) {
-    throw new Exception("Invalid principal amount.");
-}
+            // 5) Safe payload values
+            $principalAmount = (float)($appRow['principal_amount'] ?? 0);
+            $termMonths      = (int)($appRow['term_months'] ?? 0);
+            $interestRate    = (float)($appRow['interest_rate'] ?? 0);
+            $interestMethod  = trim((string)($appRow['interest_method'] ?? 'FLAT'));
+            $monthlyDueVal   = (float)($appRow['monthly_due'] ?? 0);
+            $totalPayableVal = (float)($appRow['total_payable'] ?? 0);
 
-if ($termMonths <= 0) {
-    throw new Exception("Invalid term months.");
-}
+            if ($principalAmount <= 0) {
+                throw new Exception("Invalid principal amount.");
+            }
 
-if ($interestMethod === '') {
-    $interestMethod = 'FLAT';
-}
+            if ($termMonths <= 0) {
+                throw new Exception("Invalid term months.");
+            }
 
-if ($monthlyDueVal <= 0) {
-    if ($totalPayableVal > 0 && $termMonths > 0) {
-        $monthlyDueVal = $totalPayableVal / $termMonths;
-    } else {
-        $monthlyDueVal = $principalAmount / $termMonths;
-    }
-}
+            if ($interestMethod === '') {
+                $interestMethod = 'FLAT';
+            }
 
-if ($totalPayableVal <= 0) {
-    $totalPayableVal = $monthlyDueVal * $termMonths;
-}
+            if ($monthlyDueVal <= 0) {
+                if ($totalPayableVal > 0 && $termMonths > 0) {
+                    $monthlyDueVal = $totalPayableVal / $termMonths;
+                } else {
+                    $monthlyDueVal = $principalAmount / $termMonths;
+                }
+            }
 
-// 6) Send to FINANCIAL
-$payload = [
-    "application_id"        => (int)$appRow['id'],
-    "core1_disbursement_id" => $core1DisbursementId,
-    "user_id"               => (int)$appRow['user_id'],
-    "client_name"           => $clientName,
-    "amount"                => $principalAmount,
-    "term_months"           => $termMonths,
-    "interest_rate"         => $interestRate,
-    "interest_method"       => $interestMethod,
-    "monthly_due"           => $monthlyDueVal,
-    "total_payable"         => $totalPayableVal,
-    "status"                => "WAITING FOR DISBURSEMENT"
-];
+            if ($totalPayableVal <= 0) {
+                $totalPayableVal = $monthlyDueVal * $termMonths;
+            }
 
-$syncResult = sendApprovedLoanToFinancial($payload);
+            // 6) Send to FINANCIAL
+            $payload = [
+                "application_id"        => (int)$appRow['id'],
+                "core1_disbursement_id" => $core1DisbursementId,
+                "user_id"               => (int)$appRow['user_id'],
+                "client_name"           => $clientName,
+                "amount"                => $principalAmount,
+                "term_months"           => $termMonths,
+                "interest_rate"         => $interestRate,
+                "interest_method"       => $interestMethod,
+                "monthly_due"           => $monthlyDueVal,
+                "total_payable"         => $totalPayableVal,
+                "status"                => "WAITING FOR DISBURSEMENT",
 
-// Strict mode: if failed send to Financial, rollback all
-if (empty($syncResult['success'])) {
-    throw new Exception(
-        "Failed to send approved loan to Financial system: " .
-        ($syncResult['message'] ?? 'Unknown error')
-    );
-}
+                // ADDED ONLY: client profile fields from CORE1 users
+                "phone"                 => $clientPhone,
+                "email"                 => $clientEmail,
+                "dob"                   => $clientDob,
+                "gender"                => $clientGender,
+                "occupation"            => $clientOccupation,
+                "address"               => $clientAddress,
+                "created_at"            => $clientCreatedAt
+            ];
 
-$pdo->commit();
+            $syncResult = sendApprovedLoanToFinancial($payload);
 
-header("Location: dashboard.php?msg=approved");
-exit;
+            // Strict mode: if failed send to Financial, rollback all
+            if (empty($syncResult['success'])) {
+                throw new Exception(
+                    "Failed to send approved loan to Financial system: " .
+                    ($syncResult['message'] ?? 'Unknown error')
+                );
+            }
+
+            $pdo->commit();
+
+            header("Location: dashboard.php?msg=approved");
+            exit;
 
         } elseif ($_POST['action'] === 'reject') {
 

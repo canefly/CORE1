@@ -6,6 +6,7 @@ require_once __DIR__ . "/include/config.php";
 require_once __DIR__ . "/include/session_checker.php";
 require_once __DIR__ . "/include/wallet_helper.php";
 require_once __DIR__ . "/send_payment_to_financial.php";
+require_once __DIR__ . "/send_wallet_payment_to_core2.php";
 require_once __DIR__ . "/receipt_image_generator.php";
 
 if (!isset($_SESSION['user_id'])) {
@@ -531,15 +532,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     walletPayLog("Sending wallet payment to FINANCIAL payload=" . json_encode($paymentPayload));
 
                     $financialResponse = sendPaymentToFinancial($paymentPayload);
+walletPayLog("FINANCIAL response=" . json_encode($financialResponse));
 
-                    walletPayLog("FINANCIAL response=" . json_encode($financialResponse));
+$core2Response = sendWalletPaymentToCore2($paymentPayload);
+walletPayLog("CORE2 wallet response=" . json_encode($core2Response));
 
-                    if (!empty($financialResponse['success'])) {
-                        updateWalletTransactionSync($conn, $walletTransactionId, 'SYNCED', null);
-                    } else {
-                        $syncError = (string)($financialResponse['message'] ?? 'Unknown FINANCIAL error');
-                        updateWalletTransactionSync($conn, $walletTransactionId, 'FAILED', $syncError);
-                    }
+$financialOk = !empty($financialResponse['success']);
+$core2Ok = !empty($core2Response['success']);
+
+if ($financialOk && $core2Ok) {
+    updateWalletTransactionSync($conn, $walletTransactionId, 'SYNCED', null);
+} else {
+    $errors = [];
+
+    if (!$financialOk) {
+        $errors[] = 'FINANCIAL: ' . (string)($financialResponse['message'] ?? 'Unknown FINANCIAL error');
+    }
+
+    if (!$core2Ok) {
+        $errors[] = 'CORE2: ' . (string)($core2Response['message'] ?? 'Unknown CORE2 error');
+    }
+
+    updateWalletTransactionSync($conn, $walletTransactionId, 'FAILED', implode(' | ', $errors));
+}
                 } catch (Throwable $syncEx) {
                     walletPayLog("Financial send failed for tx_id={$transactionId}: " . $syncEx->getMessage());
                     updateWalletTransactionSync($conn, $walletTransactionId, 'FAILED', $syncEx->getMessage());
@@ -787,7 +802,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </style>
 </head>
 <body>
-<?php include __DIR__ . "/includes/sidebar.php"; ?>
+<?php include __DIR__ . '/include/sidebar.php'; ?>
 
 <div class="main-content">
     <div class="shell">
