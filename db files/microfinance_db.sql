@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Mar 12, 2026 at 04:49 PM
+-- Generation Time: Mar 23, 2026 at 05:40 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -20,6 +20,46 @@ SET time_zone = "+00:00";
 --
 -- Database: `microfinance_db`
 --
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `chat_support_messages`
+--
+
+CREATE TABLE `chat_support_messages` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) DEFAULT 0,
+  `name` varchar(100) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `message` text NOT NULL,
+  `admin_reply` text DEFAULT NULL,
+  `replied_by` varchar(100) DEFAULT NULL,
+  `status` enum('pending','read','replied') DEFAULT 'pending',
+  `session_id` varchar(255) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `is_complaint` tinyint(1) DEFAULT 0,
+  `ticket_id` varchar(20) DEFAULT NULL,
+  `priority` enum('LOW','MEDIUM','HIGH') DEFAULT 'LOW',
+  `is_resolved` tinyint(1) DEFAULT 0,
+  `escalation_notes` text DEFAULT NULL,
+  `client_archived` tinyint(1) DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `chat_support_messages`
+--
+
+INSERT INTO `chat_support_messages` (`id`, `user_id`, `name`, `email`, `message`, `admin_reply`, `replied_by`, `status`, `session_id`, `created_at`, `updated_at`, `is_complaint`, `ticket_id`, `priority`, `is_resolved`, `escalation_notes`, `client_archived`) VALUES
+(1, 15, 'migel', 'migel@gmail.com', 'lloyd', NULL, NULL, 'read', '9aqcd62mp0vbb55kat2h00dmel', '2026-03-18 08:26:51', '2026-03-18 08:35:44', 0, 'TK-363149', 'LOW', 1, NULL, 1),
+(2, 15, 'migel', 'migel@gmail.com', 'burat', 'Hello! How can I help you today?', 'Neca Moratin', 'replied', '9aqcd62mp0vbb55kat2h00dmel', '2026-03-18 08:27:12', '2026-03-18 08:35:44', 0, 'TK-363149', 'LOW', 1, NULL, 1),
+(3, 15, 'migel', 'migel@gmail.com', 'yunf payment ko dipa nabababawas sa outstanding balance', 'Problema ko?', 'Neca Moratin', 'replied', '9aqcd62mp0vbb55kat2h00dmel', '2026-03-18 08:27:35', '2026-03-18 08:35:44', 0, 'TK-363149', 'LOW', 1, NULL, 1),
+(4, 15, 'migel', 'migel@gmail.com', '[SYSTEM]', NULL, NULL, 'read', '9aqcd62mp0vbb55kat2h00dmel', '2026-03-18 08:27:55', '2026-03-18 08:35:44', 1, 'TK-363149', 'HIGH', 1, 'Technical issue with payment gateway / Missing payment.', 1),
+(5, 15, 'migel', 'migel@gmail.com', '[SYSTEM]', '🎫 SYSTEM NOTIFICATION:\nYour complaint has been successfully escalated to the Finance Department.\n\nYour Ticket ID is: TK-363149\n\nPlease wait for further updates. You can safely \'End Conversation\' if you have no more questions.', 'System Agent', 'replied', '9aqcd62mp0vbb55kat2h00dmel', '2026-03-18 08:27:55', '2026-03-18 08:35:44', 0, 'TK-363149', 'LOW', 1, NULL, 1),
+(6, 15, 'migel', 'migel@gmail.com', '[SYSTEM]', '🎟️ SYSTEM NOTIFICATION: \nYour ticket (TK-363149) has been marked as RESOLVED by the Core 1 Department.\n\nFinance Notes: wala pong payment na nangyari', 'Finance Admin', 'replied', '9aqcd62mp0vbb55kat2h00dmel', '2026-03-18 08:30:53', '2026-03-18 08:35:44', 0, NULL, 'LOW', 0, NULL, 1),
+(7, 15, 'migel', 'migel@gmail.com', 'GOOD DAY!!', 'reply', 'Neca Moratin', 'replied', 'ugmfrgq54jtqilggau92ledrhl', '2026-03-18 09:15:20', '2026-03-18 09:16:10', 0, NULL, 'LOW', 0, NULL, 0),
+(8, 15, 'migel', 'migel@gmail.com', 'Why is my payment not reflecting?', 'Please wait a moment while I check your records.', 'Neca Moratin', 'replied', 'ugmfrgq54jtqilggau92ledrhl', '2026-03-18 09:16:14', '2026-03-18 09:16:37', 0, NULL, 'LOW', 0, NULL, 0);
 
 -- --------------------------------------------------------
 
@@ -52,6 +92,7 @@ CREATE TABLE `loans` (
   `id` int(11) NOT NULL,
   `user_id` int(11) DEFAULT NULL,
   `application_id` int(11) DEFAULT NULL,
+  `loan_disbursement_id` int(11) DEFAULT NULL,
   `loan_amount` decimal(10,2) DEFAULT NULL,
   `term_months` int(11) DEFAULT NULL,
   `monthly_due` decimal(10,2) DEFAULT NULL,
@@ -62,19 +103,35 @@ CREATE TABLE `loans` (
   `due_date` date DEFAULT NULL,
   `last_penalty_date` date DEFAULT NULL,
   `start_date` date DEFAULT NULL,
-  `status` enum('ACTIVE','COMPLETED','RESTRUCTURED') NOT NULL DEFAULT 'ACTIVE'
+  `status` enum('ACTIVE','COMPLETED','RESTRUCTURED') NOT NULL DEFAULT 'ACTIVE',
+  `receipt_no` varchar(50) DEFAULT NULL,
+  `receipt_image` varchar(255) DEFAULT NULL,
+  `released_at` datetime DEFAULT NULL,
+  `release_notes` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `loans`
 --
 
-INSERT INTO `loans` (`id`, `user_id`, `application_id`, `loan_amount`, `term_months`, `monthly_due`, `interest_rate`, `interest_method`, `outstanding`, `next_payment`, `due_date`, `last_penalty_date`, `start_date`, `status`) VALUES
-(8, 7, 18, 10000.00, 6, 2016.67, 3.50, 'FLAT', 8066.67, '2026-05-09', '2026-09-09', NULL, '2026-03-09', 'RESTRUCTURED'),
-(9, 2, 19, 10000.00, 6, 2016.67, 3.50, 'FLAT', 12100.00, '2026-04-10', '2026-09-10', NULL, '2026-03-10', 'RESTRUCTURED'),
-(13, 1, 22, 10000.00, 6, 1966.67, 3.00, '', 11800.00, '2026-04-11', '2026-09-11', NULL, '2026-03-11', 'RESTRUCTURED'),
-(14, 9, 23, 10000.00, 6, 1966.67, 3.00, '', 11800.00, '2026-04-11', '2026-09-11', NULL, '2026-03-11', 'ACTIVE'),
-(15, 10, 24, 10000.00, 6, 1966.67, 3.00, 'FLAT', 10000.00, '2026-04-12', '2026-09-12', NULL, '2026-03-12', 'ACTIVE');
+INSERT INTO `loans` (`id`, `user_id`, `application_id`, `loan_disbursement_id`, `loan_amount`, `term_months`, `monthly_due`, `interest_rate`, `interest_method`, `outstanding`, `next_payment`, `due_date`, `last_penalty_date`, `start_date`, `status`, `receipt_no`, `receipt_image`, `released_at`, `release_notes`, `created_at`, `updated_at`) VALUES
+(8, 7, 18, NULL, 10000.00, 6, 2016.67, 3.50, 'FLAT', 8066.67, '2026-05-09', '2026-09-09', NULL, '2026-03-09', 'RESTRUCTURED', NULL, NULL, NULL, NULL, '2026-03-14 16:53:35', '2026-03-14 16:53:35'),
+(9, 2, 19, NULL, 10000.00, 6, 2016.67, 3.50, 'FLAT', 12100.00, '2026-04-10', '2026-09-10', NULL, '2026-03-10', 'RESTRUCTURED', NULL, NULL, NULL, NULL, '2026-03-14 16:53:35', '2026-03-14 16:53:35'),
+(13, 1, 22, NULL, 10000.00, 6, 1966.67, 3.00, '', 11800.00, '2026-04-11', '2026-09-11', NULL, '2026-03-11', 'RESTRUCTURED', NULL, NULL, NULL, NULL, '2026-03-14 16:53:35', '2026-03-14 16:53:35'),
+(14, 9, 23, NULL, 10000.00, 6, 1966.67, 3.00, '', 11800.00, '2026-04-11', '2026-09-11', NULL, '2026-03-11', 'ACTIVE', NULL, NULL, NULL, NULL, '2026-03-14 16:53:35', '2026-03-14 16:53:35'),
+(23, 12, 27, 86, 10000.00, 6, 2066.67, 4.00, 'FLAT', 12400.00, '2026-04-17', '2026-09-17', NULL, '2026-03-17', 'ACTIVE', 'DISB-20260317-000008', NULL, '2026-03-17 16:12:24', NULL, '2026-03-17 15:14:00', '2026-03-17 15:14:00'),
+(24, 14, 28, 87, 10000.00, 6, 2066.67, 4.00, 'FLAT', 10333.33, '2026-05-17', '2026-09-17', NULL, '2026-03-17', 'ACTIVE', 'DISB-20260317-000009', NULL, '2026-03-17 16:22:17', NULL, '2026-03-17 15:23:53', '2026-03-17 15:27:08'),
+(25, 15, 29, 89, 10000.00, 6, 2066.67, 4.00, 'FLAT', 7210.37, '2026-05-18', '2026-09-18', NULL, '2026-03-18', 'ACTIVE', 'DISB-20260318-000010', NULL, '2026-03-18 08:35:38', NULL, '2026-03-18 07:37:15', '2026-03-18 09:01:23'),
+(26, 16, 30, 90, 10000.00, 6, 2066.67, 4.00, 'FLAT', 12400.00, '2026-04-18', '2026-09-18', NULL, '2026-03-18', 'ACTIVE', 'DISB-20260318-000004', NULL, '2026-03-18 19:59:38', NULL, '2026-03-18 19:01:16', '2026-03-18 19:01:16'),
+(29, 17, 33, 93, 10000.00, 6, 2066.67, 4.00, 'FLAT', 12400.00, '2026-04-20', '2026-09-20', NULL, '2026-03-20', 'ACTIVE', 'DISB-20260320-000006', NULL, '2026-03-20 06:09:41', NULL, '2026-03-20 05:11:20', '2026-03-20 05:11:20'),
+(31, 18, 35, 96, 10000.00, 6, 2066.67, 4.00, 'FLAT', 12400.00, '2026-04-20', '2026-09-20', NULL, '2026-03-20', 'ACTIVE', 'DISB-20260320-000009', NULL, '2026-03-20 06:56:24', NULL, '2026-03-20 05:58:03', '2026-03-20 05:58:03'),
+(32, 20, 37, 99, 10000.00, 6, 2066.67, 4.00, 'FLAT', 10333.33, '2026-05-20', '2026-09-20', NULL, '2026-03-20', 'ACTIVE', 'DISB-20260320-000011', NULL, '2026-03-20 08:44:24', NULL, '2026-03-20 07:46:01', '2026-03-20 07:51:54'),
+(33, 21, 38, 105, 10000.00, 6, 2066.67, 4.00, 'FLAT', 8266.66, '2026-06-20', '2026-09-20', NULL, '2026-03-20', 'ACTIVE', 'DISB-20260320-000017', NULL, '2026-03-20 09:23:41', NULL, '2026-03-20 08:25:18', '2026-03-20 08:27:29'),
+(34, 22, 39, 106, 10000.00, 6, 2066.67, 4.00, 'FLAT', 8266.66, '2026-06-20', '2026-09-20', NULL, '2026-03-20', 'ACTIVE', 'DISB-20260320-000018', NULL, '2026-03-20 09:52:25', NULL, '2026-03-20 08:54:02', '2026-03-20 08:57:25'),
+(35, 23, 40, 108, 10000.00, 6, 2066.67, 4.00, 'FLAT', 8266.66, '2026-06-23', '2026-09-23', NULL, '2026-03-23', 'ACTIVE', 'DISB-20260323-000019', NULL, '2026-03-23 04:25:40', NULL, '2026-03-23 03:27:20', '2026-03-23 03:29:06'),
+(36, 24, 41, 110, 10000.00, 6, 2066.67, 4.00, 'FLAT', 8266.66, '2026-06-23', '2026-09-23', NULL, '2026-03-23', 'ACTIVE', 'DISB-20260323-000020', NULL, '2026-03-23 05:28:54', NULL, '2026-03-23 04:30:29', '2026-03-23 04:32:29');
 
 -- --------------------------------------------------------
 
@@ -111,10 +168,21 @@ INSERT INTO `loan_applications` (`id`, `user_id`, `principal_amount`, `term_mont
 (19, 2, 10000.00, 6, 'Home Repair', 'ASAWA KO AY AFAM', 30000.00, 3.50, 'MONTHLY', 'FLAT', 2100.00, 12100.00, 2016.67, 'APPROVED', '', '2026-03-10 15:27:26', '2026-03-11 16:10:19'),
 (20, 3, 10000.00, 6, 'Business Capital', 'ASAWA KO AY AFAM', 40000.00, 3.50, 'MONTHLY', 'FLAT', 2100.00, 12100.00, 2016.67, 'APPROVED', '', '2026-03-10 16:31:17', '2026-03-10 16:54:59'),
 (21, 3, 12100.00, 9, 'RESTRUCTURE REQUEST | Type: Extension | Loan ID: 12 | Old Term: 6 | New Term: 9 | Old Monthly: 2016.67 | Est New Monthly: 1767.9444444444 | Reason: dami problema yahhhh', 'Restructure Request', 0.00, 3.50, 'MONTHLY', 'FLAT', NULL, NULL, NULL, 'REJECTED', '', '2026-03-10 17:35:17', '2026-03-11 20:16:43'),
-(22, 1, 10000.00, 6, 'Medical Emergency', 'ASAWA KO AY AFAM', 40000.00, 3.00, 'MONTHLY', '', 1800.00, 11800.00, 1966.67, 'APPROVED', '', '2026-03-11 19:41:14', '2026-03-11 21:08:23'),
+(22, 1, 10000.00, 6, 'Medical Emergency', 'ASAWA KO AY AFAM', 40000.00, 3.00, 'MONTHLY', '', 1800.00, 11800.00, 1966.67, 'REJECTED', 'Blurry ID', '2026-03-11 19:41:14', '2026-03-18 07:33:25'),
 (23, 9, 10000.00, 6, 'Business Capital', 'ASAWA KO AY AFAM', 4000.00, 3.00, 'MONTHLY', '', 1800.00, 11800.00, 1966.67, 'APPROVED', '', '2026-03-11 21:17:30', '2026-03-12 01:09:19'),
-(24, 10, 10000.00, 6, 'Medical Emergency', 'ASAWA KO AY AFAM', 50000.00, 3.00, 'MONTHLY', '', 1800.00, 11800.00, 1966.67, 'APPROVED', '', '2026-03-12 01:32:14', '2026-03-12 01:33:04'),
-(25, 12, 10000.00, 6, 'Business Capital', 'ASAWA KO AY AFAM', 50000.00, 3.00, 'MONTHLY', '', 1800.00, 11800.00, 1966.67, 'APPROVED', '', '2026-03-12 03:09:10', '2026-03-12 03:26:06');
+(24, 10, 10000.00, 6, 'Medical Emergency', 'ASAWA KO AY AFAM', 50000.00, 3.00, 'MONTHLY', '', 1800.00, 11800.00, 1966.67, 'APPROVED', '', '2026-03-12 01:32:14', '2026-03-14 02:25:07'),
+(27, 12, 10000.00, 6, 'Business Capital', 'ASAWA KO AY AFAM', 50000.00, 4.00, 'MONTHLY', 'FLAT', 2400.00, 12400.00, 2066.67, 'APPROVED', '', '2026-03-15 14:10:17', '2026-03-17 15:13:43'),
+(28, 14, 10000.00, 6, 'Business Capital', 'ASAWA KO AY AFAM', 40000.00, 4.00, 'MONTHLY', 'FLAT', 2400.00, 12400.00, 2066.67, 'APPROVED', '', '2026-03-17 15:23:06', '2026-03-17 15:23:35'),
+(29, 15, 10000.00, 6, 'Business Capital', 'SHABU SELLER', 50000.00, 4.00, 'MONTHLY', 'FLAT', 2400.00, 12400.00, 2066.67, 'APPROVED', '', '2026-03-18 07:34:01', '2026-03-18 07:36:40'),
+(30, 16, 10000.00, 6, 'Business Capital', 'ASAWA KO AY AFAM', 50000.00, 4.00, 'MONTHLY', 'FLAT', 2400.00, 12400.00, 2066.67, 'APPROVED', '', '2026-03-18 18:57:37', '2026-03-18 19:00:56'),
+(33, 17, 10000.00, 6, 'Business Capital', 'ASAWA KO AY AFAM', 50000.00, 4.00, 'MONTHLY', 'FLAT', 2400.00, 12400.00, 2066.67, 'APPROVED', '', '2026-03-20 04:46:01', '2026-03-20 04:46:33'),
+(35, 18, 10000.00, 6, 'Business Capital', 'ASAWA KO AY AFAM', 50000.00, 4.00, 'MONTHLY', 'FLAT', 2400.00, 12400.00, 2066.67, 'APPROVED', '', '2026-03-20 05:57:35', '2026-03-20 05:57:54'),
+(36, 19, 10000.00, 6, 'Business Capital', 'ASAWA KO AY AFAM', 50000.00, 4.00, 'MONTHLY', 'FLAT', 2400.00, 12400.00, 2066.67, 'VERIFIED', '', '2026-03-20 07:16:18', '2026-03-20 07:16:49'),
+(37, 20, 10000.00, 6, 'Business Capital', 'ASAWA KO AY AFAM', 30000.00, 4.00, 'MONTHLY', 'FLAT', 2400.00, 12400.00, 2066.67, 'APPROVED', '', '2026-03-20 07:44:28', '2026-03-20 07:45:16'),
+(38, 21, 10000.00, 6, 'Business Capital', 'ASAWA KO AY AFAM', 40000.00, 4.00, 'MONTHLY', 'FLAT', 2400.00, 12400.00, 2066.67, 'APPROVED', '', '2026-03-20 07:54:57', '2026-03-20 08:25:02'),
+(39, 22, 10000.00, 6, 'Business Capital', 'shabusilog', 65000.00, 4.00, 'MONTHLY', 'FLAT', 2400.00, 12400.00, 2066.67, 'APPROVED', '', '2026-03-20 08:53:16', '2026-03-20 08:53:50'),
+(40, 23, 10000.00, 6, 'Business Capital', 'ASAWA KO AY AFAM', 50000.00, 4.00, 'MONTHLY', 'FLAT', 2400.00, 12400.00, 2066.67, 'APPROVED', '', '2026-03-23 03:23:33', '2026-03-23 03:25:35'),
+(41, 24, 10000.00, 6, 'Business Capital', 'SHABU SELLER', 50000.00, 4.00, 'MONTHLY', 'FLAT', 2400.00, 12400.00, 2066.67, 'APPROVED', '', '2026-03-23 04:28:38', '2026-03-23 04:30:14');
 
 -- --------------------------------------------------------
 
@@ -137,7 +205,7 @@ CREATE TABLE `loan_disbursement` (
   `total_interest` decimal(10,2) DEFAULT NULL,
   `total_payable` decimal(10,2) DEFAULT NULL,
   `monthly_due` decimal(10,2) DEFAULT NULL,
-  `status` enum('WAITING FOR DISBURSEMENT','DISBURSED') DEFAULT 'WAITING FOR DISBURSEMENT',
+  `status` enum('WAITING FOR DISBURSEMENT','DISBURSED','REJECTED') DEFAULT 'WAITING FOR DISBURSEMENT',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -151,8 +219,18 @@ INSERT INTO `loan_disbursement` (`id`, `application_id`, `user_id`, `principal_a
 (10, 19, 2, 10000.00, 6, 'Home Repair', 'ASAWA KO AY AFAM', 30000.00, 3.50, 'MONTHLY', 'FLAT', 2100.00, 12100.00, 2016.67, 'DISBURSED', '2026-03-11 16:10:19', '2026-03-11 20:17:40'),
 (11, 22, 1, 10000.00, 6, 'Medical Emergency', 'ASAWA KO AY AFAM', 40000.00, 3.00, 'MONTHLY', '', 1800.00, 11800.00, 1966.67, 'DISBURSED', '2026-03-11 21:08:23', '2026-03-11 21:08:50'),
 (12, 23, 9, 10000.00, 6, 'Business Capital', 'ASAWA KO AY AFAM', 4000.00, 3.00, 'MONTHLY', '', 1800.00, 11800.00, 1966.67, 'WAITING FOR DISBURSEMENT', '2026-03-11 21:18:29', '2026-03-11 21:18:29'),
-(13, 24, 10, 10000.00, 6, 'Medical Emergency', 'ASAWA KO AY AFAM', 50000.00, 3.00, 'MONTHLY', '', 1800.00, 11800.00, 1966.67, 'DISBURSED', '2026-03-12 01:33:04', '2026-03-12 02:02:01'),
-(16, 25, 12, 10000.00, 6, 'Business Capital', 'ASAWA KO AY AFAM', 50000.00, 3.00, 'MONTHLY', '', 1800.00, 11800.00, 1966.67, 'WAITING FOR DISBURSEMENT', '2026-03-12 03:26:06', '2026-03-12 03:26:06');
+(46, 24, 10, 10000.00, 6, 'Medical Emergency', 'ASAWA KO AY AFAM', 50000.00, 3.00, 'MONTHLY', '', 1800.00, 11800.00, 1966.67, 'WAITING FOR DISBURSEMENT', '2026-03-14 02:25:07', '2026-03-14 02:25:07'),
+(86, 27, 12, 10000.00, 6, 'Business Capital', 'ASAWA KO AY AFAM', 50000.00, 4.00, 'MONTHLY', 'FLAT', 2400.00, 12400.00, 2066.67, 'DISBURSED', '2026-03-17 15:13:43', '2026-03-17 15:14:00'),
+(87, 28, 14, 10000.00, 6, 'Business Capital', 'ASAWA KO AY AFAM', 40000.00, 4.00, 'MONTHLY', 'FLAT', 2400.00, 12400.00, 2066.67, 'DISBURSED', '2026-03-17 15:23:35', '2026-03-17 15:23:53'),
+(89, 29, 15, 10000.00, 6, 'Business Capital', 'SHABU SELLER', 50000.00, 4.00, 'MONTHLY', 'FLAT', 2400.00, 12400.00, 2066.67, 'DISBURSED', '2026-03-18 07:36:40', '2026-03-18 07:37:15'),
+(90, 30, 16, 10000.00, 6, 'Business Capital', 'ASAWA KO AY AFAM', 50000.00, 4.00, 'MONTHLY', 'FLAT', 2400.00, 12400.00, 2066.67, 'DISBURSED', '2026-03-18 19:00:56', '2026-03-18 19:01:16'),
+(93, 33, 17, 10000.00, 6, 'Business Capital', 'ASAWA KO AY AFAM', 50000.00, 4.00, 'MONTHLY', 'FLAT', 2400.00, 12400.00, 2066.67, 'DISBURSED', '2026-03-20 04:46:33', '2026-03-20 05:11:20'),
+(96, 35, 18, 10000.00, 6, 'Business Capital', 'ASAWA KO AY AFAM', 50000.00, 4.00, 'MONTHLY', 'FLAT', 2400.00, 12400.00, 2066.67, 'DISBURSED', '2026-03-20 05:57:54', '2026-03-20 05:58:03'),
+(99, 37, 20, 10000.00, 6, 'Business Capital', 'ASAWA KO AY AFAM', 30000.00, 4.00, 'MONTHLY', 'FLAT', 2400.00, 12400.00, 2066.67, 'DISBURSED', '2026-03-20 07:45:16', '2026-03-20 07:46:01'),
+(105, 38, 21, 10000.00, 6, 'Business Capital', 'ASAWA KO AY AFAM', 40000.00, 4.00, 'MONTHLY', 'FLAT', 2400.00, 12400.00, 2066.67, 'DISBURSED', '2026-03-20 08:25:02', '2026-03-20 08:25:18'),
+(106, 39, 22, 10000.00, 6, 'Business Capital', 'shabusilog', 65000.00, 4.00, 'MONTHLY', 'FLAT', 2400.00, 12400.00, 2066.67, 'DISBURSED', '2026-03-20 08:53:50', '2026-03-20 08:54:02'),
+(108, 40, 23, 10000.00, 6, 'Business Capital', 'ASAWA KO AY AFAM', 50000.00, 4.00, 'MONTHLY', 'FLAT', 2400.00, 12400.00, 2066.67, 'DISBURSED', '2026-03-23 03:25:35', '2026-03-23 03:27:20'),
+(110, 41, 24, 10000.00, 6, 'Business Capital', 'SHABU SELLER', 50000.00, 4.00, 'MONTHLY', 'FLAT', 2400.00, 12400.00, 2066.67, 'DISBURSED', '2026-03-23 04:30:14', '2026-03-23 04:30:29');
 
 -- --------------------------------------------------------
 
@@ -192,9 +270,39 @@ INSERT INTO `loan_documents` (`id`, `loan_application_id`, `doc_type`, `file_pat
 (62, 24, 'GOV_ID', 'uploads/loan_docs/GOV_ID_24_41af46ad205b0510.jpg', '2026-03-12 01:32:14'),
 (63, 24, 'PROOF_OF_INCOME', 'uploads/loan_docs/PROOF_OF_INCOME_24_a30abd786a02143a.png', '2026-03-12 01:32:14'),
 (64, 24, 'PROOF_OF_BILLING', 'uploads/loan_docs/PROOF_OF_BILLING_24_4eb7c423197710b5.jpg', '2026-03-12 01:32:14'),
-(65, 25, 'GOV_ID', 'uploads/loan_docs/GOV_ID_25_4de9780c648d9d50.jpg', '2026-03-12 03:09:10'),
-(66, 25, 'PROOF_OF_INCOME', 'uploads/loan_docs/PROOF_OF_INCOME_25_a53a03f2ae80c647.png', '2026-03-12 03:09:10'),
-(67, 25, 'PROOF_OF_BILLING', 'uploads/loan_docs/PROOF_OF_BILLING_25_c5897b25c066bd4c.jpg', '2026-03-12 03:09:10');
+(71, 27, 'GOV_ID', 'uploads/loan_docs/GOV_ID_27_298c2a217849f264.jpg', '2026-03-15 14:10:17'),
+(72, 27, 'PROOF_OF_INCOME', 'uploads/loan_docs/PROOF_OF_INCOME_27_e696e101e64d9ea8.png', '2026-03-15 14:10:17'),
+(73, 27, 'PROOF_OF_BILLING', 'uploads/loan_docs/PROOF_OF_BILLING_27_90e8c4f90e67c7ce.jpg', '2026-03-15 14:10:17'),
+(77, 29, 'GOV_ID', 'uploads/loan_docs/GOV_ID_29_8554b04a64134d5e.jpg', '2026-03-18 07:34:01'),
+(78, 29, 'PROOF_OF_INCOME', 'uploads/loan_docs/PROOF_OF_INCOME_29_2f7818e9ec7bb962.png', '2026-03-18 07:34:01'),
+(79, 29, 'PROOF_OF_BILLING', 'uploads/loan_docs/PROOF_OF_BILLING_29_b720328a992f6f00.jpg', '2026-03-18 07:34:01'),
+(80, 30, 'GOV_ID', 'uploads/loan_docs/GOV_ID_30_6231f9291b20a125.jpg', '2026-03-18 18:57:37'),
+(81, 30, 'PROOF_OF_INCOME', 'uploads/loan_docs/PROOF_OF_INCOME_30_bb21a704505cb8c3.png', '2026-03-18 18:57:37'),
+(82, 30, 'PROOF_OF_BILLING', 'uploads/loan_docs/PROOF_OF_BILLING_30_c05e4669902830ba.jpg', '2026-03-18 18:57:37'),
+(89, 33, 'GOV_ID', 'uploads/loan_docs/GOV_ID_33_f468ffbde6fa827d.jpg', '2026-03-20 04:46:01'),
+(90, 33, 'PROOF_OF_INCOME', 'uploads/loan_docs/PROOF_OF_INCOME_33_85ded8291908c591.png', '2026-03-20 04:46:01'),
+(91, 33, 'PROOF_OF_BILLING', 'uploads/loan_docs/PROOF_OF_BILLING_33_5b3bc689761ad4f8.jpg', '2026-03-20 04:46:01'),
+(95, 35, 'GOV_ID', 'uploads/loan_docs/GOV_ID_35_5ef5a10858dcefcc.jpg', '2026-03-20 05:57:35'),
+(96, 35, 'PROOF_OF_INCOME', 'uploads/loan_docs/PROOF_OF_INCOME_35_ef64ee2bae15480b.png', '2026-03-20 05:57:35'),
+(97, 35, 'PROOF_OF_BILLING', 'uploads/loan_docs/PROOF_OF_BILLING_35_1e0d04b4dc6f6d00.jpg', '2026-03-20 05:57:35'),
+(98, 36, 'GOV_ID', 'uploads/loan_docs/GOV_ID_36_de9c76f010694858.jpg', '2026-03-20 07:16:18'),
+(99, 36, 'PROOF_OF_INCOME', 'uploads/loan_docs/PROOF_OF_INCOME_36_63ef4156e8e06142.png', '2026-03-20 07:16:18'),
+(100, 36, 'PROOF_OF_BILLING', 'uploads/loan_docs/PROOF_OF_BILLING_36_6cdeca2220529695.jpg', '2026-03-20 07:16:18'),
+(101, 37, 'GOV_ID', 'uploads/loan_docs/GOV_ID_37_bf7303758390b94a.jpg', '2026-03-20 07:44:28'),
+(102, 37, 'PROOF_OF_INCOME', 'uploads/loan_docs/PROOF_OF_INCOME_37_6116846b9af1e2bf.png', '2026-03-20 07:44:28'),
+(103, 37, 'PROOF_OF_BILLING', 'uploads/loan_docs/PROOF_OF_BILLING_37_b733bee5e9a6febb.jpg', '2026-03-20 07:44:28'),
+(104, 38, 'GOV_ID', 'uploads/loan_docs/GOV_ID_38_fb9454955fa9e7e1.jpg', '2026-03-20 07:54:57'),
+(105, 38, 'PROOF_OF_INCOME', 'uploads/loan_docs/PROOF_OF_INCOME_38_dc7764cb460ebc02.png', '2026-03-20 07:54:57'),
+(106, 38, 'PROOF_OF_BILLING', 'uploads/loan_docs/PROOF_OF_BILLING_38_0355160444f4b872.jpg', '2026-03-20 07:54:57'),
+(107, 39, 'GOV_ID', 'uploads/loan_docs/GOV_ID_39_3ca061f44256d605.jpg', '2026-03-20 08:53:16'),
+(108, 39, 'PROOF_OF_INCOME', 'uploads/loan_docs/PROOF_OF_INCOME_39_4e9751cdd6acf596.png', '2026-03-20 08:53:16'),
+(109, 39, 'PROOF_OF_BILLING', 'uploads/loan_docs/PROOF_OF_BILLING_39_d1250b9242718620.jpg', '2026-03-20 08:53:16'),
+(110, 40, 'GOV_ID', 'uploads/loan_docs/GOV_ID_40_8bc60648489f22e1.jpg', '2026-03-23 03:23:33'),
+(111, 40, 'PROOF_OF_INCOME', 'uploads/loan_docs/PROOF_OF_INCOME_40_42f4abf2a7994695.png', '2026-03-23 03:23:33'),
+(112, 40, 'PROOF_OF_BILLING', 'uploads/loan_docs/PROOF_OF_BILLING_40_966ca6dff6d16e07.jpg', '2026-03-23 03:23:33'),
+(113, 41, 'GOV_ID', 'uploads/loan_docs/GOV_ID_41_5711cb254d4dd6f8.jpg', '2026-03-23 04:28:38'),
+(114, 41, 'PROOF_OF_INCOME', 'uploads/loan_docs/PROOF_OF_INCOME_41_8d77743d980beec9.png', '2026-03-23 04:28:38'),
+(115, 41, 'PROOF_OF_BILLING', 'uploads/loan_docs/PROOF_OF_BILLING_41_aeb137ea69e11026.jpg', '2026-03-23 04:28:38');
 
 -- --------------------------------------------------------
 
@@ -233,7 +341,8 @@ CREATE TABLE `loan_restructure_requests` (
 
 INSERT INTO `loan_restructure_requests` (`id`, `loan_id`, `user_id`, `restructure_type`, `outstanding_snapshot`, `current_term_months`, `requested_term_months`, `current_monthly_due`, `estimated_monthly_due`, `interest_rate_snapshot`, `interest_method_snapshot`, `reason`, `proof_doc_path`, `status`, `verified_by`, `verified_at`, `verifier_notes`, `reviewed_by`, `review_notes`, `reviewed_at`, `created_at`, `updated_at`) VALUES
 (4, 9, 2, 'Extension', 12100.00, 6, 9, 2016.67, 1767.94, 3.50, 'FLAT', 'NATALO SCATTER', 'uploads/loan_docs/RESTRUCTURE_PROOF_9_880cd15b26d6cdcc.jpg', 'APPROVED', 0, '2026-03-12 04:18:51', 'OKI', 1, 'OKI', '2026-03-12 04:54:14', '2026-03-12 04:18:08', '2026-03-12 04:54:14'),
-(5, 13, 1, 'Extension', 11800.00, 6, 9, 1966.67, 1665.11, 3.00, '', 'TALO SCATTER', 'uploads/loan_docs/RESTRUCTURE_PROOF_13_5393b9fa7ab24298.jpg', 'APPROVED', 0, '2026-03-12 10:07:49', '', 1, 'OKI', '2026-03-12 10:08:40', '2026-03-12 10:06:42', '2026-03-12 10:08:40');
+(5, 13, 1, 'Extension', 11800.00, 6, 9, 1966.67, 1665.11, 3.00, '', 'TALO SCATTER', 'uploads/loan_docs/RESTRUCTURE_PROOF_13_5393b9fa7ab24298.jpg', 'APPROVED', 0, '2026-03-12 10:07:49', '', 1, 'OKI', '2026-03-12 10:08:40', '2026-03-12 10:06:42', '2026-03-12 10:08:40'),
+(8, 25, 15, 'Extension', 10333.33, 6, 9, 2066.67, 1561.48, 4.00, 'FLAT', 'TALO SCATTER', 'uploads/loan_docs/RESTRUCTURE_PROOF_25_9db8d448cebf752a.jpg', 'APPROVED', 0, '2026-03-18 15:40:20', '', 1, '', '2026-03-18 15:40:52', '2026-03-18 15:39:49', '2026-03-18 15:40:52');
 
 -- --------------------------------------------------------
 
@@ -319,7 +428,30 @@ INSERT INTO `notifications` (`id`, `user_id`, `title`, `message`, `type`, `icon`
 (13, 9, 'Application Verified', 'Good news! Your application <strong>#LA-23</strong> has been verified by our support team and forwarded to the Loan Officer for final review.', 'info', 'bi-check2-circle', 'myloans.php?app_id=23', 0, '2026-03-11 21:17:52'),
 (14, 9, 'Application Verified', 'Good news! Your application <strong>#LA-23</strong> has been verified by our support team and forwarded to the Loan Officer for final review.', 'info', 'bi-check2-circle', 'myloans.php?app_id=23', 0, '2026-03-12 01:08:53'),
 (15, 10, 'Application Verified', 'Good news! Your application <strong>#LA-24</strong> has been verified by our support team and forwarded to the Loan Officer for final review.', 'info', 'bi-check2-circle', 'myloans.php?app_id=24', 0, '2026-03-12 01:32:42'),
-(16, 12, 'Application Verified', 'Good news! Your application <strong>#LA-25</strong> has been verified by our support team and forwarded to the Loan Officer for final review.', 'info', 'bi-check2-circle', 'myloans.php?app_id=25', 0, '2026-03-12 03:09:46');
+(16, 12, 'Application Verified', 'Good news! Your application <strong>#LA-25</strong> has been verified by our support team and forwarded to the Loan Officer for final review.', 'info', 'bi-check2-circle', 'myloans.php?app_id=25', 0, '2026-03-12 03:09:46'),
+(17, 12, 'Application Verified', 'Good news! Your application <strong>#LA-26</strong> has been verified by our support team and forwarded to the Loan Officer for final review.', 'info', 'bi-check2-circle', 'myloans.php?app_id=26', 0, '2026-03-15 12:26:01'),
+(18, 12, 'Application Verified', 'Good news! Your application <strong>#LA-27</strong> has been verified by our support team and forwarded to the Loan Officer for final review.', 'info', 'bi-check2-circle', 'myloans.php?app_id=27', 0, '2026-03-16 12:17:55'),
+(19, 12, 'Application Verified', 'Good news! Your application <strong>#LA-27</strong> has been verified by our support team and forwarded to the Loan Officer for final review.', 'info', 'bi-check2-circle', 'myloans.php?app_id=27', 0, '2026-03-16 15:13:50'),
+(20, 12, 'Application Verified', 'Good news! Your application <strong>#LA-27</strong> has been verified by our support team and forwarded to the Loan Officer for final review.', 'info', 'bi-check2-circle', 'myloans.php?app_id=27', 0, '2026-03-16 15:18:12'),
+(21, 12, 'Application Verified', 'Good news! Your application <strong>#LA-27</strong> has been verified by our support team and forwarded to the Loan Officer for final review.', 'info', 'bi-check2-circle', 'myloans.php?app_id=27', 0, '2026-03-16 15:30:29'),
+(22, 12, 'Application Verified', 'Good news! Your application <strong>#LA-27</strong> has been verified by our support team and forwarded to the Loan Officer for final review.', 'info', 'bi-check2-circle', 'myloans.php?app_id=27', 0, '2026-03-17 08:10:09'),
+(23, 12, 'Application Verified', 'Good news! Your application <strong>#LA-27</strong> has been verified by our support team and forwarded to the Loan Officer for final review.', 'info', 'bi-check2-circle', 'myloans.php?app_id=27', 0, '2026-03-17 08:14:53'),
+(24, 12, 'Application Verified', 'Good news! Your application <strong>#LA-27</strong> has been verified by our support team and forwarded to the Loan Officer for final review.', 'info', 'bi-check2-circle', 'myloans.php?app_id=27', 0, '2026-03-17 14:01:48'),
+(25, 14, 'Application Verified', 'Good news! Your application <strong>#LA-28</strong> has been verified by our support team and forwarded to the Loan Officer for final review.', 'info', 'bi-check2-circle', 'myloans.php?app_id=28', 0, '2026-03-17 15:23:23'),
+(26, 1, 'Application Returned', 'Your application <strong>#LA-22</strong> was returned for corrections. Reason: Blurry ID', 'warning', 'bi-exclamation-triangle-fill', 'myloans.php?app_id=22', 0, '2026-03-18 07:33:25'),
+(27, 15, 'Application Verified', 'Good news! Your application <strong>#LA-29</strong> has been verified by our support team and forwarded to the Loan Officer for final review.', 'info', 'bi-check2-circle', 'myloans.php?app_id=29', 0, '2026-03-18 07:34:07'),
+(28, 16, 'Application Verified', 'Good news! Your application <strong>#LA-30</strong> has been verified by our support team and forwarded to the Loan Officer for final review.', 'info', 'bi-check2-circle', 'myloans.php?app_id=30', 0, '2026-03-18 19:00:43'),
+(29, 17, 'Application Verified', 'Good news! Your application <strong>#LA-31</strong> has been verified by our support team and forwarded to the Loan Officer for final review.', 'info', 'bi-check2-circle', 'myloans.php?app_id=31', 0, '2026-03-19 05:01:55'),
+(30, 17, 'Application Verified', 'Good news! Your application <strong>#LA-32</strong> has been verified by our support team and forwarded to the Loan Officer for final review.', 'info', 'bi-check2-circle', 'myloans.php?app_id=32', 0, '2026-03-20 03:38:42'),
+(31, 17, 'Application Verified', 'Good news! Your application <strong>#LA-33</strong> has been verified by our support team and forwarded to the Loan Officer for final review.', 'info', 'bi-check2-circle', 'myloans.php?app_id=33', 0, '2026-03-20 04:46:26'),
+(32, 18, 'Application Verified', 'Good news! Your application <strong>#LA-34</strong> has been verified by our support team and forwarded to the Loan Officer for final review.', 'info', 'bi-check2-circle', 'myloans.php?app_id=34', 0, '2026-03-20 05:24:15'),
+(33, 18, 'Application Verified', 'Good news! Your application <strong>#LA-35</strong> has been verified by our support team and forwarded to the Loan Officer for final review.', 'info', 'bi-check2-circle', 'myloans.php?app_id=35', 0, '2026-03-20 05:57:48'),
+(34, 19, 'Application Verified', 'Good news! Your application <strong>#LA-36</strong> has been verified by our support team and forwarded to the Loan Officer for final review.', 'info', 'bi-check2-circle', 'myloans.php?app_id=36', 0, '2026-03-20 07:16:49'),
+(35, 20, 'Application Verified', 'Good news! Your application <strong>#LA-37</strong> has been verified by our support team and forwarded to the Loan Officer for final review.', 'info', 'bi-check2-circle', 'myloans.php?app_id=37', 0, '2026-03-20 07:45:07'),
+(36, 21, 'Application Verified', 'Good news! Your application <strong>#LA-38</strong> has been verified by our support team and forwarded to the Loan Officer for final review.', 'info', 'bi-check2-circle', 'myloans.php?app_id=38', 0, '2026-03-20 07:55:16'),
+(37, 22, 'Application Verified', 'Good news! Your application <strong>#LA-39</strong> has been verified by our support team and forwarded to the Loan Officer for final review.', 'info', 'bi-check2-circle', 'myloans.php?app_id=39', 0, '2026-03-20 08:53:39'),
+(38, 23, 'Application Verified', 'Good news! Your application <strong>#LA-40</strong> has been verified by our support team and forwarded to the Loan Officer for final review.', 'info', 'bi-check2-circle', 'myloans.php?app_id=40', 0, '2026-03-23 03:23:53'),
+(39, 24, 'Application Verified', 'Good news! Your application <strong>#LA-41</strong> has been verified by our support team and forwarded to the Loan Officer for final review.', 'info', 'bi-check2-circle', 'myloans.php?app_id=41', 0, '2026-03-23 04:29:25');
 
 -- --------------------------------------------------------
 
@@ -351,7 +483,8 @@ CREATE TABLE `restructured_loans` (
 
 INSERT INTO `restructured_loans` (`id`, `original_loan_id`, `restructure_request_id`, `user_id`, `principal_amount`, `term_months`, `monthly_due`, `interest_rate`, `interest_method`, `outstanding`, `start_date`, `next_payment`, `due_date`, `status`, `created_at`) VALUES
 (3, 9, 4, 2, 12100.00, 9, 1767.94, 3.50, 'FLAT', 12100.00, '2026-03-12', NULL, NULL, 'ACTIVE', '2026-03-12 04:54:14'),
-(4, 13, 5, 1, 11800.00, 9, 1665.11, 3.00, '', 11800.00, '2026-03-12', NULL, NULL, 'ACTIVE', '2026-03-12 10:08:40');
+(4, 13, 5, 1, 11800.00, 9, 1665.11, 3.00, '', 11800.00, '2026-03-12', NULL, NULL, 'ACTIVE', '2026-03-12 10:08:40'),
+(7, 25, 8, 15, 10333.33, 9, 1561.48, 4.00, 'FLAT', 8771.85, '2026-03-18', NULL, NULL, 'ACTIVE', '2026-03-18 15:40:52');
 
 -- --------------------------------------------------------
 
@@ -370,8 +503,8 @@ CREATE TABLE `system_settings` (
 --
 
 INSERT INTO `system_settings` (`id`, `setting_key`, `setting_value`) VALUES
-(1, 'default_interest_rate', '3.0'),
-(2, 'interest_method', 'DIMINISHING'),
+(1, 'default_interest_rate', '4.0'),
+(2, 'interest_method', 'FLAT'),
 (3, 'penalty_rate', '5.0'),
 (4, 'processing_fee', '500'),
 (5, 'grace_period', '3');
@@ -388,6 +521,10 @@ CREATE TABLE `transactions` (
   `loan_id` int(11) DEFAULT NULL,
   `restructured_loan_id` int(11) DEFAULT NULL,
   `amount` decimal(10,2) DEFAULT NULL,
+  `principal_amount` decimal(10,2) DEFAULT 0.00,
+  `interest_amount` decimal(10,2) DEFAULT 0.00,
+  `penalty_amount` decimal(10,2) DEFAULT 0.00,
+  `monthly_due` decimal(10,2) DEFAULT 0.00,
   `status` enum('PENDING','PAID_PENDING','SUCCESS','FAILED') NOT NULL DEFAULT 'PENDING',
   `trans_date` datetime DEFAULT NULL,
   `provider_method` varchar(30) DEFAULT NULL,
@@ -402,11 +539,30 @@ CREATE TABLE `transactions` (
 -- Dumping data for table `transactions`
 --
 
-INSERT INTO `transactions` (`id`, `user_id`, `loan_id`, `restructured_loan_id`, `amount`, `status`, `trans_date`, `provider_method`, `paymongo_checkout_id`, `paymongo_payment_id`, `receipt_number`, `receipt_image_pending_url`, `receipt_image_final_url`) VALUES
-(46, 7, 8, NULL, 2016.67, 'SUCCESS', '2026-03-11 00:02:21', 'GCASH', 'cs_e4b1a69ad48aa3ea581cfd58', 'pay_poFp2btAtcANn2LWytTc8v38', 'RCPT-20260310-000046', 'receipts/RCPT-20260310-000046-PENDING.png', NULL),
-(48, 7, 8, NULL, 2016.67, 'SUCCESS', '2026-03-11 19:36:17', 'GCASH', 'cs_c3f63162be9772efe0aa8921', 'pay_MCS12qoDSxghuiH6sWr5Svwp', 'RCPT-20260311-000048', 'receipts/RCPT-20260311-000048-PENDING.png', NULL),
-(54, 1, 13, 0, 1966.67, 'PENDING', '2026-03-12 05:08:56', '', 'cs_1a26108284d7d901f61a1a82', NULL, 'RCPT-20260311-000054', 'receipts/RCPT-20260311-000054-PENDING.png', NULL),
-(55, 10, 15, 0, 1966.67, 'PAID_PENDING', '2026-03-12 10:03:29', 'GCASH', 'cs_4a173be8783e57d6bedc0006', 'pay_GCEQi9qHSxUWhB3rVGVqRCht', 'RCPT-20260312-000055', 'receipts/RCPT-20260312-000055-PENDING.png', NULL);
+INSERT INTO `transactions` (`id`, `user_id`, `loan_id`, `restructured_loan_id`, `amount`, `principal_amount`, `interest_amount`, `penalty_amount`, `monthly_due`, `status`, `trans_date`, `provider_method`, `paymongo_checkout_id`, `paymongo_payment_id`, `receipt_number`, `receipt_image_pending_url`, `receipt_image_final_url`) VALUES
+(46, 7, 8, NULL, 2016.67, 0.00, 0.00, 0.00, 0.00, 'SUCCESS', '2026-03-11 00:02:21', 'GCASH', 'cs_e4b1a69ad48aa3ea581cfd58', 'pay_poFp2btAtcANn2LWytTc8v38', 'RCPT-20260310-000046', 'receipts/RCPT-20260310-000046-PENDING.png', NULL),
+(48, 7, 8, NULL, 2016.67, 0.00, 0.00, 0.00, 0.00, 'SUCCESS', '2026-03-11 19:36:17', 'GCASH', 'cs_c3f63162be9772efe0aa8921', 'pay_MCS12qoDSxghuiH6sWr5Svwp', 'RCPT-20260311-000048', 'receipts/RCPT-20260311-000048-PENDING.png', NULL),
+(54, 1, 13, NULL, 1966.67, 0.00, 0.00, 0.00, 0.00, 'PENDING', '2026-03-12 05:08:56', '', 'cs_1a26108284d7d901f61a1a82', NULL, 'RCPT-20260311-000054', 'receipts/RCPT-20260311-000054-PENDING.png', NULL),
+(65, 1, 13, 4, 1665.11, 0.00, 0.00, 0.00, 0.00, 'PENDING', '2026-03-16 19:39:08', '', 'cs_16b405efb18f0552ba863ed2', NULL, 'RCPT-20260316-000065', 'receipts/RCPT-20260316-000065-PENDING.png', NULL),
+(67, 1, 13, 4, 1665.11, 0.00, 0.00, 0.00, 0.00, 'PENDING', '2026-03-16 19:50:06', '', 'cs_c3b16ac0b3d4475340f55a4f', NULL, 'RCPT-20260316-000067', 'receipts/RCPT-20260316-000067-PENDING.png', NULL),
+(68, 1, 13, 4, 1665.11, 0.00, 0.00, 0.00, 0.00, 'PAID_PENDING', '2026-03-16 19:50:35', 'GCASH', 'cs_52b57221b6508b2e6221d385', 'pay_jzxd5g57j8N5gaM1qPSXxyb7', 'RCPT-20260316-000068', 'receipts/RCPT-20260316-000068-PENDING.png', NULL),
+(127, 14, 24, NULL, 2066.67, 1570.67, 496.00, 0.00, 2066.67, 'SUCCESS', '2026-03-17 00:00:00', 'GCASH', 'cs_486187f0ca908e57a09d0c4f', 'pay_JvBsUeQmUuNPvrPix7WWG6jB', 'RCPT-20260317-000127', 'receipts/RCPT-20260317-000127-PENDING.png', NULL),
+(128, 15, 25, NULL, 2066.67, 1570.67, 496.00, 0.00, 2066.67, 'SUCCESS', '2026-03-18 00:00:00', 'GCASH', 'cs_cf124f230de49beff8fe5437', 'pay_vBQFawzNWLKa95QSd1BtM7hg', 'RCPT-20260318-000128', 'receipts/RCPT-20260318-000128-PENDING.png', NULL),
+(129, 15, 25, 7, 1561.48, 1148.15, 413.33, 0.00, 1561.48, 'SUCCESS', '2026-03-18 00:00:00', 'GCASH', 'cs_3cf1123d04235642177f73a9', 'pay_2cdRpEA84dYwVPAJLFs8dSao', 'RCPT-20260318-000129', 'receipts/RCPT-20260318-000129-PENDING.png', NULL),
+(130, 15, 25, 7, 1561.48, 1148.15, 413.33, 0.00, 1561.48, 'SUCCESS', '2026-03-18 00:00:00', 'GCASH', 'cs_84e779e8cafa18d11fde5a59', 'pay_tWgULSuznBAF2ofH787T5fhz', 'RCPT-20260318-000130', 'receipts/RCPT-20260318-000130-PENDING.png', NULL),
+(131, 15, 25, 7, 1561.48, 1148.15, 413.33, 0.00, 1561.48, 'SUCCESS', '2026-03-18 00:00:00', 'GCASH', 'cs_c3150b5526fddbe90e6b53f8', 'pay_YLW2zr7FCCJu4sPR5LNwpZPp', 'RCPT-20260318-000131', 'receipts/RCPT-20260318-000131-PENDING.png', NULL),
+(144, 15, 25, 7, 1561.48, 1210.61, 350.87, 0.00, 1561.48, 'PAID_PENDING', '2026-03-19 02:53:04', 'GCASH', 'cs_94e1268fc04a10174f9c5910', 'pay_h3EGgjQwWU1wpzSrYLp1vB4Q', 'RCPT-20260318-000144', 'receipts/RCPT-20260318-000144-PENDING.png', NULL),
+(165, 17, 29, NULL, 2066.67, 1570.67, 496.00, 0.00, 2066.67, 'PAID_PENDING', '2026-03-20 13:12:53', 'GCASH', 'cs_492adc3578c787915df86d2c', 'pay_Fwqw6R126XxYNSwnX1B5j7pr', 'RCPT-20260320-000165', 'receipts/RCPT-20260320-000165-PENDING.png', NULL),
+(176, 20, 32, NULL, 2066.67, 1570.67, 496.00, 0.00, 2066.67, 'SUCCESS', '2026-03-20 00:00:00', 'GCASH', 'cs_3390acad1110dbec253af1bb', 'pay_73jd9a9SqhPYnkyr89VbnumV', 'RCPT-20260320-000176', 'receipts/RCPT-20260320-000176-PENDING.png', NULL),
+(177, 21, 33, NULL, 2066.67, 1570.67, 496.00, 0.00, 2066.67, 'PENDING', '2026-03-20 16:26:14', '', 'cs_9c774e450b776f6f9f0d5c14', NULL, 'RCPT-20260320-000177', 'receipts/RCPT-20260320-000177-PENDING.png', NULL),
+(178, 21, 33, NULL, 2066.67, 1570.67, 496.00, 0.00, 2066.67, 'SUCCESS', '2026-03-20 00:00:00', 'GCASH', 'cs_87fcbbd0d2b89c30fdf2a450', 'pay_F6YGyerhbtMCpARaZB4NLnVn', 'RCPT-20260320-000178', 'receipts/RCPT-20260320-000178-PENDING.png', NULL),
+(179, 21, 33, NULL, 2066.67, 1653.34, 413.33, 0.00, 2066.67, 'SUCCESS', '2026-03-20 00:00:00', 'WALLET', NULL, NULL, 'RCPT-20260320-000179', NULL, NULL),
+(180, 22, 34, NULL, 2066.67, 1570.67, 496.00, 0.00, 2066.67, 'SUCCESS', '2026-03-20 00:00:00', 'GCASH', 'cs_4b13df9690701119f7a858d8', 'pay_mYDZc6ZQcyFriyXKLQ9hQYSN', 'RCPT-20260320-000180', 'receipts/RCPT-20260320-000180-PENDING.png', NULL),
+(181, 22, 34, NULL, 2066.67, 1653.34, 413.33, 0.00, 2066.67, 'SUCCESS', '2026-03-20 00:00:00', 'WALLET', NULL, NULL, 'RCPT-20260320-000181', NULL, NULL),
+(182, 23, 35, NULL, 2066.67, 1570.67, 496.00, 0.00, 2066.67, 'SUCCESS', '2026-03-23 00:00:00', 'GCASH', 'cs_0c870813980b20354497ff69', 'pay_sY8MxUuD91T9WA3y6natJpvi', 'RCPT-20260323-000182', 'receipts/RCPT-20260323-000182-PENDING.png', NULL),
+(183, 23, 35, NULL, 2066.67, 1653.34, 413.33, 0.00, 2066.67, 'SUCCESS', '2026-03-23 00:00:00', 'WALLET', NULL, NULL, 'RCPT-20260323-000183', NULL, NULL),
+(184, 24, 36, NULL, 2066.67, 1570.67, 496.00, 0.00, 2066.67, 'SUCCESS', '2026-03-23 00:00:00', 'GCASH', 'cs_e3f7e92a7983df6068a858a2', 'pay_sxjdwfoKJ6YsMWZsDi6SAJF6', 'RCPT-20260323-000184', 'receipts/RCPT-20260323-000184-PENDING.png', NULL),
+(185, 24, 36, NULL, 2066.67, 1653.34, 413.33, 0.00, 2066.67, 'SUCCESS', '2026-03-23 00:00:00', 'WALLET', NULL, NULL, 'RCPT-20260323-000185', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -457,30 +613,185 @@ CREATE TABLE `users` (
   `phone` varchar(20) DEFAULT NULL,
   `email` varchar(100) DEFAULT NULL,
   `password` varchar(255) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `account_status` varchar(50) DEFAULT 'ACTIVE',
+  `login_attempts` int(11) DEFAULT 0,
+  `locked_until` datetime DEFAULT NULL,
+  `otp_code` varchar(10) DEFAULT NULL,
+  `otp_expiry` datetime DEFAULT NULL,
+  `dob` date DEFAULT NULL,
+  `gender` varchar(20) DEFAULT NULL,
+  `occupation` varchar(100) DEFAULT NULL,
+  `address` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`id`, `fullname`, `profile_pic`, `phone`, `email`, `password`, `created_at`) VALUES
-(1, 'try123', NULL, '09912345678', 'try1@gmail.com', '$2y$10$wb7Q4T64e6Uis3xCxY24suIA9.ETku2kTq4Zw2vIRLEp4qiuIMy9a', '2026-02-20 05:01:41'),
-(2, 'try123', NULL, '09987654321', 'try2@gmail.com', '$2y$10$n3ljtxFhUfjG1zpkeUNmHOi.dpUT.3X9hqNnbSK3txWJZuC8.isiy', '2026-02-20 05:11:10'),
-(3, 'try3', NULL, '0976543212', 'try3@gmail.com', '$2y$10$cSDsybcnOFSw5Jntw3iUCuwCwGbdcU2tLrCtqqT7qwUOTwtr9QQaG', '2026-02-20 05:26:06'),
-(4, 'Francis Leo Marcos', NULL, '0915 738 1992', 'breadpan@gmail.com', '$2y$10$hzj4NUFDsrBS7oXwSIreB.ng5VCJ72/HRASc9UNzebJwgg/aKByyG', '2026-02-24 17:46:03'),
-(5, 'juan miguel', NULL, '09918713153', 'jm1@gmail.com', '$2y$10$CqnvDwZiK0E6V12e12cgKu2r6AlpuVnPS6HJWw8lsmngHAGtGhNES', '2026-02-26 03:15:37'),
-(6, 'LebWrong James', 'user_6_1773070078.jpg', '0912 654 9865', 'libron@gmail.com', '$2y$10$RzIQRAVkbuIS0oYcGWImgeNdRg/eDn/iyFjBfV1z0.fG5w1d9ZaDG', '2026-02-27 17:56:40'),
-(7, 'MARC LLOYD DE LEON', 'user_7_1773079628.jpg', '09812345667', 'try4@gmail.com', '$2y$10$i4VFTu4XuHlCgcs3mD.tOupqyhzPr815O840uosuTyokIncp7oFNe', '2026-03-07 14:07:53'),
-(8, 'Anonymous', NULL, '09254385712', 'anony@gmail.com', '$2y$10$uznGuBhy00/ed/RH/CwQ1ekxxQRxbNqUbXZXsmqoXVdT2tEw7s/ai', '2026-03-07 18:29:58'),
-(9, 'JUAN PADRE', NULL, '091234567890', 'JUAN@gmail.com', '$2y$10$.IdAPQGKFoUVF18yno18puVaNKtmlVfPBM75Fo6JyWY1.ShlVRjNW', '2026-03-11 21:16:45'),
-(10, 'MIKE DAVU', NULL, '091234567809', 'MIKE@gmail.com', '$2y$10$hdvqycc3eVeksLpX83IwYec1Q4VPfJsYmb4rmte8.Xumuz5keLpqC', '2026-03-12 01:28:09'),
-(11, 'TAYOYO', NULL, '091234567867', 'TAYOYO@gmail.com', '$2y$10$RMOsRRWs/UPtn6/Pih1RBub/Fcfo6EJTieYd3eujAsNFwOqzYhFnO', '2026-03-12 03:05:20'),
-(12, 'JELLA@gmail.com', NULL, '091234567845', 'JELLA@gmail.com', '$2y$10$0FspP8h6ofmak6Omv6T86OefFP3a8objunCRkqdYg6rTn9pFbnRVm', '2026-03-12 03:08:14');
+INSERT INTO `users` (`id`, `fullname`, `profile_pic`, `phone`, `email`, `password`, `created_at`, `account_status`, `login_attempts`, `locked_until`, `otp_code`, `otp_expiry`, `dob`, `gender`, `occupation`, `address`) VALUES
+(1, 'try123', NULL, '09912345678', 'try1@gmail.com', '$2y$10$wb7Q4T64e6Uis3xCxY24suIA9.ETku2kTq4Zw2vIRLEp4qiuIMy9a', '2026-02-20 05:01:41', 'ACTIVE', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(2, 'try123', NULL, '09987654321', 'try2@gmail.com', '$2y$10$n3ljtxFhUfjG1zpkeUNmHOi.dpUT.3X9hqNnbSK3txWJZuC8.isiy', '2026-02-20 05:11:10', 'ACTIVE', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(3, 'try3', NULL, '0976543212', 'try3@gmail.com', '$2y$10$cSDsybcnOFSw5Jntw3iUCuwCwGbdcU2tLrCtqqT7qwUOTwtr9QQaG', '2026-02-20 05:26:06', 'ACTIVE', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(4, 'Francis Leo Marcos', NULL, '0915 738 1992', 'breadpan@gmail.com', '$2y$10$hzj4NUFDsrBS7oXwSIreB.ng5VCJ72/HRASc9UNzebJwgg/aKByyG', '2026-02-24 17:46:03', 'ACTIVE', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(5, 'juan miguel', NULL, '09918713153', 'jm1@gmail.com', '$2y$10$CqnvDwZiK0E6V12e12cgKu2r6AlpuVnPS6HJWw8lsmngHAGtGhNES', '2026-02-26 03:15:37', 'ACTIVE', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(6, 'LebWrong James', 'user_6_1773070078.jpg', '0912 654 9865', 'libron@gmail.com', '$2y$10$RzIQRAVkbuIS0oYcGWImgeNdRg/eDn/iyFjBfV1z0.fG5w1d9ZaDG', '2026-02-27 17:56:40', 'ACTIVE', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(7, 'MARC LLOYD DE LEON', 'user_7_1773079628.jpg', '09812345667', 'try4@gmail.com', '$2y$10$i4VFTu4XuHlCgcs3mD.tOupqyhzPr815O840uosuTyokIncp7oFNe', '2026-03-07 14:07:53', 'ACTIVE', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(8, 'Anonymous', NULL, '09254385712', 'anony@gmail.com', '$2y$10$uznGuBhy00/ed/RH/CwQ1ekxxQRxbNqUbXZXsmqoXVdT2tEw7s/ai', '2026-03-07 18:29:58', 'ACTIVE', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(9, 'JUAN PADRE', NULL, '091234567890', 'JUAN@gmail.com', '$2y$10$.IdAPQGKFoUVF18yno18puVaNKtmlVfPBM75Fo6JyWY1.ShlVRjNW', '2026-03-11 21:16:45', 'ACTIVE', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(10, 'MIKE DAVU', NULL, '091234567809', 'MIKE@gmail.com', '$2y$10$hdvqycc3eVeksLpX83IwYec1Q4VPfJsYmb4rmte8.Xumuz5keLpqC', '2026-03-12 01:28:09', 'ACTIVE', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(11, 'TAYOYO', NULL, '091234567867', 'TAYOYO@gmail.com', '$2y$10$RMOsRRWs/UPtn6/Pih1RBub/Fcfo6EJTieYd3eujAsNFwOqzYhFnO', '2026-03-12 03:05:20', 'ACTIVE', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(12, 'JELLA@gmail.com', NULL, '091234567845', 'JELLA@gmail.com', '$2y$10$0FspP8h6ofmak6Omv6T86OefFP3a8objunCRkqdYg6rTn9pFbnRVm', '2026-03-12 03:08:14', 'ACTIVE', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(13, 'Jay aldrin Tayoyo', NULL, '960235528', 'canefly@outlook.ph', '$2y$10$yxdfshfc8jDwT1w.dF8.Xeg8WPFiGm9fHU2gkU.kYFoSmGydum9be', '2026-03-13 16:08:59', 'ACTIVE', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(14, 'Jay aldrin Tayoyo', NULL, '960235528', 'canefly@outloook.ph', '$2y$10$Wf7iJ5XPhVJkBoN00OWrT.qBiYXlsXXNxuTYpIVzIsf6zwcVODfte', '2026-03-13 16:20:25', 'ACTIVE', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(15, 'Yaj nirdla oyoyat', NULL, '960235528', 'jayaldrintayoyomay2@gmail.com', '$2y$10$byBhACyXXcMhrSAC75U79erlL5ABM3BLCGt3Le.lz4GgIYOhZdAOa', '2026-03-18 18:14:35', 'ACTIVE', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(16, 'mar', NULL, '09123456785', 'mar@gmail.com', '$2y$10$Xa9bz19ureGNZ39FaL0WSuyCAy2GjlSDwsssdcc4TOVSAFAMHugNS', '2026-03-18 18:56:28', 'ACTIVE', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(17, 'padre migel', NULL, '12345678923', 'juanmiguelerdap69@gmail.com', '$2y$10$9KQHCo/S/dGJLKvhoidleetjyDDIUpdrmFzT8VEns1gns/EkBbTSK', '2026-03-19 05:00:12', 'ACTIVE', 2, NULL, NULL, NULL, '2026-03-19', 'Male', 'SHABU SELLER', '32A EULOGIA DRIVE BRGY. APOLONIO SAMSON'),
+(18, 'Neca Moratin', NULL, '09918713156', 'kulotvongaisler@gmail.com', '$2y$10$yEARY9lbJ6q.vXRyvbBYbuR9AQp5Dqm50PiFY4MyXLAT4Sf9qPWDK', '2026-03-20 05:19:12', 'ACTIVE', 0, NULL, NULL, NULL, '2009-03-12', 'Female', 'SHABU SELLER', '32A EULOGIA DRIVE BRGY. APOLONIO SAMSON'),
+(19, 'marc', NULL, '09812345678', 'try7@gmail.com', '$2y$10$1BTU45fh/wn6nq4ORO1BoOcAQitIn7gWWu/MELmtEv72MIK7tXlVe', '2026-03-20 07:15:23', 'ACTIVE', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(20, 'user1', NULL, '12345678912', 'user1@gmail.com', '$2y$10$Cwpo0H8cfBvbbcUDqq2ta.GDTDxuPh7zAbgLEJ4GEA6Yzqubq8/oC', '2026-03-20 07:43:21', 'ACTIVE', 0, NULL, NULL, NULL, '1972-08-20', 'Male', 'SHABU SELLER', '32A EULOGIA DRIVE BRGY. APOLONIO SAMSON'),
+(21, 'user2', NULL, '12345678913', 'user2@gmail.com', '$2y$10$8bfqBSKqPZJmiOfhOpuRuu1Sd5V0s3ZLPWz0KhPP4MRlUzCNIp7Te', '2026-03-20 07:53:57', 'ACTIVE', 0, NULL, NULL, NULL, '1999-10-14', 'Male', 'SHABU SELLER', '32A EULOGIA DRIVE BRGY. APOLONIO SAMSON'),
+(22, 'user3', NULL, '09918713153', 'user3@gmail.com', '$2y$10$0fDnKeXjrQQLFGjO0qUdROhuOAJtJITPgquETvVUe/uYQgJUojld6', '2026-03-20 08:51:41', 'ACTIVE', 0, NULL, NULL, NULL, '2004-06-07', 'Male', 'SHABU SELLER', '32A EULOGIA DRIVE BRGY. APOLONIO SAMSON'),
+(23, 'core1user', NULL, '09918713154', 'core1user@gmail.com', '$2y$10$RjddrnKjKkHBEXNn7uaK6uFyl7353QZdDhMXygsrPj5Uc85hW9vwe', '2026-03-23 03:21:29', 'ACTIVE', 0, NULL, NULL, NULL, '2001-07-06', 'Male', 'SHABU SELLER', '32A EULOGIA DRIVE BRGY. APOLONIO SAMSON'),
+(24, 'jay tayoyo', NULL, '09918713155', 'jay@gmail.com', '$2y$10$i81ZBpkSEbtaOio4Zj7PZ.OAlGY0rD6/Ye7k6BMj1c93cWmIKYr/y', '2026-03-23 04:27:17', 'ACTIVE', 0, NULL, NULL, NULL, '2003-03-04', 'Male', 'SHABU SELLER', '32A EULOGIA DRIVE BRGY. APOLONIO SAMSON');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `user_devices`
+--
+
+CREATE TABLE `user_devices` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) DEFAULT NULL,
+  `device_hash` varchar(64) DEFAULT NULL,
+  `ip_address` varchar(45) DEFAULT NULL,
+  `user_agent` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `user_devices`
+--
+
+INSERT INTO `user_devices` (`id`, `user_id`, `device_hash`, `ip_address`, `user_agent`, `created_at`) VALUES
+(1, 17, '7526c00e18367b920e093b58c42973f7ef17b0623f24232159ddf110f63f8cbf', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-18 17:34:26'),
+(2, 16, '7526c00e18367b920e093b58c42973f7ef17b0623f24232159ddf110f63f8cbf', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-18 17:37:50'),
+(3, 15, '53304b2e8c092ed66b5666499bea55dc9f17570f682a0413aeaf69034cef3f69', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-18 18:15:39'),
+(4, 12, '7526c00e18367b920e093b58c42973f7ef17b0623f24232159ddf110f63f8cbf', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-19 03:48:34'),
+(5, 18, '7526c00e18367b920e093b58c42973f7ef17b0623f24232159ddf110f63f8cbf', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-20 05:19:38'),
+(6, 20, '7526c00e18367b920e093b58c42973f7ef17b0623f24232159ddf110f63f8cbf', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-20 07:43:51'),
+(7, 21, '7526c00e18367b920e093b58c42973f7ef17b0623f24232159ddf110f63f8cbf', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-20 07:54:29'),
+(8, 22, '7526c00e18367b920e093b58c42973f7ef17b0623f24232159ddf110f63f8cbf', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-20 08:52:45'),
+(9, 23, '7526c00e18367b920e093b58c42973f7ef17b0623f24232159ddf110f63f8cbf', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-23 03:22:44'),
+(10, 24, '7526c00e18367b920e093b58c42973f7ef17b0623f24232159ddf110f63f8cbf', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-23 04:28:13');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `wallet_accounts`
+--
+
+CREATE TABLE `wallet_accounts` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `account_number` varchar(50) NOT NULL,
+  `balance` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `status` enum('ACTIVE','INACTIVE','BLOCKED') NOT NULL DEFAULT 'ACTIVE',
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `wallet_accounts`
+--
+
+INSERT INTO `wallet_accounts` (`id`, `user_id`, `account_number`, `balance`, `status`, `created_at`, `updated_at`) VALUES
+(1, 12, 'WAL-20260318-12-6081', 79666.70, 'ACTIVE', '2026-03-19 00:46:34', '2026-03-19 02:22:59'),
+(2, 15, 'WAL-20260318-15-7084', 0.00, 'ACTIVE', '2026-03-19 02:51:23', '2026-03-19 02:51:23'),
+(3, 16, 'WAL-20260318-16-1999', 45866.66, 'ACTIVE', '2026-03-19 02:56:57', '2026-03-19 03:57:01'),
+(4, 18, 'WAL-20260320-18-3979', 47933.33, 'ACTIVE', '2026-03-20 14:24:20', '2026-03-20 14:29:05'),
+(5, 21, 'WAL-20260320-21-9723', 47933.33, 'ACTIVE', '2026-03-20 16:27:01', '2026-03-20 16:27:10'),
+(6, 22, 'WAL-20260320-22-6233', 67933.33, 'ACTIVE', '2026-03-20 16:56:59', '2026-03-20 16:57:10'),
+(7, 23, 'WAL-20260323-23-4299', 67933.33, 'ACTIVE', '2026-03-23 11:28:17', '2026-03-23 11:28:38'),
+(8, 24, 'WAL-20260323-24-1235', 47933.33, 'ACTIVE', '2026-03-23 12:31:39', '2026-03-23 12:31:56');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `wallet_sync_logs`
+--
+
+CREATE TABLE `wallet_sync_logs` (
+  `id` int(11) NOT NULL,
+  `wallet_transaction_id` int(11) DEFAULT NULL,
+  `sync_action` varchar(50) NOT NULL,
+  `payload_json` longtext DEFAULT NULL,
+  `response_json` longtext DEFAULT NULL,
+  `status` enum('SUCCESS','FAILED') NOT NULL,
+  `error_message` text DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `wallet_transactions`
+--
+
+CREATE TABLE `wallet_transactions` (
+  `id` int(11) NOT NULL,
+  `wallet_account_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `loan_id` int(11) DEFAULT NULL,
+  `restructured_loan_id` int(11) DEFAULT NULL,
+  `transaction_type` enum('CASH_IN','CASH_OUT','LOAN_PAYMENT','RESTRUCTURED_PAYMENT','ADJUSTMENT') NOT NULL,
+  `amount` decimal(12,2) NOT NULL,
+  `running_balance` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `reference_no` varchar(100) DEFAULT NULL,
+  `remarks` varchar(255) DEFAULT NULL,
+  `status` enum('PENDING','SUCCESS','FAILED','SYNCED','PARTIAL_SYNC') NOT NULL DEFAULT 'SUCCESS',
+  `sync_status` enum('PENDING','SYNCED','FAILED') NOT NULL DEFAULT 'PENDING',
+  `sync_error` text DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `wallet_transactions`
+--
+
+INSERT INTO `wallet_transactions` (`id`, `wallet_account_id`, `user_id`, `loan_id`, `restructured_loan_id`, `transaction_type`, `amount`, `running_balance`, `reference_no`, `remarks`, `status`, `sync_status`, `sync_error`, `created_at`, `updated_at`) VALUES
+(1, 1, 12, NULL, NULL, 'CASH_IN', 0.05, 0.05, 'CIN-20260318180151-2895', 'Cash in to wallet', 'SUCCESS', 'PENDING', NULL, '2026-03-19 01:01:51', '2026-03-19 01:01:51'),
+(2, 1, 12, NULL, NULL, 'CASH_IN', 90000.00, 90000.05, 'CIN-20260318184803-2737', 'Cash in to wallet', 'SUCCESS', 'PENDING', NULL, '2026-03-19 01:48:03', '2026-03-19 01:48:03'),
+(3, 1, 12, 23, NULL, 'LOAN_PAYMENT', 2066.67, 87933.38, 'RCPT-20260319-000132', 'Wallet payment for active loan (pending verification)', 'SUCCESS', 'FAILED', 'cURL error: Failed to connect to 10.112.107.207 port 80 after 21039 ms: Couldn\'t connect to server', '2026-03-19 01:48:58', '2026-03-19 01:49:19'),
+(4, 1, 12, 23, NULL, 'LOAN_PAYMENT', 2066.67, 85866.71, 'RCPT-20260319-000133', 'Wallet payment for active loan (pending verification)', 'SUCCESS', 'FAILED', 'cURL error: Failed to connect to 10.112.107.207 port 80 after 21038 ms: Couldn\'t connect to server', '2026-03-19 01:54:15', '2026-03-19 01:54:36'),
+(5, 1, 12, 23, NULL, 'LOAN_PAYMENT', 2066.67, 83800.04, 'RCPT-20260319-000134', 'Wallet payment for active loan (pending verification)', 'SUCCESS', 'FAILED', 'cURL error: Failed to connect to 10.112.107.207 port 80 after 21025 ms: Couldn\'t connect to server', '2026-03-19 01:56:05', '2026-03-19 01:56:26'),
+(6, 1, 12, 23, NULL, 'LOAN_PAYMENT', 2066.67, 81733.37, 'RCPT-20260319-000135', 'Wallet payment for active loan (pending verification)', 'SUCCESS', 'FAILED', 'Invalid response from FINANCIAL. HTTP 500. Raw response: {\"success\":false,\"message\":\"SQLSTATE[23000]: Integrity constraint violation: 1452 Cannot add or update a child row: a foreign key constraint fails (`microfinance_db`.`payments`, CONSTRAINT `fk_payments_loan` FOREIGN KEY (`loan_id`) REFERENCES `loans` (`id`) ON DELETE CASCADE)\"}', '2026-03-19 02:12:10', '2026-03-19 02:12:10'),
+(7, 1, 12, 23, NULL, 'LOAN_PAYMENT', 2066.67, 79666.70, 'RCPT-20260319-000138', 'Wallet payment for active loan (pending verification)', 'SUCCESS', 'FAILED', 'Invalid response from FINANCIAL. HTTP 500. Raw response: {\"success\":false,\"message\":\"No matching loan found in FINANCIAL for CORE1 reference #23\"}', '2026-03-19 02:22:59', '2026-03-19 02:22:59'),
+(8, 3, 16, NULL, NULL, 'CASH_IN', 50000.00, 50000.00, 'CIN-20260318195705-6543', 'Cash in to wallet', 'SUCCESS', 'PENDING', NULL, '2026-03-19 02:57:05', '2026-03-19 02:57:05'),
+(9, 3, 16, 26, NULL, 'LOAN_PAYMENT', 2066.67, 47933.33, 'RCPT-20260319-000150', 'Wallet payment for active loan (pending verification)', 'SUCCESS', 'SYNCED', NULL, '2026-03-19 03:52:29', '2026-03-19 03:52:29'),
+(10, 3, 16, 26, NULL, 'LOAN_PAYMENT', 2066.67, 45866.66, 'RCPT-20260319-000151', 'Wallet payment for active loan (pending verification)', 'SUCCESS', 'SYNCED', NULL, '2026-03-19 03:57:01', '2026-03-19 03:57:01'),
+(11, 4, 18, NULL, NULL, 'CASH_IN', 50000.00, 50000.00, 'CIN-20260320072837-9812', 'Cash in to wallet', 'SUCCESS', 'PENDING', NULL, '2026-03-20 14:28:37', '2026-03-20 14:28:37'),
+(12, 4, 18, 31, NULL, 'LOAN_PAYMENT', 2066.67, 47933.33, 'RCPT-20260320-000167', 'Wallet payment for active loan (pending verification)', 'SUCCESS', 'FAILED', 'FINANCIAL: Invalid response from FINANCIAL. HTTP 500. Raw response: {\"success\":false,\"message\":\"Failed to auto-create placeholder loan for CORE1 reference #31: SQLSTATE[23000]: Integrity constraint violation: 1452 Cannot add or update a child row: a foreign key constraint fails (`microfinance_db`.`loans`, CONSTRAINT `fk_loans_application` FOREIGN KEY (`application_id`) REFERENCES `loan_applications` (`id`) ON DELETE SET NULL)\"} | CORE2: cURL error: Failed to connect to 10.112.107.130 port 80 after 10009 ms: Timeout was reached', '2026-03-20 14:29:05', '2026-03-20 14:29:15'),
+(13, 5, 21, NULL, NULL, 'CASH_IN', 50000.00, 50000.00, 'CIN-20260320092707-9854', 'Cash in to wallet', 'SUCCESS', 'PENDING', NULL, '2026-03-20 16:27:07', '2026-03-20 16:27:07'),
+(14, 5, 21, 33, NULL, 'LOAN_PAYMENT', 2066.67, 47933.33, 'RCPT-20260320-000179', 'Wallet payment for active loan (pending verification)', 'SUCCESS', 'SYNCED', NULL, '2026-03-20 16:27:10', '2026-03-20 16:27:29'),
+(15, 6, 22, NULL, NULL, 'CASH_IN', 70000.00, 70000.00, 'CIN-20260320095707-7640', 'Cash in to wallet', 'SUCCESS', 'PENDING', NULL, '2026-03-20 16:57:07', '2026-03-20 16:57:07'),
+(16, 6, 22, 34, NULL, 'LOAN_PAYMENT', 2066.67, 67933.33, 'RCPT-20260320-000181', 'Wallet payment for active loan (pending verification)', 'SUCCESS', 'SYNCED', NULL, '2026-03-20 16:57:10', '2026-03-20 16:57:25'),
+(17, 7, 23, NULL, NULL, 'CASH_IN', 70000.00, 70000.00, 'CIN-20260323042825-9781', 'Cash in to wallet', 'SUCCESS', 'PENDING', NULL, '2026-03-23 11:28:25', '2026-03-23 11:28:25'),
+(18, 7, 23, 35, NULL, 'LOAN_PAYMENT', 2066.67, 67933.33, 'RCPT-20260323-000183', 'Wallet payment for active loan (pending verification)', 'SUCCESS', 'SYNCED', NULL, '2026-03-23 11:28:38', '2026-03-23 11:29:06'),
+(19, 8, 24, NULL, NULL, 'CASH_IN', 50000.00, 50000.00, 'CIN-20260323053154-7214', 'Cash in to wallet', 'SUCCESS', 'PENDING', NULL, '2026-03-23 12:31:54', '2026-03-23 12:31:54'),
+(20, 8, 24, 36, NULL, 'LOAN_PAYMENT', 2066.67, 47933.33, 'RCPT-20260323-000185', 'Wallet payment for active loan (pending verification)', 'SUCCESS', 'SYNCED', NULL, '2026-03-23 12:31:56', '2026-03-23 12:32:29');
 
 --
 -- Indexes for dumped tables
 --
+
+--
+-- Indexes for table `chat_support_messages`
+--
+ALTER TABLE `chat_support_messages`
+  ADD PRIMARY KEY (`id`);
 
 --
 -- Indexes for table `finance_admin`
@@ -527,7 +838,10 @@ ALTER TABLE `loan_restructure_requests`
   ADD PRIMARY KEY (`id`),
   ADD KEY `idx_restructure_loan` (`loan_id`),
   ADD KEY `idx_restructure_user` (`user_id`),
-  ADD KEY `idx_restructure_status` (`status`);
+  ADD KEY `idx_restructure_status` (`status`),
+  ADD KEY `idx_lrr_loan_id` (`loan_id`),
+  ADD KEY `idx_lrr_user_id` (`user_id`),
+  ADD KEY `idx_lrr_status` (`status`);
 
 --
 -- Indexes for table `lo_users`
@@ -557,7 +871,11 @@ ALTER TABLE `restructured_loans`
   ADD PRIMARY KEY (`id`),
   ADD KEY `idx_restructured_original_loan` (`original_loan_id`),
   ADD KEY `idx_restructured_request` (`restructure_request_id`),
-  ADD KEY `idx_restructured_user` (`user_id`);
+  ADD KEY `idx_restructured_user` (`user_id`),
+  ADD KEY `idx_rl_original_loan_id` (`original_loan_id`),
+  ADD KEY `idx_rl_restructure_request_id` (`restructure_request_id`),
+  ADD KEY `idx_rl_user_id` (`user_id`),
+  ADD KEY `idx_rl_status` (`status`);
 
 --
 -- Indexes for table `system_settings`
@@ -573,7 +891,8 @@ ALTER TABLE `transactions`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `uq_paymongo_payment_id` (`paymongo_payment_id`),
   ADD KEY `fk_tx_loan` (`loan_id`),
-  ADD KEY `idx_tx_user_id` (`user_id`);
+  ADD KEY `idx_tx_user_id` (`user_id`),
+  ADD KEY `idx_restructured_loan_id` (`restructured_loan_id`);
 
 --
 -- Indexes for table `users`
@@ -583,8 +902,41 @@ ALTER TABLE `users`
   ADD UNIQUE KEY `email` (`email`);
 
 --
+-- Indexes for table `user_devices`
+--
+ALTER TABLE `user_devices`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `wallet_accounts`
+--
+ALTER TABLE `wallet_accounts`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `account_number` (`account_number`),
+  ADD UNIQUE KEY `uniq_wallet_user` (`user_id`);
+
+--
+-- Indexes for table `wallet_sync_logs`
+--
+ALTER TABLE `wallet_sync_logs`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `wallet_transactions`
+--
+ALTER TABLE `wallet_transactions`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_wallet_tx_wallet` (`wallet_account_id`);
+
+--
 -- AUTO_INCREMENT for dumped tables
 --
+
+--
+-- AUTO_INCREMENT for table `chat_support_messages`
+--
+ALTER TABLE `chat_support_messages`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `finance_admin`
@@ -596,31 +948,31 @@ ALTER TABLE `finance_admin`
 -- AUTO_INCREMENT for table `loans`
 --
 ALTER TABLE `loans`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=37;
 
 --
 -- AUTO_INCREMENT for table `loan_applications`
 --
 ALTER TABLE `loan_applications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=42;
 
 --
 -- AUTO_INCREMENT for table `loan_disbursement`
 --
 ALTER TABLE `loan_disbursement`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=111;
 
 --
 -- AUTO_INCREMENT for table `loan_documents`
 --
 ALTER TABLE `loan_documents`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=68;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=116;
 
 --
 -- AUTO_INCREMENT for table `loan_restructure_requests`
 --
 ALTER TABLE `loan_restructure_requests`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `lo_users`
@@ -638,13 +990,13 @@ ALTER TABLE `lsa_users`
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=40;
 
 --
 -- AUTO_INCREMENT for table `restructured_loans`
 --
 ALTER TABLE `restructured_loans`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `system_settings`
@@ -656,13 +1008,37 @@ ALTER TABLE `system_settings`
 -- AUTO_INCREMENT for table `transactions`
 --
 ALTER TABLE `transactions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=56;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=186;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
+
+--
+-- AUTO_INCREMENT for table `user_devices`
+--
+ALTER TABLE `user_devices`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+
+--
+-- AUTO_INCREMENT for table `wallet_accounts`
+--
+ALTER TABLE `wallet_accounts`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+
+--
+-- AUTO_INCREMENT for table `wallet_sync_logs`
+--
+ALTER TABLE `wallet_sync_logs`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `wallet_transactions`
+--
+ALTER TABLE `wallet_transactions`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
 
 --
 -- Constraints for dumped tables
@@ -697,17 +1073,39 @@ ALTER TABLE `loan_documents`
   ADD CONSTRAINT `fk_ld_app` FOREIGN KEY (`loan_application_id`) REFERENCES `loan_applications` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
+-- Constraints for table `loan_restructure_requests`
+--
+ALTER TABLE `loan_restructure_requests`
+  ADD CONSTRAINT `fk_lrr_loan` FOREIGN KEY (`loan_id`) REFERENCES `loans` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_lrr_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
 -- Constraints for table `notifications`
 --
 ALTER TABLE `notifications`
   ADD CONSTRAINT `fk_notif_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
+-- Constraints for table `restructured_loans`
+--
+ALTER TABLE `restructured_loans`
+  ADD CONSTRAINT `fk_rl_original_loan` FOREIGN KEY (`original_loan_id`) REFERENCES `loans` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_rl_request` FOREIGN KEY (`restructure_request_id`) REFERENCES `loan_restructure_requests` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_rl_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
 -- Constraints for table `transactions`
 --
 ALTER TABLE `transactions`
   ADD CONSTRAINT `fk_tx_loan` FOREIGN KEY (`loan_id`) REFERENCES `loans` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_tx_restructured_loan` FOREIGN KEY (`restructured_loan_id`) REFERENCES `restructured_loans` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_tx_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `wallet_transactions`
+--
+ALTER TABLE `wallet_transactions`
+  ADD CONSTRAINT `fk_wallet_tx_wallet` FOREIGN KEY (`wallet_account_id`) REFERENCES `wallet_accounts` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
