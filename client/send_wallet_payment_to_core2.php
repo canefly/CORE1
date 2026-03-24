@@ -1,3 +1,4 @@
+<!--C:\xampp\htdocs\CORE1\client\send_wallet_payment_to_core2.php-->
 <?php
 
 function sendWalletPaymentToCore2(array $paymentData): array

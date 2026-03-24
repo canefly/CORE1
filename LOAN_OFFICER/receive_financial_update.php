@@ -50,25 +50,21 @@ $receipt_no            = trim((string)($data['receipt_no'] ?? ''));
 $receipt_image         = trim((string)($data['receipt_image'] ?? ''));
 $released_at           = trim((string)($data['released_at'] ?? ''));
 $release_notes         = trim((string)($data['release_notes'] ?? ''));
+$loan_amount_received  = (float)($data['amount'] ?? 0); // Amount mula sa Financial PC
 
 $allowedStatuses = ['DISBURSED', 'REJECTED'];
 
 if ($application_id <= 0 || $core1_disbursement_id <= 0 || !in_array($status, $allowedStatuses, true)) {
     json_out([
         'success' => false,
-        'message' => 'Missing or invalid required fields.',
-        'received' => [
-            'application_id' => $application_id,
-            'core1_disbursement_id' => $core1_disbursement_id,
-            'status' => $status
-        ]
+        'message' => 'Missing or invalid required fields.'
     ], 422);
 }
 
 try {
     $pdo->beginTransaction();
 
-    // Lock CORE1 disbursement row
+    // 1. Lock CORE1 disbursement row
     $stmt = $pdo->prepare("
         SELECT *
         FROM loan_disbursement
@@ -82,7 +78,7 @@ try {
         throw new Exception('CORE1 loan_disbursement record not found.');
     }
 
-    // Update local disbursement status
+    // 2. Update local disbursement status
     $upd = $pdo->prepare("
         UPDATE loan_disbursement
         SET status = ?, updated_at = NOW()
@@ -90,19 +86,17 @@ try {
     ");
     $upd->execute([$status, $core1_disbursement_id]);
 
-    // If rejected, stop here
     if ($status === 'REJECTED') {
         $pdo->commit();
-
         json_out([
             'success' => true,
             'message' => 'CORE1 disbursement marked as REJECTED.'
         ]);
     }
 
-    // If disbursed, create/update loans record
+    // 3. Prepare variables for Loan and Wallet
     $user_id         = (int)$localDisb['user_id'];
-    $loan_amount     = (float)$localDisb['principal_amount'];
+    $loan_amount     = $loan_amount_received > 0 ? $loan_amount_received : (float)$localDisb['principal_amount']; 
     $term_months     = (int)$localDisb['term_months'];
     $monthly_due     = (float)$localDisb['monthly_due'];
     $interest_rate   = (float)$localDisb['interest_rate'];
@@ -119,13 +113,8 @@ try {
     $nextPayment = date('Y-m-d', strtotime($startDate . ' +1 month'));
     $dueDate     = date('Y-m-d', strtotime($startDate . ' +' . $term_months . ' months'));
 
-    // Check existing loan by application_id
-    $stmtLoan = $pdo->prepare("
-        SELECT id
-        FROM loans
-        WHERE application_id = ?
-        LIMIT 1
-    ");
+    // 4. Create/Update loans table (ORIGINAL LOGIC - WALANG BINAGO)
+    $stmtLoan = $pdo->prepare("SELECT id FROM loans WHERE application_id = ? LIMIT 1");
     $stmtLoan->execute([$application_id]);
     $existingLoan = $stmtLoan->fetch(PDO::FETCH_ASSOC);
 
@@ -153,91 +142,72 @@ try {
             WHERE application_id = ?
         ");
         $updLoan->execute([
-            $user_id,
-            $core1_disbursement_id,
-            $loan_amount,
-            $term_months,
-            $monthly_due,
-            $interest_rate,
-            $interest_method,
-            $outstanding,
-            $nextPayment,
-            $dueDate,
-            $startDate,
-            $receipt_no !== '' ? $receipt_no : null,
-            $receipt_image !== '' ? $receipt_image : null,
-            $released_at,
-            $release_notes !== '' ? $release_notes : null,
-            $application_id
+            $user_id, $core1_disbursement_id, $loan_amount, $term_months, $monthly_due,
+            $interest_rate, $interest_method, $outstanding, $nextPayment, $dueDate,
+            $startDate, ($receipt_no ?: null), ($receipt_image ?: null), $released_at, ($release_notes ?: null), $application_id
         ]);
-
         $loanId = (int)$existingLoan['id'];
         $action = 'updated';
     } else {
         $insLoan = $pdo->prepare("
             INSERT INTO loans (
-                user_id,
-                application_id,
-                loan_disbursement_id,
-                loan_amount,
-                term_months,
-                monthly_due,
-                interest_rate,
-                interest_method,
-                outstanding,
-                next_payment,
-                due_date,
-                last_penalty_date,
-                start_date,
-                status,
-                receipt_no,
-                receipt_image,
-                released_at,
-                release_notes,
-                created_at,
-                updated_at
+                user_id, application_id, loan_disbursement_id, loan_amount, term_months,
+                monthly_due, interest_rate, interest_method, outstanding, next_payment,
+                due_date, last_penalty_date, start_date, status, receipt_no,
+                receipt_image, released_at, release_notes, created_at, updated_at
             ) VALUES (
                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 'ACTIVE', ?, ?, ?, ?, NOW(), NOW()
             )
         ");
         $insLoan->execute([
-            $user_id,
-            $application_id,
-            $core1_disbursement_id,
-            $loan_amount,
-            $term_months,
-            $monthly_due,
-            $interest_rate,
-            $interest_method,
-            $outstanding,
-            $nextPayment,
-            $dueDate,
-            $startDate,
-            $receipt_no !== '' ? $receipt_no : null,
-            $receipt_image !== '' ? $receipt_image : null,
-            $released_at,
-            $release_notes !== '' ? $release_notes : null
+            $user_id, $application_id, $core1_disbursement_id, $loan_amount, $term_months,
+            $monthly_due, $interest_rate, $interest_method, $outstanding, $nextPayment,
+            $dueDate, $startDate, ($receipt_no ?: null), ($receipt_image ?: null), $released_at, ($release_notes ?: null)
         ]);
-
         $loanId = (int)$pdo->lastInsertId();
         $action = 'inserted';
     }
+
+    // 5. WALLET INTEGRATION (NEW - WALANG BINAWAS SA TAAS)
+    $stmtW = $pdo->prepare("SELECT id FROM wallet_accounts WHERE user_id = ? FOR UPDATE");
+    $stmtW->execute([$user_id]);
+    $wallet = $stmtW->fetch(PDO::FETCH_ASSOC);
+
+    if (!$wallet) {
+        $accountNo = 'WAL-' . date('Ymd') . '-' . $user_id . '-' . rand(1000, 9999);
+        $insW = $pdo->prepare("INSERT INTO wallet_accounts (user_id, account_number, balance, loan_wallet_balance, status, created_at) VALUES (?, ?, 0, 0, 'ACTIVE', NOW())");
+        $insW->execute([$user_id, $accountNo]);
+        $walletAccountId = $pdo->lastInsertId();
+    } else {
+        $walletAccountId = $wallet['id'];
+    }
+
+    // Update Loan Wallet Principal
+    $updW = $pdo->prepare("UPDATE wallet_accounts SET loan_wallet_balance = loan_wallet_balance + ?, updated_at = NOW() WHERE id = ?");
+    $updW->execute([$loan_amount, $walletAccountId]);
+
+    // Insert Transaction History
+    $insTx = $pdo->prepare("
+        INSERT INTO wallet_transactions (
+            wallet_account_id, user_id, loan_id, transaction_type, amount, 
+            running_balance, reference_no, remarks, status, created_at
+        ) VALUES (
+            ?, ?, ?, 'LOAN_DISBURSEMENT', ?, 
+            (SELECT loan_wallet_balance FROM wallet_accounts WHERE id = ?), 
+            ?, 'Loan Principal Disbursed', 'SUCCESS', NOW()
+        )
+    ");
+    $insTx->execute([$walletAccountId, $user_id, $loanId, $loan_amount, $walletAccountId, ($receipt_no ?: 'REF-'.$application_id)]);
 
     $pdo->commit();
 
     json_out([
         'success' => true,
-        'message' => "CORE1 loan {$action} successfully.",
+        'message' => "CORE1 loan {$action} successfully and funds added to wallet.",
         'loan_id' => $loanId
     ]);
 
 } catch (Throwable $e) {
-    if ($pdo->inTransaction()) {
-        $pdo->rollBack();
-    }
-
-    json_out([
-        'success' => false,
-        'message' => 'Server error: ' . $e->getMessage()
-    ], 500);
+    if ($pdo->inTransaction()) { $pdo->rollBack(); }
+    json_out(['success' => false, 'message' => $e->getMessage()], 500);
 }

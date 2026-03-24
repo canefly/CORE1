@@ -1,3 +1,4 @@
+<!--C:\xampp\htdocs\CORE1\client\pay_loan_using_wallet.php-->
 <?php
 session_start();
 date_default_timezone_set('Asia/Manila');
