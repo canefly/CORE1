@@ -2,7 +2,7 @@
 require_once __DIR__ . '/include/config.php'; // CORE1 DB 
 
 // CORE2 CONNECTION (STAFF SERVER)
-$core2_host = "192.168.1.11"; //palitan ng ip address ng core 2 oki? 
+$core2_host = "192.168.100.4"; //palitan ng ip address ng core 2 oki? 
 $core2_user = "root";
 $core2_pass = "";
 $core2_dbname = "core2_db";

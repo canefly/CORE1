@@ -3,11 +3,11 @@
 
 function sendWalletPaymentToCore2(array $paymentData): array
 {
-    $url = "http://192.168.1.5/CORE2-main/modules/receive_wallet_payment_from_core1.php";
+    $url = "http://192.168.100.4/CORE2-main/modules/receive_wallet_payment_from_core1.php";
     $logFile = __DIR__ . "/debug_send_wallet_payment_to_core2.log";
 
     $payloadArray = [
-        "token"   => "core1_wallet_payment_secret",
+        "token" => "core1_wallet_payment_secret",
         "payment" => $paymentData
     ];
 
@@ -34,7 +34,7 @@ function sendWalletPaymentToCore2(array $paymentData): array
 
     $response = curl_exec($ch);
     $curlError = curl_error($ch);
-    $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
     curl_close($ch);
 

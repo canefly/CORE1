@@ -4,29 +4,33 @@ session_start();
 // ==========================================
 // DUAL-DATABASE CONNECTION
 // ==========================================
-$core1_host = "127.0.0.1";       
-$core2_host = "192.168.1.11";   //palitan ng ip address ng core 2 oki? ibalik sa 127.0.0.1 simpleng tao ka lang
+$core1_host = "127.0.0.1";
+
+$core2_host = "192.168.100.4"; //palitan ng ip address ng core 2 oki? ibalik sa 127.0.0.1 simpleng tao ka lang
 $user = "root";
 $pass = "";
 
 $conn = new mysqli($core1_host, $user, $pass, "microfinance_db");
-if ($conn->connect_error) die("Core 1 Connection Failed: " . $conn->connect_error);
+if ($conn->connect_error)
+    die("Core 1 Connection Failed: " . $conn->connect_error);
 
-$core2_conn = new mysqli($core2_host, $user, $pass, "core2_db"); 
-if ($core2_conn->connect_error) die("Core 2 Connection Failed: " . $core2_conn->connect_error);
+$core2_conn = new mysqli($core2_host, $user, $pass, "core2_db");
+
+if ($core2_conn->connect_error)
+    die("Core 2 Connection Failed: " . $core2_conn->connect_error);
 
 // ==========================================
 // 🚨 AJAX ENDPOINT: FETCH FULL CHAT LOG 🚨
 // ==========================================
 if (isset($_GET['fetch_chat_history']) && isset($_GET['session_id'])) {
     $sess = $core2_conn->real_escape_string($_GET['session_id']);
-    
+
     $chat_sql = "SELECT * FROM chat_support_messages WHERE session_id = '$sess' ORDER BY created_at ASC";
     $chat_res = $core2_conn->query($chat_sql);
-    
+
     if ($chat_res && $chat_res->num_rows > 0) {
-        while($c = $chat_res->fetch_assoc()) {
-            
+        while ($c = $chat_res->fetch_assoc()) {
+
             if (trim($c['message']) !== '[SYSTEM]') {
                 echo '<div style="display: flex; flex-direction: column; align-items: flex-start; margin-bottom: 12px;">';
                 echo '<span style="font-size: 10px; color: #94a3b8; margin-bottom: 4px; font-weight: bold;">' . htmlspecialchars($c['name']) . ' - ' . date('M d, g:i A', strtotime($c['created_at'])) . '</span>';
@@ -36,13 +40,14 @@ if (isset($_GET['fetch_chat_history']) && isset($_GET['session_id'])) {
 
             if (!empty($c['admin_reply'])) {
                 $agent = !empty($c['replied_by']) ? htmlspecialchars($c['replied_by']) : 'Support Agent';
-                
+
                 if ($agent === 'Finance Admin') {
                     echo '<div style="display: flex; flex-direction: column; align-items: flex-end; margin-bottom: 12px;">';
                     echo '<span style="font-size: 10px; color: #10b981; margin-bottom: 4px; font-weight: bold;">' . $agent . ' - ' . date('M d, g:i A', strtotime($c['updated_at'])) . '</span>';
                     echo '<div style="background: rgba(16, 185, 129, 0.15); color: #a7f3d0; padding: 10px 15px; border-radius: 12px 12px 2px 12px; max-width: 85%; font-size: 13px; line-height: 1.5; border: 1px solid #10b981;">' . nl2br(htmlspecialchars($c['admin_reply'])) . '</div>';
                     echo '</div>';
-                } else {
+                }
+                else {
                     echo '<div style="display: flex; flex-direction: column; align-items: flex-end; margin-bottom: 12px;">';
                     echo '<span style="font-size: 10px; color: #3b82f6; margin-bottom: 4px; font-weight: bold;">' . $agent . ' - ' . date('M d, g:i A', strtotime($c['updated_at'])) . '</span>';
                     echo '<div style="background: #1e3a8a; color: #fff; padding: 10px 15px; border-radius: 12px 12px 2px 12px; max-width: 85%; font-size: 13px; line-height: 1.5; border: 1px solid #1d4ed8;">' . nl2br(htmlspecialchars($c['admin_reply'])) . '</div>';
@@ -50,10 +55,12 @@ if (isset($_GET['fetch_chat_history']) && isset($_GET['session_id'])) {
                 }
             }
         }
-    } else {
+    }
+    else {
         echo '<div style="text-align: center; color: #94a3b8; padding: 20px;">No chat history found for this session.</div>';
     }
-    exit; 
+    exit;
+
 }
 
 $query = "SELECT * FROM chat_support_messages WHERE is_complaint = 1 AND is_resolved = 1 GROUP BY ticket_id ORDER BY updated_at DESC";
@@ -126,7 +133,7 @@ $tickets = $core2_conn->query($query);
         </div>
 
         <?php if ($tickets && $tickets->num_rows > 0): ?>
-            <?php while($t = $tickets->fetch_assoc()): ?>
+            <?php while ($t = $tickets->fetch_assoc()): ?>
                 <div class="config-card">
                     
                     <div class="card-head" onclick="toggleTicket(this)">
@@ -163,10 +170,10 @@ $tickets = $core2_conn->query($query);
                             <div class="chat-section">
                                 <span class="chat-label" style="color: #10b981;"><i class="bi bi-shield-check"></i> Finance Resolution Action</span>
                                 <div class="chat-text" style="background: rgba(16, 185, 129, 0.1); padding: 12px; border-radius: 6px; border-left: 3px solid #10b981; color: #a7f3d0; margin-top: 8px;">
-                                    <?php 
-                                        $admin_reply = $t['admin_reply'] ?? 'Ticket marked as resolved.';
-                                        echo nl2br(htmlspecialchars($admin_reply)); 
-                                    ?>
+                                    <?php
+        $admin_reply = $t['admin_reply'] ?? 'Ticket marked as resolved.';
+        echo nl2br(htmlspecialchars($admin_reply));
+?>
                                 </div>
                             </div>
 
@@ -174,14 +181,17 @@ $tickets = $core2_conn->query($query);
                     </div>
 
                 </div>
-            <?php endwhile; ?>
-        <?php else: ?>
+            <?php
+    endwhile; ?>
+        <?php
+else: ?>
             <div class="empty-state">
                 <i class="bi bi-folder-x"></i>
                 <h3 style="color:#e2e8f0; font-size:18px; margin-bottom:5px;">No Archived Tickets</h3>
                 <p>There are no resolved tickets in the history yet.</p>
             </div>
-        <?php endif; ?>
+        <?php
+endif; ?>
 
     </div>
 

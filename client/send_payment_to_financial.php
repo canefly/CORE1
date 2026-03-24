@@ -2,11 +2,11 @@
 //10.112.107.207
 function sendPaymentToFinancial(array $paymentData): array
 {
-    $url = "http://192.168.1.11/microfinancee/modules/collections/receive_payment_from_core1.php";
+    $url = "http://192.168.100.4/microfinancee/modules/collections/receive_payment_from_core1.php";
     $logFile = __DIR__ . "/debug_send_to_financial.log";
 
     $payloadArray = [
-        "token"   => "core1_financial_payment_secret",
+        "token" => "core1_financial_payment_secret",
         "payment" => $paymentData
     ];
 
@@ -57,7 +57,7 @@ function sendPaymentToFinancial(array $paymentData): array
 
         $response = curl_exec($ch);
         $curlError = curl_error($ch);
-        $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
         curl_close($ch);
 

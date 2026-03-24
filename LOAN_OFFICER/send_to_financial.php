@@ -3,7 +3,7 @@
 function sendApprovedLoanToFinancial(array $payload): array
 {
     // PALITAN kung iba ang IP/folder name ng FINANCIAL server
-    $financialUrl = 'http://192.168.1.11/microfinancee/modules/disbursement/receive_core1_disbursement.php';
+    $financialUrl = 'http://192.168.100.4/microfinancee/modules/disbursement/receive_core1_disbursement.php';
     $apiKey = 'CORE1_FINANCIAL_SECRET_123';
 
     $ch = curl_init($financialUrl);
@@ -40,7 +40,7 @@ function sendApprovedLoanToFinancial(array $payload): array
             'success' => false,
             'message' => 'Invalid response from Financial server. Raw response: ' . $response,
             'http_code' => $httpCode,
-            
+
         ];
     }
 

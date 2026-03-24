@@ -7,7 +7,7 @@ require_once __DIR__ . "/include/config.php";
 require_once __DIR__ . "/include/session_checker.php";
 require_once __DIR__ . "/include/wallet_helper.php";
 require_once __DIR__ . "/send_payment_to_financial.php";
-require_once __DIR__ . "/send_wallet_payment_to_core2.php";
+require_once __DIR__ . "/send_wallet_sync_to_core2.php";
 require_once __DIR__ . "/receipt_image_generator.php";
 
 if (!isset($_SESSION['user_id'])) {
@@ -535,7 +535,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $financialResponse = sendPaymentToFinancial($paymentPayload);
 walletPayLog("FINANCIAL response=" . json_encode($financialResponse));
 
-$core2Response = sendWalletPaymentToCore2($paymentPayload);
+$walletSyncPayload = [
+    'wallet_account_id'    => $walletId,
+    'user_id'              => $user_id,
+    'loan_id'              => $finalLoanId > 0 ? $finalLoanId : null,
+    'restructured_loan_id' => $finalRestructuredId > 0 ? $finalRestructuredId : null,
+    'transaction_type'     => $source === 'restructured' ? 'RESTRUCTURED_PAYMENT' : 'LOAN_PAYMENT',
+    'amount'               => $paymentAmount,
+    'running_balance'      => $newBalance,
+    'reference_no'         => $receiptNumber,
+    'remarks'              => $source === 'restructured'
+        ? 'Wallet payment for restructured loan (pending verification)'
+        : 'Wallet payment for active loan (pending verification)',
+    'status'               => 'SUCCESS',
+    'sync_status'          => 'PENDING',
+    'sync_error'           => null
+];
+
+$core2Response = sendWalletSyncToCore2($walletSyncPayload);
 walletPayLog("CORE2 wallet response=" . json_encode($core2Response));
 
 $financialOk = !empty($financialResponse['success']);
@@ -764,6 +781,26 @@ if ($financialOk && $core2Ok) {
             color: var(--text-soft);
         }
 
+        .alert-warning {
+            background: rgba(245, 158, 11, 0.15);
+            color: #fcd34d;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 14px;
+            padding: 14px 16px;
+            margin-top: 18px;
+            margin-bottom: 0px;
+            font-weight: 400;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            line-height: 1.5;
+        }
+
+        .alert-warning strong {
+            font-weight: 700;
+            color: #fbbf24;
+        }
+
         @media (max-width: 1100px) {
             .main-content {
                 margin-left: 250px;
@@ -863,10 +900,32 @@ if ($financialOk && $core2Ok) {
                     </div>
                 </div>
 
-                <div class="info-box">
-                    Once you confirm, the wallet amount will be deducted immediately and the payment
-                    will be sent for verification and collection syncing.
-                </div>
+                <?php
+                $disableReason = '';
+                $shortfall = 0;
+                if (!$hasLoan || $monthlyDue <= 0 || $outstanding <= 0) {
+                    $disableReason = 'No active or payable loan found.';
+                } elseif ($balance < $monthlyDue) {
+                    $shortfall = $monthlyDue - $balance;
+                    $disableReason = 'Your wallet balance is too low. You need ₱' . number_format($shortfall, 2) . ' more to be able to pay.';
+                }
+                $isPayDisabled = $disableReason !== '';
+                ?>
+
+                <?php if ($shortfall > 0): ?>
+                    <div class="alert-warning" style="margin-top: 18px;">
+                        <i class="bi bi-exclamation-triangle-fill" style="font-size: 1.2rem;"></i>
+                        <div>
+                            <strong>Insufficient Balance</strong><br>
+                            Top up your wallet by exactly <strong>₱<?= number_format($shortfall, 2) ?></strong> more to pay this due.
+                        </div>
+                    </div>
+                <?php else: ?>
+                    <div class="info-box">
+                        Once you confirm, the wallet amount will be deducted immediately and the payment
+                        will be sent for verification and collection syncing.
+                    </div>
+                <?php endif; ?>
 
                 <form method="POST" class="form-actions">
                     <a href="wallet.php" class="btn btn-secondary">
@@ -874,7 +933,7 @@ if ($financialOk && $core2Ok) {
                         Back to Wallet
                     </a>
 
-                    <button type="submit" class="btn btn-primary" <?= (!$hasLoan || $monthlyDue <= 0 || $outstanding <= 0 || $balance < $monthlyDue) ? 'disabled' : '' ?>>
+                    <button type="<?= $isPayDisabled ? 'button' : 'submit' ?>" id="payBtn" class="btn btn-primary" <?= $isPayDisabled ? 'data-disabled="true" data-reason="'.e($disableReason).'" style="filter: grayscale(1); opacity: 0.6; cursor: not-allowed;"' : '' ?>>
                         <i class="bi bi-wallet2"></i>
                         Pay Using Wallet
                     </button>
@@ -883,5 +942,25 @@ if ($financialOk && $core2Ok) {
         </div>
     </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const payBtn = document.getElementById('payBtn');
+    if (payBtn && payBtn.getAttribute('data-disabled') === 'true') {
+        payBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            Swal.fire({
+                icon: 'warning',
+                title: 'Action Disabled',
+                text: payBtn.getAttribute('data-reason'),
+                confirmButtonColor: '#fbbf24',
+                background: '#0b1a39',
+                color: '#fff'
+            });
+        });
+    }
+});
+</script>
 </body>
 </html>

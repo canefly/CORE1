@@ -3,6 +3,7 @@ session_start();
 require_once __DIR__ . "/include/config.php";
 require_once __DIR__ . "/include/session_checker.php";
 require_once __DIR__ . "/include/wallet_helper.php";
+require_once __DIR__ . "/send_wallet_sync_to_core2.php";
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
@@ -98,6 +99,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ]);
 
                 $conn->commit();
+
+                $syncPayload = [
+                    'wallet_account_id'    => $walletId,
+                    'user_id'              => $user_id,
+                    'loan_id'              => null,
+                    'restructured_loan_id' => null,
+                    'transaction_type'     => 'CASH_OUT',
+                    'amount'               => $amount,
+                    'running_balance'      => $newBalance,
+                    'reference_no'         => $referenceNo,
+                    'remarks'              => $remarks !== '' ? $remarks : 'Cash out from wallet',
+                    'status'               => 'SUCCESS',
+                    'sync_status'          => 'PENDING',
+                    'sync_error'           => null
+                ];
+                
+                $syncResponse = sendWalletSyncToCore2($syncPayload);
+                
+                if (!empty($syncResponse['success'])) {
+                    $upd = $conn->prepare("UPDATE wallet_transactions SET sync_status = 'SYNCED' WHERE reference_no = ?");
+                    $upd->bind_param("s", $referenceNo);
+                    $upd->execute();
+                    $upd->close();
+                } else {
+                    $err = $syncResponse['message'] ?? 'Unknown error connecting to CORE2';
+                    $upd = $conn->prepare("UPDATE wallet_transactions SET sync_status = 'FAILED', sync_error = ? WHERE reference_no = ?");
+                    $upd->bind_param("ss", $err, $referenceNo);
+                    $upd->execute();
+                    $upd->close();
+                }
 
                 header("Location: wallet.php?success=cashout");
                 exit;

@@ -4,32 +4,35 @@ session_start();
 // ==========================================
 // DUAL-DATABASE CONNECTION
 // ==========================================
-$core1_host = "127.0.0.1";       // Localhost ng PC mo
-$core2_host = "192.168.1.11";   // IP Address ng Core2
+$core1_host = "127.0.0.1"; // Localhost ng PC mo
+$core2_host = "192.168.100.4"; // IP Address ng Core2
 $user = "root";
 $pass = "";
 
 // Connect sa local PC (Core 1)
 $conn = new mysqli($core1_host, $user, $pass, "microfinance_db");
-if ($conn->connect_error) die("Core 1 Connection Failed: " . $conn->connect_error);
+if ($conn->connect_error)
+    die("Core 1 Connection Failed: " . $conn->connect_error);
 
 // Connect sa Laptop (Core 2)
-$core2_conn = new mysqli($core2_host, $user, $pass, "core2_db"); 
-if ($core2_conn->connect_error) die("Core 2 Connection Failed: " . $core2_conn->connect_error);
+$core2_conn = new mysqli($core2_host, $user, $pass, "core2_db");
+
+if ($core2_conn->connect_error)
+    die("Core 2 Connection Failed: " . $core2_conn->connect_error);
 
 // ==========================================
 // 🚨 AJAX ENDPOINT: FETCH FULL CHAT LOG 🚨
 // ==========================================
 if (isset($_GET['fetch_chat_history']) && isset($_GET['session_id'])) {
     $sess = $core2_conn->real_escape_string($_GET['session_id']);
-    
+
     // Sa Core 2 kukuha para updated ang chat history
     $chat_sql = "SELECT * FROM chat_support_messages WHERE session_id = '$sess' ORDER BY created_at ASC";
     $chat_res = $core2_conn->query($chat_sql);
-    
+
     if ($chat_res && $chat_res->num_rows > 0) {
-        while($c = $chat_res->fetch_assoc()) {
-            
+        while ($c = $chat_res->fetch_assoc()) {
+
             // Client Message Bubble (Nakatago ang [SYSTEM])
             if (trim($c['message']) !== '[SYSTEM]') {
                 echo '<div style="display: flex; flex-direction: column; align-items: flex-start; margin-bottom: 12px;">';
@@ -47,10 +50,12 @@ if (isset($_GET['fetch_chat_history']) && isset($_GET['session_id'])) {
                 echo '</div>';
             }
         }
-    } else {
+    }
+    else {
         echo '<div style="text-align: center; color: #94a3b8; padding: 20px;">No chat history found for this session.</div>';
     }
-    exit; 
+    exit;
+
 }
 
 // ==========================================
@@ -60,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['resolve_ticket'])) {
     $session_id = $core2_conn->real_escape_string($_POST['session_id']);
     $ticket_id = $core2_conn->real_escape_string($_POST['ticket_id']);
     $finance_notes = $core2_conn->real_escape_string(trim($_POST['finance_notes']));
-    
+
     $auto_reply = "🎟️ SYSTEM NOTIFICATION: \nYour ticket ($ticket_id) has been marked as RESOLVED by the Core 1 Department.\n\nFinance Notes: $finance_notes";
 
     $resolve_sql = "UPDATE chat_support_messages SET is_resolved = 1 WHERE ticket_id = '$ticket_id'";
@@ -78,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['resolve_ticket'])) {
         (user_id, name, email, message, admin_reply, replied_by, status, session_id, created_at, updated_at) 
         VALUES 
         ('$u_id', '$u_name', '$u_email', '[SYSTEM]', '$auto_reply', 'Finance Admin', 'replied', '$session_id', NOW(), NOW())";
-    
+
     $conn->query($insert_sys_sql);
     $core2_conn->query($insert_sys_sql);
 
@@ -161,12 +166,17 @@ $tickets = $core2_conn->query($query);
         </div>
 
         <?php if ($tickets && $tickets->num_rows > 0): ?>
-            <?php while($t = $tickets->fetch_assoc()): 
-                $iconClass = "icon-blue";
-                $iconName = "bi-ticket-detailed";
-                if ($t['priority'] == 'HIGH') { $iconClass = "icon-red"; $iconName = "bi-exclamation-triangle"; }
-                elseif ($t['priority'] == 'MEDIUM') { $iconClass = "icon-gold"; }
-            ?>
+            <?php while ($t = $tickets->fetch_assoc()):
+        $iconClass = "icon-blue";
+        $iconName = "bi-ticket-detailed";
+        if ($t['priority'] == 'HIGH') {
+            $iconClass = "icon-red";
+            $iconName = "bi-exclamation-triangle";
+        }
+        elseif ($t['priority'] == 'MEDIUM') {
+            $iconClass = "icon-gold";
+        }
+?>
                 <div class="config-card">
                     <div class="card-head" onclick="toggleTicket(this)">
                         <div class="icon-box <?php echo $iconClass; ?>">
@@ -174,7 +184,7 @@ $tickets = $core2_conn->query($query);
                         </div>
                         <div class="card-title">
                             <h3>Ticket: <?php echo htmlspecialchars($t['ticket_id']); ?></h3>
-                            <span>Priority Level: <strong style="color: <?php echo ($t['priority'] == 'HIGH') ? '#f87171' : (($t['priority'] == 'MEDIUM') ? '#fbbf24' : '#10b981'); ?>"><?php echo htmlspecialchars($t['priority']); ?></strong></span>
+                            <span>Priority Level: <strong style="color: <?php echo($t['priority'] == 'HIGH') ? '#f87171' : (($t['priority'] == 'MEDIUM') ? '#fbbf24' : '#10b981'); ?>"><?php echo htmlspecialchars($t['priority']); ?></strong></span>
                         </div>
                         <i class="bi bi-chevron-down toggle-icon"></i>
                     </div>
@@ -213,14 +223,17 @@ $tickets = $core2_conn->query($query);
                         </form>
                     </div>
                 </div>
-            <?php endwhile; ?>
-        <?php else: ?>
+            <?php
+    endwhile; ?>
+        <?php
+else: ?>
             <div class="empty-state">
                 <i class="bi bi-inbox"></i>
                 <h3 style="color:#e2e8f0; font-size:18px; margin-bottom:5px;">Queue is Empty</h3>
                 <p>No pending tickets from Core 2 support.</p>
             </div>
-        <?php endif; ?>
+        <?php
+endif; ?>
 
     </div>
 
