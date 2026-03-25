@@ -1,32 +1,24 @@
-[2026-03-17 22:47:59] Receiver started successfully.
-[2026-03-17 22:47:59] RAW INPUT: {"token":"core1_financial_payment_verify_secret_key","payment_id":43,"payment_number":"CORE1-TXN-118","receipt_number":"RCPT-20260317-000118","reference_number":null,"loan_id":21,"client_id":12,"amount":2066.67,"payment_date":"2026-03-17","status":"SUCCESS","financial_payment_status":"Completed"}
-[2026-03-17 22:47:59] Parsed payload => payment_id=43, payment_number=CORE1-TXN-118, transaction_id=118, loan_id=21, client_id=12, amount=2066.67, status=SUCCESS, financial_payment_status=Completed
-[2026-03-17 22:47:59] SUCCESS transaction_id=118, payment_id=43, payment_number=CORE1-TXN-118, status=SUCCESS, receipt_number=RCPT-20260317-000118, reference_number=NULL
-[2026-03-17 23:24:41] DB connection failed: Database config not found: C:\xampp\htdocs/include/config.php
-[2026-03-17 23:27:08] Receiver started successfully.
-[2026-03-17 23:27:08] RAW INPUT: {"token":"core1_financial_payment_verify_secret_key","payment_id":45,"payment_number":"CORE1-TXN-127","receipt_number":"RCPT-20260317-000127","reference_number":null,"loan_id":24,"client_id":14,"amount":2066.67,"payment_date":"2026-03-17","status":"SUCCESS","financial_payment_status":"Completed"}
-[2026-03-17 23:27:08] Parsed payload => payment_id=45, payment_number=CORE1-TXN-127, transaction_id=127, loan_id=24, client_id=14, amount=2066.67, status=SUCCESS, financial_payment_status=Completed
-[2026-03-17 23:27:08] SUCCESS transaction_id=127, payment_id=45, payment_number=CORE1-TXN-127, status=SUCCESS, receipt_number=RCPT-20260317-000127, reference_number=NULL, resolved_loan_id=24
-[2026-03-18 15:38:04] Receiver started successfully.
-[2026-03-18 15:38:04] RAW INPUT: {"token":"core1_financial_payment_verify_secret_key","payment_id":46,"payment_number":"CORE1-TXN-128","receipt_number":"RCPT-20260318-000128","reference_number":null,"loan_id":25,"client_id":15,"amount":2066.67,"payment_date":"2026-03-18","status":"SUCCESS","financial_payment_status":"Completed"}
-[2026-03-18 15:38:04] Parsed payload => payment_id=46, payment_number=CORE1-TXN-128, transaction_id=128, loan_id=25, client_id=15, amount=2066.67, status=SUCCESS, financial_payment_status=Completed
-[2026-03-18 15:38:04] SUCCESS transaction_id=128, payment_id=46, payment_number=CORE1-TXN-128, status=SUCCESS, receipt_number=RCPT-20260318-000128, reference_number=NULL, resolved_loan_id=25
-[2026-03-18 15:46:01] Receiver started successfully.
-[2026-03-18 15:46:01] RAW INPUT: {"token":"core1_financial_payment_verify_secret_key","payment_id":47,"payment_number":"CORE1-TXN-129","receipt_number":"RCPT-20260318-000129","reference_number":null,"loan_id":25,"client_id":15,"amount":1561.48,"payment_date":"2026-03-18","status":"SUCCESS","financial_payment_status":"Completed"}
-[2026-03-18 15:46:01] Parsed payload => payment_id=47, payment_number=CORE1-TXN-129, transaction_id=129, loan_id=25, client_id=15, amount=1561.48, status=SUCCESS, financial_payment_status=Completed
-[2026-03-18 15:46:01] SUCCESS transaction_id=129, payment_id=47, payment_number=CORE1-TXN-129, status=SUCCESS, receipt_number=RCPT-20260318-000129, reference_number=NULL, resolved_loan_id=25
-[2026-03-18 17:01:23] Receiver started successfully.
-[2026-03-18 17:01:23] RAW INPUT: {"token":"core1_financial_payment_verify_secret_key","payment_id":48,"payment_number":"CORE1-TXN-130","receipt_number":"RCPT-20260318-000130","reference_number":null,"loan_id":25,"client_id":15,"amount":1561.48,"payment_date":"2026-03-18","status":"SUCCESS","financial_payment_status":"Completed"}
-[2026-03-18 17:01:23] Parsed payload => payment_id=48, payment_number=CORE1-TXN-130, transaction_id=130, loan_id=25, client_id=15, amount=1561.48, status=SUCCESS, financial_payment_status=Completed
-[2026-03-18 17:01:23] SUCCESS transaction_id=130, payment_id=48, payment_number=CORE1-TXN-130, status=SUCCESS, receipt_number=RCPT-20260318-000130, reference_number=NULL, resolved_loan_id=25
-[2026-03-18 17:13:47] Receiver started successfully.
-[2026-03-18 17:13:47] RAW INPUT: {"token":"core1_financial_payment_verify_secret_key","payment_id":49,"payment_number":"CORE1-TXN-131","receipt_number":"RCPT-20260318-000131","reference_number":null,"loan_id":25,"client_id":15,"amount":1561.48,"payment_date":"2026-03-18","status":"SUCCESS","financial_payment_status":"Completed"}
-[2026-03-18 17:13:47] Parsed payload => payment_id=49, payment_number=CORE1-TXN-131, transaction_id=131, loan_id=25, client_id=15, amount=1561.48, status=SUCCESS, financial_payment_status=Completed
-[2026-03-18 17:13:47] Matched transaction => id=131, loan_id=25, restructured_loan_id=7, current_status=PAID_PENDING
-[2026-03-18 17:13:47] Detected restructured payment. transaction_id=131, restructured_loan_id=7, amount=1561.48
-[2026-03-18 17:13:47] RESTRUCTURED LOAN UPDATED restructured_loan_id=7, old_outstanding=10333.33, payment=1561.48, new_outstanding=8771.85, new_status=ACTIVE, new_next_payment=NULL
-[2026-03-18 17:13:47] SUCCESS transaction_id=131, payment_id=49, payment_number=CORE1-TXN-131, status=SUCCESS, receipt_number=RCPT-20260318-000131, reference_number=NULL, resolved_loan_id=25, resolved_restructured_loan_id=7
-[2026-03-19 03:42:49] Receiver started successfully.
-[2026-03-19 03:42:49] RAW INPUT: {"token":"core1_financial_payment_verify_secret_key","payment_id":24,"payment_number":"CORE1-TXN-90","receipt_number":"RCPT-20260317-000090","reference_number":null,"loan_id":19,"client_id":12,"amount":2066.67,"payment_date":"2026-03-17","status":"SUCCESS","financial_payment_status":"Completed"}
-[2026-03-19 03:42:49] Parsed payload => payment_id=24, payment_number=CORE1-TXN-90, transaction_id=90, loan_id=19, client_id=12, amount=2066.67, status=SUCCESS, financial_payment_status=Completed
-[2026-03-19 03:42:49] ERROR: No matching CORE1 transaction found. payment_number=CORE1-TXN-90, loan_id=19, amount=2066.67
+[2026-03-24 18:42:39] Receiver started successfully.
+[2026-03-24 18:56:59] Receiver started successfully.
+[2026-03-24 18:56:59] RAW INPUT: {"token":"core1_financial_payment_verify_secret_key","payment_id":45,"payment_number":"CORE1-TXN-4","receipt_number":"RCPT-20260324-000004","reference_number":null,"loan_id":2,"client_id":3,"amount":3720,"payment_date":"2026-03-24","status":"SUCCESS","financial_payment_status":"Completed"}
+[2026-03-24 18:56:59] Parsed payload => payment_id=45, payment_number=CORE1-TXN-4, transaction_id=4, loan_id=2, client_id=3, amount=3720.00, status=SUCCESS, financial_payment_status=Completed
+[2026-03-24 18:56:59] Matched transaction => id=4, loan_id=2, restructured_loan_id=NULL, current_status=PAID_PENDING, provider_method=GCASH
+[2026-03-24 18:56:59] Detected regular loan payment. transaction_id=4, loan_id=2, amount=3720.00
+[2026-03-24 18:56:59] REGULAR LOAN UPDATED loan_id=2, old_outstanding=22320.00, payment=3720.00, new_outstanding=18600.00, new_status=ACTIVE, new_next_payment=2026-05-24
+[2026-03-24 18:56:59] SUCCESS transaction_id=4, payment_id=45, payment_number=CORE1-TXN-4, status=SUCCESS, receipt_number=RCPT-20260324-000004, reference_number=NULL, resolved_loan_id=2, resolved_restructured_loan_id=0, provider_method=GCASH
+[2026-03-24 21:24:09] Receiver started successfully.
+[2026-03-24 21:24:09] RAW INPUT: {"token":"core1_financial_payment_verify_secret_key","payment_id":46,"payment_number":"CORE1-TXN-5","receipt_number":"RCPT-20260324-000005","reference_number":null,"loan_id":2,"client_id":3,"amount":3720,"payment_date":"2026-03-24","status":"SUCCESS","financial_payment_status":"Completed"}
+[2026-03-24 21:24:09] Parsed payload => payment_id=46, payment_number=CORE1-TXN-5, transaction_id=5, loan_id=2, client_id=3, amount=3720.00, status=SUCCESS, financial_payment_status=Completed
+[2026-03-24 21:24:09] Matched transaction => id=5, loan_id=2, restructured_loan_id=NULL, current_status=PAID_PENDING, provider_method=WALLET
+[2026-03-24 21:24:09] Wallet transaction marked SYNCED. wallet_tx_id=7, reference=RCPT-20260324-000005
+[2026-03-24 21:24:09] Detected regular loan payment. transaction_id=5, loan_id=2, amount=3720.00
+[2026-03-24 21:24:09] REGULAR LOAN UPDATED loan_id=2, old_outstanding=18600.00, payment=3720.00, new_outstanding=14880.00, new_status=ACTIVE, new_next_payment=2026-06-24
+[2026-03-24 21:24:09] SUCCESS transaction_id=5, payment_id=46, payment_number=CORE1-TXN-5, status=SUCCESS, receipt_number=RCPT-20260324-000005, reference_number=NULL, resolved_loan_id=2, resolved_restructured_loan_id=0, provider_method=WALLET
+[2026-03-24 23:06:03] Receiver started successfully.
+[2026-03-24 23:06:03] RAW INPUT: {"token":"core1_financial_payment_verify_secret_key","payment_id":47,"payment_number":"CORE1-TXN-6","receipt_number":"RCPT-20260324-000006","reference_number":null,"loan_id":2,"client_id":3,"amount":3720,"payment_date":"2026-03-24","status":"SUCCESS","financial_payment_status":"Completed"}
+[2026-03-24 23:06:03] Parsed payload => payment_id=47, payment_number=CORE1-TXN-6, transaction_id=6, loan_id=2, client_id=3, amount=3720.00, status=SUCCESS, financial_payment_status=Completed
+[2026-03-24 23:06:03] Matched transaction => id=6, loan_id=2, restructured_loan_id=NULL, current_status=PAID_PENDING, provider_method=WALLET
+[2026-03-24 23:06:03] Wallet transaction marked SYNCED. wallet_tx_id=14, reference=RCPT-20260324-000006
+[2026-03-24 23:06:03] Detected regular loan payment. transaction_id=6, loan_id=2, amount=3720.00
+[2026-03-24 23:06:03] REGULAR LOAN UPDATED loan_id=2, old_outstanding=14880.00, payment=3720.00, new_outstanding=11160.00, new_status=ACTIVE, new_next_payment=2026-07-24
+[2026-03-24 23:06:03] SUCCESS transaction_id=6, payment_id=47, payment_number=CORE1-TXN-6, status=SUCCESS, receipt_number=RCPT-20260324-000006, reference_number=NULL, resolved_loan_id=2, resolved_restructured_loan_id=0, provider_method=WALLET

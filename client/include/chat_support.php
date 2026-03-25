@@ -2,7 +2,7 @@
 require_once __DIR__ . '/config.php'; // CORE1 DB (192.168.0.109)
 
 // CORE2 CONNECTION (STAFF SERVER)
-$core2_host = "10.112.107.130"; //palitan ng ip address ng core 2 oki? 
+$core2_host = "192.168.100.4"; //palitan ng ip address ng core 2 oki? 
 $core2_user = "root";
 $core2_pass = "";
 $core2_dbname = "core2_db";
@@ -37,12 +37,12 @@ if (isset($_POST['end_chat'])) {
             WHERE session_id = ? OR user_id = ?";
 
     $stmt1 = $conn->prepare($sql);
-    $stmt1->bind_param("si",$session_id,$user_id);
+    $stmt1->bind_param("si", $session_id, $user_id);
     $stmt1->execute();
     $stmt1->close();
 
     $stmt2 = $core2_conn->prepare($sql);
-    $stmt2->bind_param("si",$session_id,$user_id);
+    $stmt2->bind_param("si", $session_id, $user_id);
     $stmt2->execute();
     $stmt2->close();
 
@@ -59,7 +59,7 @@ if (isset($_POST['end_chat'])) {
 // AJAX FETCH CHAT
 // =======================================================
 
-if(isset($_GET['ajax_fetch_chat'])){
+if (isset($_GET['ajax_fetch_chat'])) {
 
     $sql = "SELECT * 
             FROM chat_support_messages
@@ -68,34 +68,34 @@ if(isset($_GET['ajax_fetch_chat'])){
             ORDER BY created_at ASC";
 
     $stmt = $core2_conn->prepare($sql);
-    $stmt->bind_param("si",$session_id,$user_id);
+    $stmt->bind_param("si", $session_id, $user_id);
     $stmt->execute();
 
     $result = $stmt->get_result();
 
     echo '<div class="chat-bubble bubble-admin">
     <div class="time">System</div>
-    <div class="msg-content">Hello '.htmlspecialchars(explode(' ', $name)[0]).'! How can we help you?</div>
+    <div class="msg-content">Hello ' . htmlspecialchars(explode(' ', $name)[0]) . '! How can we help you?</div>
     </div>';
 
-    while($msg=$result->fetch_assoc()){
+    while ($msg = $result->fetch_assoc()) {
 
-        if(!empty($msg['message']) && $msg['message']!='[SYSTEM]'){
+        if (!empty($msg['message']) && $msg['message'] != '[SYSTEM]') {
 
             echo '<div class="chat-bubble bubble-you">';
-            echo '<div class="time">'.date('g:i A',strtotime($msg['created_at'])).'</div>';
-            echo '<div class="msg-content">'.nl2br(htmlspecialchars($msg['message'])).'</div>';
+            echo '<div class="time">' . date('g:i A', strtotime($msg['created_at'])) . '</div>';
+            echo '<div class="msg-content">' . nl2br(htmlspecialchars($msg['message'])) . '</div>';
             echo '</div>';
 
         }
 
-        if(!empty($msg['admin_reply'])){
+        if (!empty($msg['admin_reply'])) {
 
             $agent = $msg['replied_by'] ?? "Support";
 
             echo '<div class="chat-bubble bubble-admin">';
-            echo '<div class="time">'.$agent.' - '.date('g:i A',strtotime($msg['updated_at'])).'</div>';
-            echo '<div class="msg-content">'.nl2br(htmlspecialchars($msg['admin_reply'])).'</div>';
+            echo '<div class="time">' . $agent . ' - ' . date('g:i A', strtotime($msg['updated_at'])) . '</div>';
+            echo '<div class="msg-content">' . nl2br(htmlspecialchars($msg['admin_reply'])) . '</div>';
             echo '</div>';
 
         }
@@ -113,11 +113,11 @@ if(isset($_GET['ajax_fetch_chat'])){
 // MESSAGE LIMIT
 // =======================================================
 
-if(!isset($_SESSION['chat_messages_sent'])){
-    $_SESSION['chat_messages_sent']=0;
+if (!isset($_SESSION['chat_messages_sent'])) {
+    $_SESSION['chat_messages_sent'] = 0;
 }
 
-$limit=15;
+$limit = 15;
 
 $has_reached_limit = $_SESSION['chat_messages_sent'] >= $limit;
 
@@ -127,33 +127,33 @@ $has_reached_limit = $_SESSION['chat_messages_sent'] >= $limit;
 // CLIENT SEND MESSAGE
 // =======================================================
 
-if($_SERVER['REQUEST_METHOD']==='POST' && isset($_POST['message'])){
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['message'])) {
 
-    $redirect = strtok($_SERVER['REQUEST_URI'], '?')."?chat=open";
+    $redirect = strtok($_SERVER['REQUEST_URI'], '?') . "?chat=open";
 
-    if(!$has_reached_limit){
+    if (!$has_reached_limit) {
 
         $message = trim($_POST['message']);
 
-        if($message!=""){
+        if ($message != "") {
 
-            $sql="INSERT INTO chat_support_messages
+            $sql = "INSERT INTO chat_support_messages
             (user_id,name,email,message,created_at,status,session_id,client_archived)
             VALUES (?,?,?,?,NOW(),'pending',?,0)";
 
             // CORE1 SAVE
-            $stmt1=$conn->prepare($sql);
-            $stmt1->bind_param("issss",$user_id,$name,$email,$message,$session_id);
-            $ok1=$stmt1->execute();
+            $stmt1 = $conn->prepare($sql);
+            $stmt1->bind_param("issss", $user_id, $name, $email, $message, $session_id);
+            $ok1 = $stmt1->execute();
             $stmt1->close();
 
             // CORE2 SAVE
-            $stmt2=$core2_conn->prepare($sql);
-            $stmt2->bind_param("issss",$user_id,$name,$email,$message,$session_id);
-            $ok2=$stmt2->execute();
+            $stmt2 = $core2_conn->prepare($sql);
+            $stmt2->bind_param("issss", $user_id, $name, $email, $message, $session_id);
+            $ok2 = $stmt2->execute();
             $stmt2->close();
 
-            if($ok1 && $ok2){
+            if ($ok1 && $ok2) {
                 $_SESSION['chat_messages_sent']++;
             }
 
@@ -172,21 +172,21 @@ if($_SERVER['REQUEST_METHOD']==='POST' && isset($_POST['message'])){
 // COUNT ADMIN REPLIES
 // =======================================================
 
-$admin_reply_count=0;
+$admin_reply_count = 0;
 
-$res=$core2_conn->query("SELECT id 
+$res = $core2_conn->query("SELECT id 
 FROM chat_support_messages
 WHERE (session_id='$session_id' OR user_id=$user_id)
 AND admin_reply IS NOT NULL
 AND admin_reply!=''
 AND client_archived=0");
 
-if($res){
-    $admin_reply_count=$res->num_rows;
+if ($res) {
+    $admin_reply_count = $res->num_rows;
 }
 
 
-$isOpen = isset($_GET['chat']) && $_GET['chat']=="open";
+$isOpen = isset($_GET['chat']) && $_GET['chat'] == "open";
 
 ?>
 
@@ -251,7 +251,8 @@ $isOpen = isset($_GET['chat']) && $_GET['chat']=="open";
 
     <?php if ($has_reached_limit): ?>
         <div class="limit-warning"><i class="fas fa-exclamation-circle"></i> Message limit reached for this session.</div>
-    <?php endif; ?>
+    <?php
+endif; ?>
 
     <div class="chat-history" id="chatHistory"></div>
 

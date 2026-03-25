@@ -60,11 +60,13 @@ if (!function_exists('getUserFullName')) {
     }
 }
 
+
+
 if (!function_exists('getWalletByUserId')) {
     function getWalletByUserId(mysqli $conn, int $userId): ?array
     {
         $stmt = $conn->prepare("
-            SELECT id, user_id, account_number, balance, status, created_at, updated_at
+            SELECT id, user_id, account_number, balance, loan_wallet_balance, status, created_at, updated_at
             FROM wallet_accounts
             WHERE user_id = ?
             LIMIT 1
@@ -90,8 +92,8 @@ if (!function_exists('createWalletForUser')) {
         $accountNumber = generateWalletAccountNumber($conn, $userId);
 
         $stmt = $conn->prepare("
-            INSERT INTO wallet_accounts (user_id, account_number, balance, status)
-            VALUES (?, ?, 0.00, 'ACTIVE')
+            INSERT INTO wallet_accounts (user_id, account_number, balance, loan_wallet_balance, status)
+            VALUES (?, ?, 0.00, 0.00, 'ACTIVE')
         ");
 
         if (!$stmt) {
@@ -108,10 +110,6 @@ if (!function_exists('createWalletForUser')) {
         $stmt->close();
 
         $wallet = getWalletByUserId($conn, $userId);
-        if (!$wallet) {
-            throw new Exception("Wallet created but could not be fetched.");
-        }
-
         return $wallet;
     }
 }

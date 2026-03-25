@@ -1,5 +1,0 @@
-[2026-03-17 22:04:20] DB connection failed: Database config not found: C:\xampp\htdocs/config/database.php
-[2026-03-17 22:08:14] DB connection failed: Database config not found: C:\xampp\htdocs/config/database.php
-[2026-03-17 22:32:48] DB connection failed: Database config not found: C:\xampp\htdocs\CORE1/config/database.php
-[2026-03-17 22:38:56] DB connection failed: file_exists(): Argument #1 ($filename) must be of type string, null given
-[2026-03-17 22:41:16] DB connection failed: No valid PDO connection found from config/database.php

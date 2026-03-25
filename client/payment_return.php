@@ -89,6 +89,84 @@ function resolvePaymentBreakdown(mysqli $conn, array $txRow): array
     ];
 }
 
+function buildFinancialPaymentPayloadFromTx(mysqli $conn, array $txRow): array
+{
+    $userId = (int)$txRow["user_id"];
+
+    $userRow = null;
+    $userStmt = $conn->prepare("
+        SELECT id, fullname, email, phone
+        FROM users
+        WHERE id = ?
+        LIMIT 1
+    ");
+    $userStmt->bind_param("i", $userId);
+    $userStmt->execute();
+    $userRow = $userStmt->get_result()->fetch_assoc();
+    $userStmt->close();
+
+    $loanAppRow = null;
+    $loanAppStmt = $conn->prepare("
+        SELECT source_of_income, estimated_monthly_income
+        FROM loan_applications
+        WHERE user_id = ?
+        ORDER BY id DESC
+        LIMIT 1
+    ");
+    $loanAppStmt->bind_param("i", $userId);
+    $loanAppStmt->execute();
+    $loanAppRow = $loanAppStmt->get_result()->fetch_assoc();
+    $loanAppStmt->close();
+
+    $finalLoanId = (int)$txRow["loan_id"] > 0
+        ? (int)$txRow["loan_id"]
+        : (int)$txRow["restructured_loan_id"];
+
+    $breakdown = resolvePaymentBreakdown($conn, $txRow);
+
+    return [
+        "transaction_id" => (int)$txRow["id"],
+        "user_id" => (int)$txRow["user_id"],
+        "loan_id" => $finalLoanId,
+        "restructured_loan_id" => (int)$txRow["restructured_loan_id"],
+        "amount" => (float)$txRow["amount"],
+        "status" => (string)$txRow["status"],
+        "payment_date" => (string)$txRow["trans_date"],
+        "provider_method" => (string)$txRow["provider_method"],
+        "paymongo_payment_id" => (string)$txRow["paymongo_payment_id"],
+        "paymongo_checkout_id" => (string)$txRow["paymongo_checkout_id"],
+        "receipt_number" => (string)$txRow["receipt_number"],
+
+        "principal_amount" => (float)$breakdown["principal_amount"],
+        "interest_amount" => (float)$breakdown["interest_amount"],
+        "penalty_amount" => (float)$breakdown["penalty_amount"],
+        "payment_type" => (string)$breakdown["payment_type"],
+
+        "client_full_name" => (string)($userRow["fullname"] ?? ''),
+        "client_email" => (string)($userRow["email"] ?? ''),
+        "client_phone" => (string)($userRow["phone"] ?? ''),
+        "client_occupation" => (string)($loanAppRow["source_of_income"] ?? ''),
+        "client_monthly_income" => (float)($loanAppRow["estimated_monthly_income"] ?? 0)
+    ];
+}
+
+function refetchTransactionForReturn(mysqli $conn, int $txId): ?array
+{
+    $refetch = $conn->prepare("
+        SELECT id, user_id, loan_id, restructured_loan_id, amount, status, trans_date,
+               provider_method, paymongo_payment_id, paymongo_checkout_id, receipt_number,
+               receipt_image_pending_url, receipt_image_final_url
+        FROM transactions
+        WHERE id=?
+        LIMIT 1
+    ");
+    $refetch->bind_param("i", $txId);
+    $refetch->execute();
+    $txRow = $refetch->get_result()->fetch_assoc();
+    $refetch->close();
+    return $txRow ?: null;
+}
+
 $tx_id = (int)($_GET['tx_id'] ?? 0);
 $ok = isset($_GET['ok']);
 
@@ -139,14 +217,7 @@ curl_close($ch);
 dbg_return("PayMongo checkout fetch http={$http} curl_error={$curlErr} raw_response=" . $response);
 
 $data = json_decode($response, true);
-
-if ($http < 200 || $http >= 300 || !is_array($data)) {
-    dbg_return("EXIT invalid PayMongo response");
-    header("Location: receipt.php?tx_id=" . $tx_id);
-    exit;
-}
-
-$attrs = $data['data']['attributes'] ?? [];
+$attrs = is_array($data) ? ($data['data']['attributes'] ?? []) : [];
 $payments = $attrs['payments'] ?? [];
 
 dbg_return("Parsed payments array: " . json_encode($payments));
@@ -173,92 +244,35 @@ if (!empty($payments) && isset($payments[0]['id'])) {
     $u->close();
 
     dbg_return("Transaction update affected_rows={$affected}");
+} else {
+    dbg_return("NO payment found in checkout session. Fallback path will check transaction state.");
+}
 
-    $refetch = $conn->prepare("
-        SELECT id, user_id, loan_id, restructured_loan_id, amount, status, trans_date,
-               provider_method, paymongo_payment_id, paymongo_checkout_id, receipt_number,
-               receipt_image_pending_url, receipt_image_final_url
-        FROM transactions
-        WHERE id=?
-        LIMIT 1
-    ");
-    $refetch->bind_param("i", $tx_id);
-    $refetch->execute();
-    $txRow = $refetch->get_result()->fetch_assoc();
-    $refetch->close();
+$txRow = refetchTransactionForReturn($conn, $tx_id);
+dbg_return("Refetched txRow: " . json_encode($txRow));
 
-    dbg_return("Refetched txRow: " . json_encode($txRow));
+if ($txRow) {
+    $txStatusUpper = strtoupper((string)($txRow["status"] ?? ''));
 
-    if ($txRow) {
-        $userId = (int)$txRow["user_id"];
+    if ($txStatusUpper === 'PAID_PENDING') {
+        $paymentPayload = buildFinancialPaymentPayloadFromTx($conn, $txRow);
 
-        $userRow = null;
-        $userStmt = $conn->prepare("
-            SELECT id, fullname, email, phone
-            FROM users
-            WHERE id = ?
-            LIMIT 1
-        ");
-        $userStmt->bind_param("i", $userId);
-        $userStmt->execute();
-        $userRow = $userStmt->get_result()->fetch_assoc();
-        $userStmt->close();
-
-        $loanAppRow = null;
-        $loanAppStmt = $conn->prepare("
-            SELECT source_of_income, estimated_monthly_income
-            FROM loan_applications
-            WHERE user_id = ?
-            ORDER BY id DESC
-            LIMIT 1
-        ");
-        $loanAppStmt->bind_param("i", $userId);
-        $loanAppStmt->execute();
-        $loanAppRow = $loanAppStmt->get_result()->fetch_assoc();
-        $loanAppStmt->close();
-
-        $finalLoanId = (int)$txRow["loan_id"] > 0
-            ? (int)$txRow["loan_id"]
-            : (int)$txRow["restructured_loan_id"];
-
-        $breakdown = resolvePaymentBreakdown($conn, $txRow);
-
-        $paymentPayload = [
-            "transaction_id" => (int)$txRow["id"],
-            "user_id" => (int)$txRow["user_id"],
-            "loan_id" => $finalLoanId,
-            "restructured_loan_id" => (int)$txRow["restructured_loan_id"],
-            "amount" => (float)$txRow["amount"],
-            "status" => (string)$txRow["status"],
-            "payment_date" => (string)$txRow["trans_date"],
-            "provider_method" => (string)$txRow["provider_method"],
-            "paymongo_payment_id" => (string)$txRow["paymongo_payment_id"],
-            "paymongo_checkout_id" => (string)$txRow["paymongo_checkout_id"],
-            "receipt_number" => (string)$txRow["receipt_number"],
-
-            "principal_amount" => (float)$breakdown["principal_amount"],
-            "interest_amount" => (float)$breakdown["interest_amount"],
-            "penalty_amount" => (float)$breakdown["penalty_amount"],
-            "payment_type" => (string)$breakdown["payment_type"],
-
-            "client_full_name" => (string)($userRow["fullname"] ?? ''),
-            "client_email" => (string)($userRow["email"] ?? ''),
-            "client_phone" => (string)($userRow["phone"] ?? ''),
-            "client_occupation" => (string)($loanAppRow["source_of_income"] ?? ''),
-            "client_monthly_income" => (float)($loanAppRow["estimated_monthly_income"] ?? 0)
-        ];
-
-        dbg_return("Payment breakdown=" . json_encode($breakdown));
+        dbg_return("Payment breakdown=" . json_encode([
+            "principal_amount" => $paymentPayload["principal_amount"],
+            "interest_amount" => $paymentPayload["interest_amount"],
+            "penalty_amount" => $paymentPayload["penalty_amount"],
+            "payment_type" => $paymentPayload["payment_type"]
+        ]));
         dbg_return("Sending to FINANCIAL payload=" . json_encode($paymentPayload));
 
         $financialResponse = sendPaymentToFinancial($paymentPayload);
 
         dbg_return("FINANCIAL response=" . json_encode($financialResponse));
     } else {
-        dbg_return("No txRow found after update");
+        dbg_return("Skip fallback send because tx status is {$txStatusUpper}");
     }
 } else {
-    dbg_return("NO payment found in checkout session. Nothing sent to FINANCIAL.");
+    dbg_return("No txRow found after refetch");
 }
 
 header("Location: receipt.php?tx_id=" . $tx_id);

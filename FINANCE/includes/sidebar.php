@@ -291,6 +291,11 @@
                     </a>
                 </li>
                 <li>
+                    <a href="../FINANCE/finance_tickets.php" class="nav-item <?= ($is_admin && $cp == 'finance_tickets.php')? 'active' : '' ?>">
+                    <i data-lucide="tickets" ></i>
+                    <span>Tickets</span>
+                </li>
+                <li>
                     <a href="../FINANCE/logs.php" class="nav-item <?= ($is_admin && $cp == 'logs.php') ? 'active' : '' ?>">
                         <i data-lucide="list"></i>
                         <span>Audit Logs</span>
