@@ -5,6 +5,7 @@ session_start();
 require_once __DIR__ . "/../include/config.php"; 
 require_once __DIR__ . "/include/session_checker.php"; 
 require_once __DIR__ . "/include/wallet_helper.php"; 
+require_once __DIR__ . "/send_wallet_sync_to_core2.php";
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
@@ -62,6 +63,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cash_out_amount'])) {
             $stmtTx->bind_param("iisddsss", $walletId, $user_id, $txType, $amount, $newRunningBalance, $reference, $remarks, $status);
             $stmtTx->execute();
             $stmtTx->close();
+
+            $uStmt = $conn->prepare("SELECT * FROM users WHERE id = ? LIMIT 1");
+            $uStmt->bind_param("i", $user_id);
+            $uStmt->execute();
+            $uRes = $uStmt->get_result();
+            $userProfile = $uRes ? $uRes->fetch_assoc() : null;
+            $uStmt->close();
+
+            $syncPayload = [
+                'wallet_account_id'    => $walletId,
+                'user_id'              => $user_id,
+                'loan_id'              => null,
+                'restructured_loan_id' => null,
+                'transaction_type'     => $txType,
+                'amount'               => $amount,
+                'running_balance'      => $newRunningBalance,
+                'reference_no'         => $reference,
+                'remarks'              => $remarks,
+                'status'               => $status,
+                'sync_status'          => 'PENDING',
+                'sync_error'           => null,
+                'user_profile'         => $userProfile
+            ];
+
+            $syncResponse = sendWalletSyncToCore2($syncPayload);
+
+            if (!$syncResponse['success']) {
+                echo '<script>console.error("🔥 CORE 2 SYNC FATAL ERROR: " . addslashes($syncResponse["message"]));</script>';
+            }
 
             mysqli_commit($conn);
             

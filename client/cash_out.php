@@ -100,6 +100,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $conn->commit();
 
+                $uStmt = $conn->prepare("SELECT * FROM users WHERE id = ? LIMIT 1");
+                $uStmt->bind_param("i", $user_id);
+                $uStmt->execute();
+                $uRes = $uStmt->get_result();
+                $userProfile = $uRes ? $uRes->fetch_assoc() : null;
+                $uStmt->close();
+
                 $syncPayload = [
                     'wallet_account_id'    => $walletId,
                     'user_id'              => $user_id,
@@ -112,7 +119,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'remarks'              => $remarks !== '' ? $remarks : 'Cash out from wallet',
                     'status'               => 'SUCCESS',
                     'sync_status'          => 'PENDING',
-                    'sync_error'           => null
+                    'sync_error'           => null,
+                    'user_profile'         => $userProfile
                 ];
                 
                 $syncResponse = sendWalletSyncToCore2($syncPayload);
@@ -128,6 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $upd->bind_param("ss", $err, $referenceNo);
                     $upd->execute();
                     $upd->close();
+                    echo '<script>console.error("🔥 CORE 2 SYNC FATAL ERROR: ' . addslashes($err) . '"); alert("🔥 CORE 2 SYNC FATAL ERROR:\n\n" + "' . addslashes($err) . '");</script>';
                 }
 
                 header("Location: wallet.php?success=cashout");

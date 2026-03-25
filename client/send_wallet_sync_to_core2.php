@@ -17,16 +17,28 @@ function sendWalletSyncToCore2(array $payload): array
     ]);
 
     $response = curl_exec($ch);
+    $errno = curl_errno($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $error = curl_error($ch);
     curl_close($ch);
 
     if ($response === false) {
-        return ['success' => false, 'message' => $error];
+        if ($errno === 7) {
+            return ['success' => false, 'message' => '🚨 CONNECTION REFUSED: Is Core 2 XAMPP running? Is the IP correct?'];
+        }
+        if ($errno === 28) {
+            return ['success' => false, 'message' => '🚨 TIMEOUT: Network congested or Core 2 took too long.'];
+        }
+        return ['success' => false, 'message' => '🚨 CURL ERROR [' . $errno . ']: ' . $error];
+    }
+
+    if ($httpCode !== 200) {
+        return ['success' => false, 'message' => '🚨 HTTP ERROR [' . $httpCode . ']: Core 2 rejected the payload.'];
     }
 
     $decoded = json_decode($response, true);
     if (json_last_error() !== JSON_ERROR_NONE) {
-        return ['success' => false, 'message' => 'Invalid JSON from CORE2: ' . $response];
+        return ['success' => false, 'message' => $response];
     }
 
     return $decoded;

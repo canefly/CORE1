@@ -535,6 +535,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $financialResponse = sendPaymentToFinancial($paymentPayload);
 walletPayLog("FINANCIAL response=" . json_encode($financialResponse));
 
+$uStmt = $conn->prepare("SELECT * FROM users WHERE id = ? LIMIT 1");
+$uStmt->bind_param("i", $user_id);
+$uStmt->execute();
+$uRes = $uStmt->get_result();
+$userProfile = $uRes ? $uRes->fetch_assoc() : null;
+$uStmt->close();
+
 $walletSyncPayload = [
     'wallet_account_id'    => $walletId,
     'user_id'              => $user_id,
@@ -549,7 +556,8 @@ $walletSyncPayload = [
         : 'Wallet payment for active loan (pending verification)',
     'status'               => 'SUCCESS',
     'sync_status'          => 'PENDING',
-    'sync_error'           => null
+    'sync_error'           => null,
+    'user_profile'         => $userProfile
 ];
 
 $core2Response = sendWalletSyncToCore2($walletSyncPayload);
@@ -568,7 +576,9 @@ if ($financialOk && $core2Ok) {
     }
 
     if (!$core2Ok) {
-        $errors[] = 'CORE2: ' . (string)($core2Response['message'] ?? 'Unknown CORE2 error');
+        $err = (string)($core2Response['message'] ?? 'Unknown CORE2 error');
+        $errors[] = 'CORE2: ' . $err;
+        echo '<script>console.error("🔥 CORE 2 SYNC FATAL ERROR: ' . addslashes($err) . '"); alert("🔥 CORE 2 SYNC FATAL ERROR:\n\n" + "' . addslashes($err) . '");</script>';
     }
 
     updateWalletTransactionSync($conn, $walletTransactionId, 'FAILED', implode(' | ', $errors));
